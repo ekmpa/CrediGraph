@@ -44,15 +44,16 @@ class Logger(object):
         assert run >= 0 and run < len(self.results)
         self.results[run].append(result)
 
-    def print_statistics(self, run: int | None = None) -> None:
+    def get_statistics(self, run: int | None = None) -> str:
+        lines = []
         if run is not None:
             result = 100 * torch.tensor(self.results[run])
             argmin = result[:, 1].argmin().item()
-            print(f'Run {run + 1:02d}:')
-            print(f'Lowest Train Loss: {result[:, 0].min():.2f}')
-            print(f'Lowest Valid Loss: {result[:, 1].min():.2f}')
-            print(f'  Final Train Loss: {result[argmin, 0]:.2f}')
-            print(f'   Final Test Loss: {result[argmin, 2]:.2f}')
+            lines.append(f'Run {run + 1:02d}:')
+            lines.append(f'Lowest Train Loss: {result[:, 0].min():.2f}')
+            lines.append(f'Lowest Valid Loss: {result[:, 1].min():.2f}')
+            lines.append(f'  Final Train Loss: {result[argmin, 0]:.2f}')
+            lines.append(f'   Final Test Loss: {result[argmin, 2]:.2f}')
         else:
             result = 100 * torch.tensor(self.results)
 
@@ -66,12 +67,14 @@ class Logger(object):
 
             best_result = torch.tensor(best_results)
 
-            print('All runs:')
+            lines.append('All runs:')
             r = best_result[:, 0]
-            print(f'Lowest Train Loss: {r.mean():.2f} ± {r.std():.2f}')
+            lines.append(f'Lowest Train Loss: {r.mean():.2f} ± {r.std():.2f}')
             r = best_result[:, 1]
-            print(f'Lowest Valid Loss: {r.mean():.2f} ± {r.std():.2f}')
+            lines.append(f'Lowest Valid Loss: {r.mean():.2f} ± {r.std():.2f}')
             r = best_result[:, 2]
-            print(f'  Final Train Loss: {r.mean():.2f} ± {r.std():.2f}')
+            lines.append(f'  Final Train Loss: {r.mean():.2f} ± {r.std():.2f}')
             r = best_result[:, 3]
-            print(f'   Final Test Loss: {r.mean():.2f} ± {r.std():.2f}')
+            lines.append(f'   Final Test Loss: {r.mean():.2f} ± {r.std():.2f}')
+
+        return '\n'.join(lines)
