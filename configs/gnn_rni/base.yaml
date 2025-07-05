@@ -1,5 +1,5 @@
 MetaArguments:
-  log_file_path: "logs/exp.log"
+  log_file_path: "tgrag_gnn.log"
   global_seed: 42
 
 ExperimentArguments:
