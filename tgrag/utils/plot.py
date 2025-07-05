@@ -30,7 +30,7 @@ def plot_avg_rmse_loss(
     avg_test = avg_rmse[:, 2]
 
     root = get_root_dir()
-    save_dir = root / 'experiments' / 'results' / 'plots' / model_name
+    save_dir = root / 'results' / 'plots' / model_name
     save_dir.mkdir(parents=True, exist_ok=True)
     save_path = save_dir / save_filename
 
