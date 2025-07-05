@@ -1,3 +1,4 @@
+import logging
 import pickle
 from typing import Dict, List, Tuple, Type
 
@@ -22,8 +23,8 @@ MODEL_CLASSES: Dict[str, Type[torch.nn.Module]] = {
     'SAGE': SAGE,
 }
 
-ENCODER_CLASSES: Dict[str, Type[Encoder]] = {
-    'RNI': RNIEncoder,
+ENCODER_CLASSES: Dict[str, Encoder] = {
+    'RNI': RNIEncoder(),
 }
 
 
@@ -93,15 +94,25 @@ def run_gnn_baseline(
     data_arguments: DataArguments,
     model_arguments: ModelArguments,
 ) -> None:
+    logging.info(
+        'Setting up training for task of: %s on model: %s',
+        data_arguments.task_name,
+        model_arguments.model,
+    )
     device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
     device = torch.device(device)
 
     root_dir = get_root_dir()
 
     model_class = MODEL_CLASSES[model_arguments.model]
-    ENCODER_CLASSES[model_arguments.encoder]
+    encoder_class = ENCODER_CLASSES[model_arguments.encoder]
+    logging.info(
+        'Encoder: %s is used on column: %s',
+        model_arguments.encoder,
+        model_arguments.encoder_col,
+    )
 
-    encoding_dict = {model_arguments.encoder_col: model_arguments.encoder}
+    encoding_dict: Dict[str, Encoder] = {model_arguments.encoder_col: encoder_class}
 
     dataset = TemporalDataset(
         root=f'{root_dir}/data/crawl-data/temporal',
@@ -125,6 +136,7 @@ def run_gnn_baseline(
 
     loss_tuple_run: List[List[Tuple[float, float, float]]] = []
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
+        logging.info('*** Training ***')
         model.reset_parameters()
         optimizer = torch.optim.Adam(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
