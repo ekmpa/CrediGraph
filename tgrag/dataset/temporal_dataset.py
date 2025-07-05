@@ -6,6 +6,7 @@ import torch
 from torch_geometric.data import Data, InMemoryDataset
 from torch_geometric.utils import to_torch_csr_tensor
 
+from tgrag.encoders.encoder import Encoder
 from tgrag.utils.data_loading import load_edge_csv, load_node_csv
 
 
@@ -13,7 +14,7 @@ class TemporalDataset(InMemoryDataset):
     def __init__(
         self,
         root: str,
-        encoding: Optional[Dict[str, str]] = None,
+        encoding: Optional[Dict[str, Encoder]] = None,
         transform: Optional[Callable] = None,
         pre_transform: Optional[Callable] = None,
     ):
@@ -48,8 +49,11 @@ class TemporalDataset(InMemoryDataset):
         if x_full is None:
             raise TypeError('X is None type. Please use an encoding.')
 
+        # TODO: Give that the csv is many GB large reading to a dataframe may cause a heap overflow.
         df = pd.read_csv(node_path)
         df = df.set_index('node_id').loc[mapping.keys()]
+
+        # Transductive nodes only:
         labeled_mask = df['cr_score'].notna().values
         cr_score = torch.tensor(
             df['cr_score'].fillna(-1).values, dtype=torch.float
