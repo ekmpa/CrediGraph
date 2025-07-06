@@ -10,16 +10,6 @@ import pandas as pd
 import tldextract
 
 
-def extract_from_line(line: str) -> str:
-    tokens = line.lower().split('.')
-    if len(tokens) >= 2:
-        domain = tokens[1] + '.' + tokens[0]
-    else:
-        # this case shouldn't happen (fallback)
-        domain = tokens[0]
-    return domain
-
-
 def extract_domain_from_url(url: str) -> str:
     try:
         return urlparse(url).hostname or ''
@@ -27,9 +17,28 @@ def extract_domain_from_url(url: str) -> str:
         return ''
 
 
-def extract_registered_domain(url: str) -> str:
+def flip(domain: str) -> str:
+    parts = domain.split('.')
+    # Only flip if it looks like TLD-domain pattern
+    if len(parts) == 2 and parts[0] in {
+        'com',
+        'org',
+        'net',
+        'gov',
+        'edu',
+        'fr',
+        'cn',
+        'br',
+        'au',
+    }:
+        return f'{parts[1]}.{parts[0]}'
+    return domain
+
+
+def extract_registered_domain(url: str) -> str | None:
+    url = flip(url)
     ext = tldextract.extract(url)
-    return f'{ext.domain}.{ext.suffix}' if ext.domain and ext.suffix else ''
+    return f'{ext.domain}.{ext.suffix}' if ext.domain and ext.suffix else None
 
 
 def extract_graph_domains(filepath: str) -> pd.DataFrame:
@@ -42,8 +51,7 @@ def extract_graph_domains(filepath: str) -> pd.DataFrame:
             if not line:
                 continue
 
-            domain = extract_from_line(line)
-
+            domain = extract_registered_domain(line)
             parsed.append((i, domain))
 
     return pd.DataFrame(parsed, columns=['node_id', 'match_domain'])

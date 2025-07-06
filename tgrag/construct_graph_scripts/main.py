@@ -5,6 +5,9 @@ from typing import List
 
 import pandas as pd
 
+from tgrag.construct_graph_scripts.load_labels import (
+    get_credibility_intersection,
+)
 from tgrag.construct_graph_scripts.process_compressed_text import (
     move_and_rename_compressed_outputs,
 )
@@ -22,7 +25,7 @@ parser.add_argument(
     '--slices',
     nargs='+',
     required=True,
-    help='List of CC time-slices to aggregate, e.g., --CC-crawl CC-MAIN-2017-13 CC-MAIN-2017-26',
+    help='List of CC time-slices to aggregate, e.g., --slices CC-MAIN-2017-13 CC-MAIN-2017-26',
 )
 parser.add_argument(
     '--subnetworks',
@@ -53,6 +56,12 @@ def main(slices: List[str], construct_subnetworks: bool) -> None:
         if not (os.path.exists(vertices_path) and os.path.exists(edges_path)):
             print(f'Missing data for {slice_id}: Skipping')
             continue
+
+        get_credibility_intersection(
+            data_path=f'{crawl_path}/{slice_id}',
+            label_path=base_path,
+            time_slice=slice_id,
+        )
 
         merger.add_graph(crawl_path, vertices_path, edges_path, slice_id)
 
