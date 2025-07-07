@@ -137,29 +137,20 @@ def run_gnn_baseline(
     logger = Logger(model_arguments.runs)
 
     loss_tuple_run: List[List[Tuple[float, float, float]]] = []
+    logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
-        logging.info('*** Training ***')
         model.reset_parameters()
         optimizer = torch.optim.Adam(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
         for epoch in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
-            loss = train(model, data, train_idx, optimizer, model_arguments.model)
+            train(model, data, train_idx, optimizer, model_arguments.model)
             result = test(model, data, split_idx, model_arguments.model)
             loss_tuple_epoch.append(result)
             logger.add_result(run, result)
 
-            if epoch % model_arguments.log_steps == 0:
-                train_loss, valid_loss, test_loss = result
-                print(
-                    f'Run: {run + 1:02d}, '
-                    f'Epoch: {epoch:02d}, '
-                    f'Loss: {loss:.4f}, '
-                    f'Train Loss: {100 * train_loss:.2f}%, '
-                    f'Valid Loss: {100 * valid_loss:.2f}% '
-                    f'Test Loss: {100 * test_loss:.2f}%'
-                )
         loss_tuple_run.append(loss_tuple_epoch)
 
-    logger.print_statistics()
+
+    logging.info(logger.get_statistics())
     plot_avg_rmse_loss(loss_tuple_run, model_arguments.model)
     save_loss_results(loss_tuple_run, model_arguments.model, model_arguments.encoder)
