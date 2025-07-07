@@ -28,3 +28,12 @@ def extract_graph_domains(filepath: str) -> pd.DataFrame:
             parsed.append((i, domain))
 
     return pd.DataFrame(parsed, columns=['node_id', 'match_domain'])
+
+
+def reverse_domain(domain: str) -> str:
+    return '.'.join(domain.split('.')[::-1])
+
+
+def matches_suffix_pattern(domain_dqr: str, domain: str) -> bool:
+    """Assuming that the domain_dqr is already reversed in the lookup table."""
+    return domain == domain_dqr or domain.startswith(domain_dqr + '.')
