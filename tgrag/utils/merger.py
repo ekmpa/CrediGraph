@@ -1,4 +1,5 @@
 import gzip
+import json
 import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Tuple
@@ -15,8 +16,10 @@ class Merger(ABC):
 
     def __init__(self, output_dir: str) -> None:
         self.output_dir = output_dir
-        self.edges: List[Tuple[int, int, int, str]] = []
-        self.domain_to_node: Dict[str, Tuple[int, int]] = {}
+        self.edges: List[Tuple[int, int, int]] = []  # src, dst, tid
+        self.domain_to_node: Dict[
+            str, Tuple[int, List[str]]
+        ] = {}  # domain, (id, [texts])
 
     @abstractmethod
     def merge(self, *args: Any, **kwargs: Any) -> None:
@@ -73,21 +76,28 @@ class Merger(ABC):
         os.makedirs(self.output_dir, exist_ok=True)
 
         # Ensure all edges have 4 fields, defaulting edge_type to 'hyperlinks'
-        processed_edges = [
-            edge if len(edge) == 4 else (*edge, 'hyperlinks') for edge in self.edges
-        ]
+        processed_edges = [edge for edge in self.edges]
 
-        edge_cols = ['src', 'dst', 'time_id', 'edge_type']
+        edge_cols = ['src', 'dst', 'tid']
         pd.DataFrame(processed_edges, columns=edge_cols).to_csv(
             os.path.join(self.output_dir, 'temporal_edges.csv'), index=False
         )
 
         df_nodes = pd.DataFrame(
             [
-                {'domain': domain, 'node_id': node_id, 'time_id': time_id}
-                for domain, (node_id, time_id) in self.domain_to_node.items()
+                {'domain': domain, 'node_id': node_id, 'text': json.dumps(text)}
+                for domain, (node_id, text) in self.domain_to_node.items()
             ]
         )
         df_nodes.to_csv(
             os.path.join(self.output_dir, 'temporal_nodes.csv'), index=False
         )
+
+    def _deserialize_text(self, text_field: Any) -> List[str]:
+        """Safe helper to parse the `text` column back to a list."""
+        if text_field is None or pd.isna(text_field):
+            return []
+        try:
+            return json.loads(text_field)
+        except Exception:
+            return []

@@ -21,7 +21,6 @@ class TemporalGraphMerger(Merger):
         super().__init__(output_dir)
 
         self.slice_node_sets: Dict[str, Set[int]] = {}  # slice_id → set of node_ids
-        self.next_node_id: int = 0
         self.time_ids_seen: Set[int] = set()
         self._last_overlap: Optional[int] = None
         self._load_existing()
@@ -35,12 +34,16 @@ class TemporalGraphMerger(Merger):
             try:
                 df_edges = pd.read_csv(next_edges_path)
                 df_nodes = pd.read_csv(nodes_path)
-                self.edges = list(df_edges.itertuples(index=False, name=None))
+                # self.edges = list(df_edges.itertuples(index=False, name=None))
+                self.edges = [
+                    (row[0], row[1], row[2])
+                    for row in df_edges.itertuples(index=False, name=None)
+                ]  # should be able to go back to above with clean csvs. keeping this to ensure rn.
                 self.domain_to_node = {
-                    row['domain']: (row['node_id'], -1)
+                    row['domain']: (row['node_id'], self._deserialize_text(row['text']))
                     for _, row in df_nodes.iterrows()
                 }
-                self.time_ids_seen = set(df_edges['time_id'])
+                self.time_ids_seen = set(df_edges['tid'])
                 print(
                     f'Loaded existing graph with {len(self.domain_to_node)} nodes and {len(self.edges)} edges'
                 )
@@ -81,13 +84,13 @@ class TemporalGraphMerger(Merger):
         slice_id: str,
     ) -> None:
         """Add new slice to the existing temporal graph."""
-        time_id = self._slice_to_time_id(next_root_path, slice_id)
-        if time_id in self.time_ids_seen:
-            print(f'Skipping slice {slice_id}: time_id {time_id} already exists.')
+        tid = self._slice_to_time_id(next_root_path, slice_id)
+        if tid in self.time_ids_seen:
+            print(f'Skipping slice {slice_id}: tid {tid} already exists.')
             return
 
         # snapshot current node IDs before mutation
-        existing_node_ids = set(self.domain_to_node.values())
+        existing_node_ids = {val[0] for val in self.domain_to_node.values()}
 
         # load vertices and edges using local -> global mapping
         domains, node_ids = super()._load_vertices(next_vertices_path)
@@ -96,17 +99,17 @@ class TemporalGraphMerger(Merger):
         for local_id, domain in enumerate(domains):
             if domain not in self.domain_to_node:
                 new_node_ids.add(node_ids[local_id])
-            self.domain_to_node[domain] = (node_ids[local_id], time_id)
+            self.domain_to_node[domain] = (node_ids[local_id], [])  # tid, [])
 
         edges = super()._load_edges(next_edges_path)
         for src_local, dst_local in edges:
-            self.edges.append((src_local, dst_local, time_id, 'hyperlinks'))
+            self.edges.append((src_local, dst_local, tid))
 
         self.slice_node_sets[slice_id] = new_node_ids
-        self.time_ids_seen.add(time_id)
+        self.time_ids_seen.add(tid)
 
         print(
-            f'Added slice {slice_id} (timestamp {time_id}): {len(new_node_ids)} nodes, {len(edges)} edges'
+            f'Added slice {slice_id} (timestamp {tid}): {len(new_node_ids)} nodes, {len(edges)} edges'
         )
 
         # store overlap with pre-existing graph if this is the only slice being added now

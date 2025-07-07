@@ -1,8 +1,5 @@
 import gzip
-import os
-from typing import Dict, Tuple
 
-import pandas as pd
 from warcio.archiveiterator import ArchiveIterator
 from warcio.recordloader import ArcWarcRecord
 
@@ -21,12 +18,6 @@ class ArticleMerger(Merger):
         self.slice = slice
         self.matched_articles = 0
         self.unmatched_articles = 0
-        self.article_nodes: Dict[
-            str, Tuple[int, str, str]
-        ] = {}  # url -> node_id, date, text
-        self.next_node_id = (
-            max((nid for nid, _ in self.domain_to_node.values()), default=0) + 1
-        )
 
     def merge(self) -> None:
         wet_path = get_wet_file_path(self.slice, str(get_root_dir()))
@@ -50,22 +41,8 @@ class ArticleMerger(Merger):
                     continue
 
                 self.matched_articles += 1
-                domain_node_id, time_id = self.domain_to_node[domain]
-
-                if wet_content['url'] not in self.article_nodes:
-                    article_node_id = self.next_node_id
-                    self.next_node_id += 1
-                    self.article_nodes[wet_content['url']] = (
-                        article_node_id,
-                        wet_content['warc_date'],
-                        wet_content['text'],
-                    )
-                else:
-                    (article_node_id, _, _) = self.article_nodes[wet_content['url']]
-
-                self.edges.append(
-                    (domain_node_id, article_node_id, time_id, 'contains')
-                )
+                node_id, texts = self.domain_to_node[domain]
+                texts.append(wet_content['text'])
 
             total_articles = self.matched_articles + self.unmatched_articles
             match_pct = (
@@ -73,32 +50,6 @@ class ArticleMerger(Merger):
                 if total_articles > 0
                 else 0
             )
-
-    def save(self) -> None:
-        """Override save to handle both domain and article nodes."""
-        os.makedirs(self.output_dir, exist_ok=True)
-
-        processed_edges = [
-            edge if len(edge) == 4 else (*edge, 'hyperlinks') for edge in self.edges
-        ]
-        pd.DataFrame(
-            processed_edges, columns=['src', 'dst', 'time_id', 'edge_type']
-        ).to_csv(os.path.join(self.output_dir, 'temporal_edges.csv'), index=False)
-
-        domain_node_rows = [
-            {'domain': domain, 'node_id': node_id, 'time_id': time_id}
-            for domain, (node_id, time_id) in self.domain_to_node.items()
-        ]
-
-        article_node_rows = [
-            {'domain': url, 'node_id': node_id, 'date': date, 'text': text}
-            for url, (node_id, date, text) in self.article_nodes.items()
-        ]
-
-        df_nodes = pd.DataFrame(domain_node_rows + article_node_rows)
-        df_nodes.to_csv(
-            os.path.join(self.output_dir, 'temporal_nodes.csv'), index=False
-        )
 
     def _extract_wet_content(self, record: ArcWarcRecord) -> dict:
         headers = record.rec_headers
