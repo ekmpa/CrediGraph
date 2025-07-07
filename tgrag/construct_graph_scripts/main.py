@@ -63,7 +63,7 @@ def main(slices: List[str], construct_subnetworks: bool) -> None:
             time_slice=slice_id,
         )
 
-        merger.add_graph(crawl_path, vertices_path, edges_path, slice_id)
+        merger.merge(crawl_path, vertices_path, edges_path, slice_id)
 
     merger.print_overlap()
 
@@ -74,6 +74,7 @@ def main(slices: List[str], construct_subnetworks: bool) -> None:
     )
     temporal_edges_df = pd.read_csv(f'{temporal_path}/temporal_edges.csv')
     temporal_vertices_df = pd.read_csv(f'{temporal_path}/temporal_nodes.csv')
+
     if construct_subnetworks:
         output_path = f'{base_path}/data/crawl-data/sub-networks/'
         pathlib.Path(output_path).mkdir(parents=True, exist_ok=True)

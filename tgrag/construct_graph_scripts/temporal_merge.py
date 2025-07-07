@@ -18,9 +18,6 @@ class TemporalGraphMerger(Merger):
     """
 
     def __init__(self, output_dir: str) -> None:
-        # self.output_dir: str = output_dir
-        # self.edges: List[Tuple[int, int, int]] = []  # (src, dst, time_id)
-        # self.domain_to_node: Dict[str, Tuple[int, int]] = {}  # domain → node_id
         super().__init__(output_dir)
 
         self.slice_node_sets: Dict[str, Set[int]] = {}  # slice_id → set of node_ids
@@ -76,7 +73,7 @@ class TemporalGraphMerger(Merger):
             f'Could not extract scrape date from any WAT files in {wat_dir}'
         )
 
-    def add_graph(
+    def merge(
         self,
         next_root_path: str,
         next_vertices_path: str,

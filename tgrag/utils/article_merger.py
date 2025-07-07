@@ -46,7 +46,6 @@ class ArticleMerger(Merger):
                 )
 
                 if domain not in self.domain_to_node:
-                    # print(f"Unmatched domain: {domain}")
                     self.unmatched_articles += 1
                     continue
 
@@ -64,7 +63,6 @@ class ArticleMerger(Merger):
                 else:
                     (article_node_id, _, _) = self.article_nodes[wet_content['url']]
 
-                # Add 'contains' edge from domain to article
                 self.edges.append(
                     (domain_node_id, article_node_id, time_id, 'contains')
                 )
@@ -75,15 +73,11 @@ class ArticleMerger(Merger):
                 if total_articles > 0
                 else 0
             )
-            print(
-                f'Matched {self.matched_articles} out of {total_articles} articles ({match_pct:.2f}%)'
-            )
 
     def save(self) -> None:
         """Override save to handle both domain and article nodes."""
         os.makedirs(self.output_dir, exist_ok=True)
 
-        # Ensure all edges have type & save edges
         processed_edges = [
             edge if len(edge) == 4 else (*edge, 'hyperlinks') for edge in self.edges
         ]
@@ -91,13 +85,11 @@ class ArticleMerger(Merger):
             processed_edges, columns=['src', 'dst', 'time_id', 'edge_type']
         ).to_csv(os.path.join(self.output_dir, 'temporal_edges.csv'), index=False)
 
-        # Domain nodes
         domain_node_rows = [
             {'domain': domain, 'node_id': node_id, 'time_id': time_id}
             for domain, (node_id, time_id) in self.domain_to_node.items()
         ]
 
-        # Article nodes
         article_node_rows = [
             {'domain': url, 'node_id': node_id, 'date': date, 'text': text}
             for url, (node_id, date, text) in self.article_nodes.items()

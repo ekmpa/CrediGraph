@@ -1,14 +1,15 @@
 import gzip
 import os
-from typing import Dict, List, Tuple
+from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Tuple
 from urllib.parse import urlparse
 
 import pandas as pd
 import tldextract
 
 
-class Merger:
-    """Parent class for merging two graphs.
+class Merger(ABC):
+    """Abstract base class for merging two graphs.
     Used for temporal and article-level merging.
     """
 
@@ -17,19 +18,31 @@ class Merger:
         self.edges: List[Tuple[int, int, int, str]] = []
         self.domain_to_node: Dict[str, Tuple[int, int]] = {}
 
-    def _normalize_domain(self, url: str) -> str:
-        """Extract and normalize domain from a URL for consistency across slices."""
-        parsed = urlparse(url.strip().lower())
+    @abstractmethod
+    def merge(self, *args: Any, **kwargs: Any) -> None:
+        """Merge method to be implemented by subclasses."""
+
+    def _normalize_domain(self, url: str | None) -> str | None:
+        """Extract and normalize domain from a URL or raw domain."""
+        if not url:
+            return None
+        url = url.strip().lower()
+
+        # Try to parse as a URL first
+        parsed = urlparse(url)
         hostname = parsed.hostname or url
 
-        # Extract registered domain + suffix (e.g., example.co.uk)
         ext = tldextract.extract(hostname)
+
         if ext.domain and ext.suffix:
             return f'{ext.suffix}.{ext.domain}'
-        elif ext.domain:
-            return ext.domain
+        elif ext.domain and not ext.suffix:
+            if hostname.count('.') == 1:  # if already a domain
+                return hostname
+            else:
+                return ext.domain
         else:
-            return hostname  # fallback, in case tldextract fails
+            return hostname
 
     def _load_vertices(self, filepath: str) -> Tuple[List[str], List[int]]:
         """Helper to extract and load vertices from vertices.txt.gz."""
@@ -39,7 +52,10 @@ class Merger:
             for line in f:
                 parts = line.strip().split('\t')
                 norm = self._normalize_domain(parts[1])
-                domains.append(norm)
+                if norm:
+                    domains.append(norm)
+                else:
+                    continue
                 node_ids.append(int(parts[0]))
         return domains, node_ids
 
