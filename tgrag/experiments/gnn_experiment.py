@@ -1,6 +1,6 @@
 import logging
 import pickle
-from typing import Dict, List, Tuple, Type
+from typing import Dict, List, Tuple, Type, cast
 
 import torch
 import torch.nn.functional as F
@@ -116,6 +116,8 @@ def run_gnn_baseline(
 
     dataset = TemporalDataset(
         root=f'{root_dir}/data/crawl-data/temporal',
+        node_file=cast(str, data_arguments.node_file),
+        edge_file=cast(str, data_arguments.edge_file),
         encoding=encoding_dict,
     )
     data = dataset[0]
@@ -158,7 +160,6 @@ def run_gnn_baseline(
                 )
         loss_tuple_run.append(loss_tuple_epoch)
 
-        logger.print_statistics(run)
     logger.print_statistics()
     plot_avg_rmse_loss(loss_tuple_run, model_arguments.model)
     save_loss_results(loss_tuple_run, model_arguments.model, model_arguments.encoder)

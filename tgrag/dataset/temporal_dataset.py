@@ -14,10 +14,14 @@ class TemporalDataset(InMemoryDataset):
     def __init__(
         self,
         root: str,
+        node_file: str = 'temporal_nodes.csv',
+        edge_file: str = 'temporal_edges.csv',
         encoding: Optional[Dict[str, Encoder]] = None,
         transform: Optional[Callable] = None,
         pre_transform: Optional[Callable] = None,
     ):
+        self.node_file = node_file
+        self.edge_file = edge_file
         self.encoding = encoding
         super().__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
@@ -28,7 +32,7 @@ class TemporalDataset(InMemoryDataset):
 
     @property
     def raw_file_names(self) -> List[str]:
-        return ['temporal_nodes.csv', 'temporal_edges.csv']
+        return [self.node_file, self.edge_file]
 
     @property
     def processed_file_names(self) -> List[str]:
@@ -38,8 +42,8 @@ class TemporalDataset(InMemoryDataset):
         pass
 
     def process(self) -> None:
-        node_path = os.path.join(self.raw_dir, 'temporal_nodes.csv')
-        edge_path = os.path.join(self.raw_dir, 'temporal_edges.csv')
+        node_path = os.path.join(self.raw_dir, self.node_file)
+        edge_path = os.path.join(self.raw_dir, self.edge_file)
         x_full, mapping = load_node_csv(
             path=node_path,
             index_col=1,  # 'node_id'
