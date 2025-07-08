@@ -27,15 +27,9 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
     echo "Processing $CRAWL..."
     echo "Removing previous $CRAWL spark-warehouse"
 
-    # Use SCRATCH if defined, else fallback to project-local data dir
-    # For cluster usage
-    if [ -z "$SCRATCH" ]; then
-        rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse" # Remove re-created directories before running
-    else
-        rm -rf "$SCRATCH/spark-warehouse" # Remove re-created directories before running
-    fi
-    echo "################################### run get data ###################################"
-    ./get_data.sh "$CRAWL" 40
+    rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse" # Remove re-created directories before running
+
+    ./get_data.sh "$CRAWL"
     echo "Data Downloaded for $CRAWL."
     echo "###################################  run_wat_to_link ###################################"
     ./run_wat_to_link.sh "$CRAWL"
