@@ -6,7 +6,7 @@ import idna
 from json_importer import json
 from pyspark.sql.types import StringType, StructField, StructType
 from sparkcc import CCSparkJob
-
+# os.environ["PYSPARK_SUBMIT_ARGS"] = "--driver-memory MEM 4g"
 
 class ExtractLinksJob(CCSparkJob):
     """Extract links from WAT files and redirects from WARC files
@@ -315,6 +315,7 @@ class ExtractLinksJob(CCSparkJob):
 
     def run_job(self, session):
         output = None
+
         session.sql("DROP TABLE IF EXISTS host_graph_output_vertices")
         session.sql("DROP TABLE IF EXISTS host_graph_output_edges")
         if self.args.input != '':
@@ -322,6 +323,13 @@ class ExtractLinksJob(CCSparkJob):
                 self.args.input, minPartitions=self.args.num_input_partitions
             )
             output = input_data.mapPartitionsWithIndex(self.process_warcs)
+            ############################################
+            # collected_data = output.collect()
+            # # Save the collected data to a local file
+            # with open("output_mapPartitionsWithIndex_v0.txt", "w") as f:
+            #     for row in collected_data:
+            #         f.write(f"{row}\n")
+            ##############################################
 
         if not self.args.intermediate_output:
             df = session.createDataFrame(output, schema=self.output_schema)
