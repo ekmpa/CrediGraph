@@ -63,7 +63,10 @@ def main(slices: List[str], construct_subnetworks: bool) -> None:
             time_slice=slice_id,
         )
 
-        merger.merge(crawl_path, vertices_path, edges_path, slice_id)
+        annotated_vertices_path = os.path.join(
+            f'{crawl_path}/{slice_id}/output_text_dir/', 'vertices.csv'
+        )
+        merger.merge(crawl_path, annotated_vertices_path, edges_path, slice_id)
 
     merger.print_overlap()
 

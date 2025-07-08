@@ -40,7 +40,11 @@ class TemporalGraphMerger(Merger):
                     for row in df_edges.itertuples(index=False, name=None)
                 ]  # should be able to go back to above with clean csvs. keeping this to ensure rn.
                 self.domain_to_node = {
-                    row['domain']: (row['node_id'], self._deserialize_text(row['text']))
+                    row['domain']: (
+                        row['node_id'],
+                        row['pc1'],
+                        self._deserialize_text(row['text']),
+                    )
                     for _, row in df_nodes.iterrows()
                 }
                 self.time_ids_seen = set(df_edges['tid'])
@@ -93,13 +97,15 @@ class TemporalGraphMerger(Merger):
         existing_node_ids = {val[0] for val in self.domain_to_node.values()}
 
         # load vertices and edges using local -> global mapping
-        domains, node_ids = super()._load_vertices(next_vertices_path)
+        domains, node_ids, labels = super()._load_vertices(next_vertices_path)
         new_node_ids = set()
 
         for local_id, domain in enumerate(domains):
+            node_id = node_ids[local_id]
+            label = labels[local_id]
             if domain not in self.domain_to_node:
-                new_node_ids.add(node_ids[local_id])
-            self.domain_to_node[domain] = (node_ids[local_id], [])  # tid, [])
+                new_node_ids.add(node_id)
+            self.domain_to_node[domain] = (node_id, label, [])  # tid, [])
 
         edges = super()._load_edges(next_edges_path)
         for src_local, dst_local in edges:

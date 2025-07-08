@@ -17,7 +17,7 @@ def get_credibility_intersection(
 ) -> None:
     cred_scores_path = f'{label_path}/data/dqr/domain_pc1.csv'
     vertices_path = os.path.join(data_path, 'output_text_dir', 'vertices.txt.gz')
-    output_csv_path = f'{data_path}/labelled_nodes.csv'
+    output_csv_path = os.path.join(data_path, 'output_text_dir', 'vertices.csv')
 
     print(f'Opening vertices file: {vertices_path}')
 
