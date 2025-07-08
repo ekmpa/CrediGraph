@@ -34,16 +34,15 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
     else
         rm -rf "$SCRATCH/spark-warehouse" # Remove re-created directories before running
     fi
-
-    ./get_data.sh "$CRAWL"
+    echo "################################### run get data ###################################"
+    ./get_data.sh "$CRAWL" 40
     echo "Data Downloaded for $CRAWL."
-
+    echo "###################################  run_wat_to_link ###################################"
     ./run_wat_to_link.sh "$CRAWL"
     echo "wat_output_table constructed for $CRAWL."
-
+    echo "###################################  run_link_to_graph ###################################"
     ./run_link_to_graph.sh "$CRAWL"
     echo "Compressed graphs constructed for $CRAWL."
-
-    echo "--------------------------------------"
+    echo "********************** End Of the Task **********************"
 
 done < "$CRAWL_LIST_FILE"
