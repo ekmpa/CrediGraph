@@ -2,7 +2,7 @@ import gzip
 import json
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 import pandas as pd
@@ -18,7 +18,7 @@ class Merger(ABC):
         self.output_dir = output_dir
         self.edges: List[Tuple[int, int, int]] = []  # src, dst, tid
         self.domain_to_node: Dict[
-            str, Tuple[int, List[str]]
+            str, Tuple[int, float | None, List[str]]
         ] = {}  # domain, (id, [texts])
 
     @abstractmethod
@@ -47,20 +47,15 @@ class Merger(ABC):
         else:
             return hostname
 
-    def _load_vertices(self, filepath: str) -> Tuple[List[str], List[int]]:
-        """Helper to extract and load vertices from vertices.txt.gz."""
-        domains = []
-        node_ids = []
-        with gzip.open(filepath, 'rt', encoding='utf-8', errors='ignore') as f:
-            for line in f:
-                parts = line.strip().split('\t')
-                norm = self._normalize_domain(parts[1])
-                if norm:
-                    domains.append(norm)
-                else:
-                    continue
-                node_ids.append(int(parts[0]))
-        return domains, node_ids
+    def _load_vertices(
+        self, filepath: str
+    ) -> Tuple[List[str], List[int], List[Optional[float]]]:
+        """Helper to extract and load vertices from annotated vertices csv file."""
+        vertices_df = pd.read_csv(filepath)
+        node_ids = vertices_df['node_id'].tolist()
+        domains = vertices_df['match_domain'].tolist()
+        pc1_scores = vertices_df['pc1'].tolist()
+        return domains, node_ids, pc1_scores
 
     def _load_edges(self, filepath: str) -> List[Tuple[int, int]]:
         with gzip.open(filepath, 'rt', encoding='utf-8', errors='ignore') as f:
@@ -74,8 +69,6 @@ class Merger(ABC):
     def save(self) -> None:
         """Save merged graph to CSV."""
         os.makedirs(self.output_dir, exist_ok=True)
-
-        # Ensure all edges have 4 fields, defaulting edge_type to 'hyperlinks'
         processed_edges = [edge for edge in self.edges]
 
         edge_cols = ['src', 'dst', 'tid']
@@ -85,8 +78,13 @@ class Merger(ABC):
 
         df_nodes = pd.DataFrame(
             [
-                {'domain': domain, 'node_id': node_id, 'text': json.dumps(text)}
-                for domain, (node_id, text) in self.domain_to_node.items()
+                {
+                    'domain': domain,
+                    'node_id': node_id,
+                    'pc1': label,
+                    'text': json.dumps(text),
+                }
+                for domain, (node_id, label, text) in self.domain_to_node.items()
             ]
         )
         df_nodes.to_csv(

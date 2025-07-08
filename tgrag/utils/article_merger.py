@@ -41,7 +41,7 @@ class ArticleMerger(Merger):
                     continue
 
                 self.matched_articles += 1
-                node_id, texts = self.domain_to_node[domain]
+                node_id, label, texts = self.domain_to_node[domain]
                 texts.append(wet_content['text'])
 
             total_articles = self.matched_articles + self.unmatched_articles
