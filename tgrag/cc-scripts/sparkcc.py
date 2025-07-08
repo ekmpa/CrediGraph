@@ -193,7 +193,11 @@ class CCSparkJob(object):
         """Run the job"""
         self.args = self.parse_arguments()
 
-        builder = SparkSession.builder.appName(self.name)
+        builder = (SparkSession.builder\
+                   .appName(self.name)
+                   .config("spark.driver.memory", "4g")
+                   .config("spark.hadoop.dfs.block.size", "256m")
+                   .config("spark.sql.files.maxPartitionBytes", "64mb"))
 
         if self.args.spark_profiler:
             builder.config('spark.python.profile', 'true')

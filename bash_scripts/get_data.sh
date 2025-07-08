@@ -10,6 +10,12 @@ fi
 
 CRAWL="$1"
 
+if [ -z "$2" ]; then
+      FilesCount=30
+else
+      FilesCount=$2
+fi
+
 # Get the root of the project (one level above this script's directory)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -34,14 +40,9 @@ mkdir -p "$DATA_DIR/"
 INPUT_DIR="$DATA_DIR/crawl-data/$CRAWL/input"
 mkdir -p "$INPUT_DIR"
 
-if [ -e "$INPUT_DIR/test.txt" ]; then
-    echo "File $INPUT_DIR/test.txt already exists"
-    echo "... delete it to write a new one"
-    exit 1
-fi
 
-for data_type in warc wat wet; do
-
+#for data_type in warc wat wet; do
+for data_type in  wat ; do
     echo "Downloading Common Crawl paths listings (${data_type} files of $CRAWL)..."
 
     mkdir -p "$DATA_DIR/crawl-data/$CRAWL/"
@@ -59,14 +60,43 @@ for data_type in warc wat wet; do
     wget --timestamping "$BASE_URL/$file"
     cd -
 
-    echo "Writing input file listings..."
-
-    input="$INPUT_DIR/test_${data_type}.txt"
-    echo "Test file: $input"
-    echo "file:$full_path" >>"$input"
-
     input="$INPUT_DIR/all_${data_type}_${CRAWL}.txt"
     echo "All ${data_type} files of ${CRAWL}: $input"
-    gzip -dc "$listing" >"$input"
+    listing_content=$(gzip -dc "$listing")
+#    echo "listing_content=$listing_content"
+    listing_FilesCount=$(wc -l <<< "$listing_content")
+    echo "listing_FilesCount=$listing_FilesCount"
+    if [ "$listing_FilesCount" -lt "$FilesCount" ] ; then
+      FilesCount=listing_FilesCount
+    fi
+
+    echo "To Process FilesCount=$FilesCount"
+    wat_files=$(echo "$listing_content" | head -n $FilesCount)
+    echo "Writing input file listings..."
+    input="$INPUT_DIR/test_${data_type}.txt"
+    echo "Test file: $input"
+    if [ -e "$input" ]; then
+        rm "$input"
+        echo "File $input already exists. delete it."
+    fi
+
+
+    while IFS= read -r wat_file; do
+      echo "file:$DATA_DIR/$wat_file" >>"$input"
+     done <<< "$wat_files"
+    echo "############Downloading Files############"
+    while IFS= read -r wat_file; do
+#      echo "$wat_file"
+      # split file name by
+      first=$(echo "$wat_file" | awk -F '$BASE_URL' '{print $1}')
+      first=$(echo "$first" | awk -F '/$data_type/' '{print $1}')
+#      echo "first=" "$first"
+      file_path="../data/$wat_file"
+      if [ -f "$file_path" ]; then
+          echo "File '$file_path' exists."
+      else
+          wget --timestamping -P "../data/$first/$data_type/" "$BASE_URL/$wat_file"
+      fi
+    done <<< "$wat_files"
 
 done
