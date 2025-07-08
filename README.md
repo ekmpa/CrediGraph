@@ -55,5 +55,3 @@ Alternatively, you can design you own configuration.
 ```sh
 uv run tgrag/experiments/main.py --config configs/your_config.yaml
 ```
-
-To learn more about making a contribution to CrediGraph see our [contribution guide](./.github/CONTRIBUTING.md)
