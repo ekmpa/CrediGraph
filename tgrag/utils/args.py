@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import yaml
 from hf_argparser import HfArgumentParser
 
-from tgrag.utils.path import get_root_dir
+from tgrag.utils.path import get_no_backup, get_root_dir
 
 
 @dataclass
@@ -41,13 +41,19 @@ class DataArguments:
             'help': 'A csv or list of csv files containing the nodes of the graph.'
         },
     )
+    is_scratch_location: bool = field(
+        metadata={'help': 'Whether to use the /NOBACKUP/ disk on server.'}
+    )
     num_test_shards: int = field(
         metadata={'help': 'Number of test splits to do for uncertainty estimates.'},
         default=1,
     )
 
     def __post_init__(self) -> None:
-        root_dir = get_root_dir()
+        if self.is_scratch_location:
+            root_dir = get_no_backup()
+        else:
+            root_dir = get_root_dir()
 
         def resolve_paths(files: Union[str, List[str]]) -> Union[str, List[str]]:
             if isinstance(files, str):
