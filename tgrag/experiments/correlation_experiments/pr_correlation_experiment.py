@@ -1,3 +1,5 @@
+import logging
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -12,6 +14,11 @@ def run_pr_cr_bin_correlation(data_arguments: DataArguments) -> None:
     chunk_size = 100_000
     collected_data = []
 
+    logging.info(
+        'Setting up training for task of: %s',
+        data_arguments.task_name,
+    )
+
     for chunk in tqdm(
         pd.read_csv(node_file, chunksize=chunk_size), desc='Reading PD chunk'
     ):
@@ -19,10 +26,10 @@ def run_pr_cr_bin_correlation(data_arguments: DataArguments) -> None:
         if not filtered.empty:
             collected_data.extend(filtered[['pr_value', 'cr_score']].values.tolist())
 
-    print(f'All scores found.')
+    logging.info('All scores found.')
 
     if not collected_data:
-        print('No valid rows with pr_value and cr_score in [0,1).')
+        logging.info('No valid rows with pr_value and cr_score in [0,1).')
         return
 
     df = pd.DataFrame(collected_data, columns=['pr_value', 'cr_score'])
@@ -52,13 +59,18 @@ def run_pr_cr_bin_correlation(data_arguments: DataArguments) -> None:
     plt.tight_layout()
     plt.savefig(save_path, dpi=300)
     plt.close()
-    print(f'Binned heatmap saved to: {save_path}')
+    logging.info(f'Binned heatmap saved to: {save_path}')
 
 
 def run_pr_correlation(data_arguments: DataArguments) -> None:
     node_file = data_arguments.node_file
     chunk_size = 100_000  # Tune based on memory
     collected_data = []
+
+    logging.info(
+        'Setting up training for task of: %s',
+        data_arguments.task_name,
+    )
 
     for chunk in tqdm(
         pd.read_csv(node_file, chunksize=chunk_size), desc='Processing chunks'
@@ -71,7 +83,7 @@ def run_pr_correlation(data_arguments: DataArguments) -> None:
             collected_data.extend(filtered[['pr_value', 'cr_score']].values.tolist())
 
     if not collected_data:
-        print('No valid rows with both pr_value and cr_score found.')
+        logging.info('No valid rows with both pr_value and cr_score found.')
         return
 
     df = pd.DataFrame(collected_data, columns=['pr_value', 'cr_score'])
@@ -87,4 +99,4 @@ def run_pr_correlation(data_arguments: DataArguments) -> None:
     plt.tight_layout()
     plt.savefig(save_path, dpi=300)
     plt.close()
-    print(f'Heatmap saved to: {save_path}')
+    logging.info(f'Heatmap saved to: {save_path}')
