@@ -18,19 +18,12 @@ def extract_domain_from_url(url: str) -> str:
 
 
 def flip(domain: str) -> str:
+    extract = tldextract.TLDExtract(include_psl_private_domains=True)
+    extract.update()
     parts = domain.split('.')
-    # Only flip if it looks like TLD-domain pattern
-    if len(parts) == 2 and parts[0] in {
-        'com',
-        'org',
-        'net',
-        'gov',
-        'edu',
-        'fr',
-        'cn',
-        'br',
-        'au',
-    }:
+    if (
+        len(parts) == 2 and extract(parts[0]).suffix != ''
+    ):  # Only flip if it looks like TLD-domain pattern
         return f'{parts[1]}.{parts[0]}'
     return domain
 
