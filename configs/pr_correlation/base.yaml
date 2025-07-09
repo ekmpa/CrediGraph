@@ -21,7 +21,7 @@ ExperimentArguments:
         task_name: "correlation"
         is_regression: true
         node_file: 'data/crawl-data/manual/output/test_pr_cr.csv'
-        edge_file: 'data/crawl-data/manual/temporal_edges.csv'
+        edge_file:
         is_scratch_location: false
         num_test_shards:
     PRC:
@@ -41,6 +41,6 @@ ExperimentArguments:
         task_name: "correlation"
         is_regression: true
         node_file: 'data/crawl-data/manual/output/test_pr_cr.csv'
-        edge_file: 'data/crawl-data/manual/temporal_edges.csv'
+        edge_file:
         is_scratch_location: false
         num_test_shards:
