@@ -24,7 +24,8 @@ def get_credibility_intersection(
     cred_df = load_credibility_scores(cred_scores_path)
     vertices_df = extract_graph_domains(vertices_path)
 
-    enriched_df = pd.merge(vertices_df, cred_df, on='match_domain', how='inner')
+    enriched_df = pd.merge(vertices_df, cred_df, on='match_domain', how='left')
+    enriched_df['pc1'] = enriched_df['pc1'].fillna(-1)
     enriched_df.to_csv(output_csv_path, index=False)
 
     print(f'INFO: Merge done. Annotated file saved to {output_csv_path}')
@@ -34,7 +35,7 @@ def get_credibility_intersection(
     cred_labels_set = set(cred_df['match_domain'].unique())
 
     # Node annotation stats
-    annotated_nodes = len(enriched_df)
+    annotated_nodes = (enriched_df['pc1'] != -1).sum()
     total_nodes = len(vertices_df)
     node_percentage = (annotated_nodes / total_nodes) * 100
 
