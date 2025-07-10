@@ -11,9 +11,15 @@ fi
 CRAWL="$1"
 
 if [ -z "$2" ]; then
-      FilesCount=30
+      start_idx=1
 else
-      FilesCount=$2
+      start_idx=$2
+fi
+
+if [ -z "$2" ]; then
+      end_idx=30
+else
+      end_idx=$2
 fi
 
 # Get the root of the project (one level above this script's directory)
@@ -59,7 +65,6 @@ for data_type in  wat ; do
     cd "$(dirname "$full_path")"
     wget --timestamping "$BASE_URL/$file"
     cd -
-
     input="$INPUT_DIR/all_${data_type}_${CRAWL}.txt"
     echo "All ${data_type} files of ${CRAWL}: $input"
     listing_content=$(gzip -dc "$listing")
@@ -67,11 +72,11 @@ for data_type in  wat ; do
     listing_FilesCount=$(wc -l <<< "$listing_content")
     echo "listing_FilesCount=$listing_FilesCount"
     if [ "$listing_FilesCount" -lt "$FilesCount" ] ; then
-      FilesCount=listing_FilesCount
+      end_idx=listing_FilesCount
     fi
-
+    FilesCount=$((end_idx - start_idx))
     echo "To Process FilesCount=$FilesCount"
-    wat_files=$(echo "$listing_content" | head -n $FilesCount)
+    wat_files=$(echo "$listing_content" | tail -n +$end_idx | head -n $FilesCount)
     echo "Writing input file listings..."
     input="$INPUT_DIR/test_${data_type}.txt"
     echo "Test file: $input"

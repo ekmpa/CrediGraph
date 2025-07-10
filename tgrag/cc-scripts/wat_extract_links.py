@@ -1,4 +1,5 @@
 import os
+import shutil
 import re
 from urllib.parse import urljoin, urlparse
 
@@ -103,6 +104,7 @@ class ExtractLinksJob(CCSparkJob):
             self.records_response_wat.add(1)
             url = warc_header['WARC-Target-URI']
             for link in self.get_links(url, wat_record):
+                # print("link=",link)
                 link_count += 1
                 yield link
         elif self.is_response_record(record):
@@ -318,6 +320,9 @@ class ExtractLinksJob(CCSparkJob):
 
         session.sql("DROP TABLE IF EXISTS host_graph_output_vertices")
         session.sql("DROP TABLE IF EXISTS host_graph_output_edges")
+        out_path = str(session.conf.get("spark.sql.warehouse.dir")).split(":")[-1] + "/" + self.args.output
+        if os.path.exists(out_path):
+            shutil.rmtree(out_path)
         if self.args.input != '':
             input_data = session.sparkContext.textFile(
                 self.args.input, minPartitions=self.args.num_input_partitions

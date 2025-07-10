@@ -44,3 +44,7 @@ export PYSPARK_DRIVER_PYTHON="$VENV_PATH/bin/python"
   "$INPUT_DIR/test_wat.txt" \
   "wat_output_table" \
   --input_base_url https://data.commoncrawl.org/
+
+
+
+#  ../../data/crawl-data/CC-MAIN-2025-21/input/test_wat.txt   wat_output_table   --input_base_url https://data.commoncrawl.org/
