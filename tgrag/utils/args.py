@@ -50,17 +50,22 @@ class DataArguments:
     )
 
     def __post_init__(self) -> None:
-        if self.is_scratch_location:
-            root_dir = get_no_backup()
-        else:
-            root_dir = get_root_dir()
+        # Select root directory
+        root_dir = get_no_backup() if self.is_scratch_location else get_root_dir()
+        print(f'root_dir: {root_dir}')
 
         def resolve_paths(files: Union[str, List[str]]) -> Union[str, List[str]]:
-            if isinstance(files, str):
-                return str(root_dir / files)
-            return [str(root_dir / file) for file in files]
+            def resolve(f: str) -> str:
+                # Force file to be relative to root_dir
+                return str(root_dir / f.lstrip('/'))
 
+            if isinstance(files, str):
+                return resolve(files)
+            return [resolve(f) for f in files]
+
+        # Resolve both paths
         self.node_file = resolve_paths(self.node_file)
+        print(f'Node file: {self.node_file}')
         self.edge_file = resolve_paths(self.edge_file)
 
 
