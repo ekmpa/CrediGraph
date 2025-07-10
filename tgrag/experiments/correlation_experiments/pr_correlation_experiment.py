@@ -179,18 +179,14 @@ def plot_joint_pr_cr_heatmap(df: pd.DataFrame) -> None:
     save_dir = root / 'results' / 'correlation' / 'plots'
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    # Bin both pr_value and cr_score into 10 groups (0–100%)
     df['pr_bin'] = (100 * df['pr_value']).round(1).astype(int)
     df['cr_bin'] = (100 * df['cr_score']).round(1).astype(int)
 
-    # Filter out-of-bound entries
     df = df[(df['pr_bin'] >= 0) & (df['pr_bin'] <= 100)]
     df = df[(df['cr_bin'] >= 0) & (df['cr_bin'] <= 100)]
 
-    # Group to compute node counts in each bin pair
     joint_counts = df.groupby(['cr_bin', 'pr_bin']).size().reset_index(name='count')
 
-    # Fill missing cells with zero counts
     heat = np.zeros((10, 10))  # 10x10 bins
     for i in range(10):
         for j in range(10):
@@ -204,7 +200,6 @@ def plot_joint_pr_cr_heatmap(df: pd.DataFrame) -> None:
     # Apply Gaussian smoothing for interpretability
     smoothed = gaussian_filter(heat, sigma=1.5)
 
-    # Plot heatmap
     plt.figure(figsize=(8, 6))
     ax = sns.heatmap(
         smoothed,
