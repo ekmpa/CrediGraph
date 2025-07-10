@@ -1,8 +1,7 @@
 import argparse
 
 from tgrag.experiments.correlation_experiments.pr_correlation_experiment import (
-    run_pr_correlation,
-    run_pr_cr_bin_correlation,
+    run_correlation,
 )
 from tgrag.utils.args import parse_args
 from tgrag.utils.logger import setup_logging
@@ -29,10 +28,7 @@ def main() -> None:
     seed_everything(meta_args.global_seed)
     for experiment, experiment_arg in experiment_args.exp_args.items():
         print(f'Running: {experiment}')
-        if experiment_arg.model_args.model == 'bin':
-            run_pr_cr_bin_correlation(experiment_arg.data_args)
-        else:
-            run_pr_correlation(experiment_arg.data_args)
+        run_correlation(experiment_arg.data_args)
 
 
 if __name__ == '__main__':
