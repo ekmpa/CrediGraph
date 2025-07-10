@@ -26,6 +26,9 @@ def get_credibility_intersection(
 
     enriched_df = pd.merge(vertices_df, cred_df, on='match_domain', how='left')
     enriched_df['pc1'] = enriched_df['pc1'].fillna(-1)
+    enriched_df = enriched_df[
+        enriched_df['match_domain'].notnull() & (enriched_df['match_domain'] != '')
+    ]  # drop empty domains
     enriched_df.to_csv(output_csv_path, index=False)
 
     print(f'INFO: Merge done. Annotated file saved to {output_csv_path}')
