@@ -5,7 +5,7 @@
 ### Running full data processing scripts
 
 ```sh
-./end-to-end.sh ['COMMON-CRAWL-DATES', ...]
+./end-to-end.sh ['COMMON-CRAWL-DATES', ...] start_idx end_idx
 ```
 
 ##Optionally running in parts:
@@ -13,7 +13,7 @@
 ### Get the data
 
 ```sh
-./get_data.sh ['COMMON-CRAWL-DATES', ...]
+./get_data.sh ['COMMON-CRAWL-DATES', ...] start_idx  end_idx
 ```
 
 ### Convert compressed WAT files to the compressed format in wat_output_tables

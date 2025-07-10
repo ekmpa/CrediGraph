@@ -19,8 +19,9 @@ fi
 if [ -z "$2" ]; then
       end_idx=30
 else
-      end_idx=$2
+      end_idx=$3
 fi
+echo "start_idx=$start_idx end_idx=$end_idx"
 
 # Get the root of the project (one level above this script's directory)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -49,6 +50,7 @@ mkdir -p "$INPUT_DIR"
 
 #for data_type in warc wat wet; do
 for data_type in  wat ; do
+#    echo "data_type= $data_type"
     echo "Downloading Common Crawl paths listings (${data_type} files of $CRAWL)..."
 
     mkdir -p "$DATA_DIR/crawl-data/$CRAWL/"
@@ -71,12 +73,14 @@ for data_type in  wat ; do
 #    echo "listing_content=$listing_content"
     listing_FilesCount=$(wc -l <<< "$listing_content")
     echo "listing_FilesCount=$listing_FilesCount"
-    if [ "$listing_FilesCount" -lt "$FilesCount" ] ; then
+    if [ "$listing_FilesCount" -lt "$end_idx" ] ; then
       end_idx=listing_FilesCount
     fi
-    FilesCount=$((end_idx - start_idx))
+    FilesCount=$((end_idx - start_idx+1))
+    start_idx=$((start_idx+1))
     echo "To Process FilesCount=$FilesCount"
-    wat_files=$(echo "$listing_content" | tail -n +$end_idx | head -n $FilesCount)
+#    echo " tail -n +$start_idx | head -n $FilesCount"
+    wat_files=$(echo "$listing_content" | tail -n +$start_idx | head -n $FilesCount)
     echo "Writing input file listings..."
     input="$INPUT_DIR/test_${data_type}.txt"
     echo "Test file: $input"
@@ -84,17 +88,15 @@ for data_type in  wat ; do
         rm "$input"
         echo "File $input already exists. delete it."
     fi
-
-
     while IFS= read -r wat_file; do
       echo "file:$DATA_DIR/$wat_file" >>"$input"
      done <<< "$wat_files"
     echo "############Downloading Files############"
     while IFS= read -r wat_file; do
-#      echo "$wat_file"
+      echo "$wat_file"
       # split file name by
       first=$(echo "$wat_file" | awk -F '$BASE_URL' '{print $1}')
-      first=$(echo "$first" | awk -F '/$data_type/' '{print $1}')
+      first=$(echo "$first" | awk -F '/'$data_type'/' '{print $1}')
 #      echo "first=" "$first"
       file_path="../data/$wat_file"
       if [ -f "$file_path" ]; then

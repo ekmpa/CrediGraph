@@ -7,6 +7,18 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
+if [ -z "$2" ]; then
+      start_idx=1
+else
+      start_idx=$2
+fi
+
+if [ -z "$2" ]; then
+      end_idx=10
+else
+      end_idx=$3
+fi
+
 CRAWL_LIST_FILE="$1"
 
 if [ ! -f "$CRAWL_LIST_FILE" ]; then
@@ -34,8 +46,9 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
     else
         rm -rf "$SCRATCH/spark-warehouse" # Remove re-created directories before running
     fi
+    echo $CRAWL
     echo "################################### run get data ###################################"
-    ./get_data.sh "$CRAWL" 40
+    ./get_data.sh "$CRAWL" $start_idx $end_idx
     echo "Data Downloaded for $CRAWL."
     echo "###################################  run_wat_to_link ###################################"
     ./run_wat_to_link.sh "$CRAWL"
