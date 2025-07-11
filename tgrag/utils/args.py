@@ -28,9 +28,6 @@ class DataArguments:
     task_name: str = field(
         metadata={'help': 'The name of the task to train on'},
     )
-    is_regression: bool = field(
-        metadata={'help': 'Is the task a regression or classification problem'},
-    )
     node_file: Union[str, List[str]] = field(
         metadata={
             'help': 'A csv or list of csv files containing the nodes of the graph.'
@@ -41,12 +38,21 @@ class DataArguments:
             'help': 'A csv or list of csv files containing the nodes of the graph.'
         },
     )
-    is_scratch_location: bool = field(
-        metadata={'help': 'Whether to use the /NOBACKUP/ disk on server.'}
-    )
     num_test_shards: int = field(
         metadata={'help': 'Number of test splits to do for uncertainty estimates.'},
         default=1,
+    )
+    slice_id: str | None = field(
+        metadata={'help': 'Slice ID to use for topological experiments.'},
+        default=None,
+    )
+    is_regression: bool = field(
+        default=False,
+        metadata={'help': 'Is the task a regression or classification problem'},
+    )
+    is_scratch_location: bool = field(
+        default=False,
+        metadata={'help': 'Whether to use the /NOBACKUP/ disk on server.'},
     )
 
     def __post_init__(self) -> None:
@@ -62,6 +68,10 @@ class DataArguments:
 
         self.node_file = resolve_paths(self.node_file)
         self.edge_file = resolve_paths(self.edge_file)
+
+        if self.slice_id is not None:
+            self.node_file = f'/network/scratch/k/kondrupe/crawl-data/{self.slice_id}/output_text_dir/vertices.txt.gz'
+            self.edge_file = f'/network/scratch/k/kondrupe/crawl-data/{self.slice_id}/output_text_dir/edges.txt.gz'
 
 
 @dataclass

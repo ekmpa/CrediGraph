@@ -1,0 +1,51 @@
+Running: IN_DEG
+Running topological experiment [IN_DEG] on slice: CC-MAIN-2024-nov
+Node file: /network/scratch/k/kondrupe/crawl-data/CC-MAIN-2024-nov/output_text_dir/vertices.txt.gz
+Edge file: /network/scratch/k/kondrupe/crawl-data/CC-MAIN-2024-nov/output_text_dir/edges.txt.gz
+Slice: CC-MAIN-2024-nov
+Max in-degree: 19548353 (Node ID: 28464328)
+Slice: CC-MAIN-2024-nov
+Max in-degree: 19548353 (Node ID: 28464328)
+Running: OUT_DEG
+Running topological experiment [OUT_DEG] on slice: CC-MAIN-2024-nov
+Node file: /network/scratch/k/kondrupe/crawl-data/CC-MAIN-2024-nov/output_text_dir/vertices.txt.gz
+Edge file: /network/scratch/k/kondrupe/crawl-data/CC-MAIN-2024-nov/output_text_dir/edges.txt.gz
+Slice: CC-MAIN-2024-nov
+Max out-degree: 5093944 (Node ID: 15681765)
+Slice: CC-MAIN-2024-nov
+Max out-degree: 5093944 (Node ID: 15681765)
+
+======== GPU REPORT ========
+
+==============NVSMI LOG==============
+
+Timestamp                                 : Thu Jul 10 17:04:53 2025
+Driver Version                            : 570.133.20
+CUDA Version                              : 12.8
+
+Attached GPUs                             : 1
+GPU 00000000:A4:00.0
+    Accounting Mode                       : Enabled
+    Accounting Mode Buffer Size           : 4000
+    Accounted Processes                   : None
+
+Thu Jul 10 17:04:53 2025
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.133.20             Driver Version: 570.133.20     CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  Quadro RTX 8000                On  |   00000000:A4:00.0 Off |                    0 |
+| 33%   24C    P8             31W /  260W |       1MiB /  46080MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
