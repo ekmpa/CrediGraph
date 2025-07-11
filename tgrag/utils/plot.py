@@ -302,3 +302,73 @@ def plot_joint_pr_cr_heatmap(df: pd.DataFrame) -> None:
     plt.tight_layout()
     plt.savefig(save_dir / 'joint_pr_cr_heatmap.png', dpi=300)
     plt.close()
+
+
+def plot_spearman_pr_cr_correlation(heat_map: DataFrame) -> None:
+    spearman_corr = heat_map.corr(method='spearman')
+
+    root = get_root_dir()
+    save_dir = root / 'results' / 'correlation' / 'plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / 'spearman_pr_cr_correlation_heatmap.png'
+
+    sns.heatmap(
+        spearman_corr,
+        annot=True,
+        fmt='.4f',
+        cmap='coolwarm',
+        square=True,
+        cbar_kws={'label': 'Spearman Correlation'},
+    )
+    plt.title('Spearman Correlation: PageRank vs Credibility')
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+
+    logging.info(f'Spearman correlation heatmap saved to: {save_path}')
+
+
+def plot_pr_cr_scatter_logx(heat_map: DataFrame) -> None:
+    heat_map = heat_map[heat_map['pr_value'] > 0]
+
+    root = get_root_dir()
+    save_dir = root / 'results' / 'correlation' / 'plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / 'pr_cr_scatter_logx.png'
+
+    plt.figure(figsize=(8, 6))
+    sns.scatterplot(data=heat_map, x='pr_value', y='cr_score', alpha=0.4, s=8)
+    plt.xscale('log')
+    plt.xlabel('PageRank (log scale)')
+    plt.ylabel('Credibility Score')
+    plt.title('PR vs CR Scatter Plot (Log X-Axis)')
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+
+    logging.info(f'Scatter plot saved to: {save_path}')
+
+
+def plot_pr_vs_cr_scatter(heat_map: pd.DataFrame) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'correlation' / 'plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / 'scatter_pr_vs_cr.png'
+
+    plt.figure(figsize=(8, 6))
+    sns.scatterplot(
+        data=heat_map,
+        x='pr_value',
+        y='cr_score',
+        alpha=0.3,
+        edgecolor=None,
+        s=10,
+    )
+    plt.title('Scatter Plot: PageRank vs Credibility Score')
+    plt.xlabel('PageRank Value')
+    plt.ylabel('Credibility Score')
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+
+    logging.info(f'Scatter plot saved to: {save_path}')
