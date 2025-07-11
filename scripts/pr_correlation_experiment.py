@@ -1,10 +1,10 @@
+import argparse
 import logging
 
 import pandas as pd
 from pandas import DataFrame
 from tqdm import tqdm
 
-from tgrag.utils.args import DataArguments
 from tgrag.utils.plot import (
     plot_joint_pr_cr_heatmap,
     plot_pr_correlation,
@@ -13,16 +13,23 @@ from tgrag.utils.plot import (
     plot_pr_cr_bin_correlation,
 )
 
+parser = argparse.ArgumentParser(
+    description='PageRank Correlation',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
+parser.add_argument(
+    '--node-file',
+    type=str,
+    default='data/crawl-data/manual/output/test_pr_cr.csv',
+    help='Path to file containing raw node pagerank/credibility column data in CSV format',
+)
 
-def get_heat_matrix(data_arguments: DataArguments) -> DataFrame:
-    node_file = data_arguments.node_file
+
+def get_heat_matrix(node_file: str) -> DataFrame:
     chunk_size = 100_000
     collected_data = []
 
-    logging.info(
-        'Setting up training for task of: %s',
-        data_arguments.task_name,
-    )
+    logging.info('Streaming matrix construction.')
 
     for chunk in tqdm(
         pd.read_csv(node_file, chunksize=chunk_size), desc='Reading PD chunk'
@@ -39,10 +46,15 @@ def get_heat_matrix(data_arguments: DataArguments) -> DataFrame:
     return pd.DataFrame(collected_data, columns=['pr_value', 'cr_score'])
 
 
-def run_correlation(data_arguments: DataArguments) -> None:
-    heat_map = get_heat_matrix(data_arguments)
+def run_correlation() -> None:
+    args = parser.parse_args()
+    heat_map = get_heat_matrix(args.node_file)
     plot_pr_cr_bin_correlation(heat_map)
     plot_pr_correlation_log_scale(heat_map)
     plot_pr_correlation(heat_map)
     plot_pr_correlation_auto_bin(heat_map)
     plot_joint_pr_cr_heatmap(heat_map)
+
+
+if __name__ == '__main__':
+    run_correlation()
