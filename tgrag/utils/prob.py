@@ -8,9 +8,7 @@ def sigmoid(z: float) -> float:
 def get_importance_probability(
     pr_src: str, hc_src: str, pr_dst: str, hc_dst: str, average_importance: float
 ) -> float:
-    src_importance = float(pr_src) * float(hc_src)
-    dst_importance = float(pr_dst) * float(hc_dst)
-    importance = (src_importance + dst_importance) / 2
+    importance = get_importance(pr_src, hc_src, pr_dst, hc_dst)
     return sigmoid(importance / average_importance)
 
 
