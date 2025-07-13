@@ -47,15 +47,15 @@ class Logger(object):
     def get_statistics(self, run: int | None = None) -> str:
         lines = []
         if run is not None:
-            result = 100 * torch.tensor(self.results[run])
+            result = torch.tensor(self.results[run])
             argmin = result[:, 1].argmin().item()
             lines.append(f'Run {run + 1:02d}:')
-            lines.append(f'Lowest Train Loss: {result[:, 0].min():.2f}')
-            lines.append(f'Lowest Valid Loss: {result[:, 1].min():.2f}')
-            lines.append(f'  Final Train Loss: {result[argmin, 0]:.2f}')
-            lines.append(f'   Final Test Loss: {result[argmin, 2]:.2f}')
+            lines.append(f'Lowest Train Loss: {result[:, 0].min():.4f}')
+            lines.append(f'Lowest Valid Loss: {result[:, 1].min():.4f}')
+            lines.append(f'  Final Train Loss: {result[argmin, 0]:.4f}')
+            lines.append(f'   Final Test Loss: {result[argmin, 2]:.4f}')
         else:
-            result = 100 * torch.tensor(self.results)
+            result = torch.tensor(self.results)
 
             best_results = []
             for r in result:
@@ -69,12 +69,12 @@ class Logger(object):
 
             lines.append('All runs:')
             r = best_result[:, 0]
-            lines.append(f'Lowest Train Loss: {r.mean():.2f} ± {r.std():.2f}')
+            lines.append(f'Lowest Train Loss: {r.mean():.4f} ± {r.std():.4f}')
             r = best_result[:, 1]
-            lines.append(f'Lowest Valid Loss: {r.mean():.2f} ± {r.std():.2f}')
+            lines.append(f'Lowest Valid Loss: {r.mean():.4f} ± {r.std():.4f}')
             r = best_result[:, 2]
-            lines.append(f'  Final Train Loss: {r.mean():.2f} ± {r.std():.2f}')
+            lines.append(f'  Final Train Loss: {r.mean():.4f} ± {r.std():.4f}')
             r = best_result[:, 3]
-            lines.append(f'   Final Test Loss: {r.mean():.2f} ± {r.std():.2f}')
+            lines.append(f'   Final Test Loss: {r.mean():.4f} ± {r.std():.4f}')
 
         return '\n'.join(lines)
