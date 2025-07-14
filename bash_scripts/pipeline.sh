@@ -35,8 +35,7 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
     TOTAL_FILES=$(gzip -dc /tmp/wat.paths.gz | wc -l)
     echo "Total WAT files: $TOTAL_FILES"
 
-    TOTAL_FILES=100
-    STEP=10
+    STEP=300
 
     for (( start_idx=1; start_idx<=TOTAL_FILES; start_idx+=STEP )); do
         end_idx=$((start_idx+STEP-1))
