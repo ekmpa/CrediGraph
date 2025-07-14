@@ -12,6 +12,7 @@ class GAT(torch.nn.Module):
         out_channels: int,
         num_layers: int,
         dropout: float,
+        cached: bool = False,
     ):
         super(GAT, self).__init__()
 
