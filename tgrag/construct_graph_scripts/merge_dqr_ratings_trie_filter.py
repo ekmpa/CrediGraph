@@ -182,11 +182,9 @@ def merge_dqr_to_node_parallel(
     time.sleep(0.5)
 
     logging.info(f'Filtering edges to include only 1-hop neighbors...')
-    print('filtering')
     filter_edges(edges_path, matched_domain_ids, filtered_edges_output_path)
     logging.info('Filtering nodes by included edges and matches...')
     filtered_nodes_output_path = output_path.replace('.csv', '_filtered.csv')
-    print('filtering')
     filter_nodes_by_edges_and_matches(
         output_path,
         filtered_edges_output_path,
