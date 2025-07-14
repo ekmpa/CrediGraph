@@ -14,14 +14,14 @@ ExperimentArguments:
         dropout: 0.5
         lr: 0.01
         epochs: 100
-        runs: 5
+        runs: 1
         device: 0
         log_steps: 10
       data_args:
         task_name: "node-regression"
         is_regression: true
-        node_file: "temporal_nodes.csv"
-        edge_file: "temporal_edges.csv"
+        node_file: "data/crawl-data/manual/temporal_nodes.csv"
+        edge_file: "data/crawl-data/manual/temporal_edges.csv"
         is_scratch_location: false
         num_test_shards: 2
     SAGE_RNI:
@@ -34,14 +34,14 @@ ExperimentArguments:
         dropout: 0.5
         lr: 0.01
         epochs: 100
-        runs: 5
+        runs: 1
         device: 0
         log_steps: 10
       data_args:
         task_name: "node-regression"
         is_regression: true
-        node_file: "temporal_nodes.csv"
-        edge_file: "temporal_edges.csv"
+        node_file: "data/crawl-data/manual/temporal_nodes.csv"
+        edge_file: "data/crawl-data/manual/temporal_edges.csv"
         is_scratch_location: false
         num_test_shards: 2
     GAT_RNI:
@@ -54,13 +54,13 @@ ExperimentArguments:
         dropout: 0.5
         lr: 0.01
         epochs: 100
-        runs: 5
+        runs: 1
         device: 0
         log_steps: 10
       data_args:
         task_name: "node-regression"
         is_regression: true
-        node_file: "temporal_nodes.csv"
-        edge_file: "temporal_edges.csv"
+        node_file: "data/crawl-data/manual/temporal_nodes.csv"
+        edge_file: "data/crawl-data/manual/temporal_edges.csv"
         is_scratch_location: false
         num_test_shards: 2
