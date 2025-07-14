@@ -13,7 +13,7 @@ def get_importance_probability(
 
 
 def get_importance(pr_src: str, hc_src: str, pr_dst: str, hc_dst: str) -> float:
-    src_importance = float(pr_src) * float(hc_src)
-    dst_importance = float(pr_dst) * float(hc_dst)
+    src_importance = abs(float(pr_src)) * abs(float(hc_src))
+    dst_importance = abs(float(pr_dst)) * abs(float(hc_dst))
     importance = (src_importance + dst_importance) / 2
     return importance
