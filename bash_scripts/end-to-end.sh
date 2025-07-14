@@ -19,18 +19,19 @@ else
       end_idx=$3
 fi
 
-CRAWL_LIST_FILE="$1"
+CRAWL_ARG="$1"
 
-if [ ! -f "$CRAWL_LIST_FILE" ]; then
-    echo "File not found: $CRAWL_LIST_FILE"
-    exit 1
+if [ -f "$CRAWL_ARG" ]; then
+  echo "Crawl list file detected: $CRAWL_ARG"
+  CRAWLS=$(cat "$CRAWL_ARG")
+else
+  echo "Single crawl ID detected: $CRAWL_ARG"
+  CRAWLS="$CRAWL_ARG"
 fi
 
 # Get the root of the project
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-
-INPUT_DIR="$DATA_DIR/crawl-data/$CRAWL/input"
 
 while read -r CRAWL || [[ -n "$CRAWL" ]]; do
     # Skip empty lines or comments
@@ -39,13 +40,8 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
     echo "Processing $CRAWL..."
     echo "Removing previous $CRAWL spark-warehouse"
 
-    # Use SCRATCH if defined, else fallback to project-local data dir
-    # For cluster usage
-    if [ -z "$SCRATCH" ]; then
-        rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse" # Remove re-created directories before running
-    else
-        rm -rf "$SCRATCH/spark-warehouse" # Remove re-created directories before running
-    fi
+    rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse" # Remove re-created directories before running
+
     echo $CRAWL
     echo "################################### run get data ###################################"
     ./get_data.sh "$CRAWL" $start_idx $end_idx
@@ -58,4 +54,4 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
     echo "Compressed graphs constructed for $CRAWL."
     echo "********************** End Of the Task **********************"
 
-done < "$CRAWL_LIST_FILE"
+done <<< "$CRAWLS"
