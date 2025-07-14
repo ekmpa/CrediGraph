@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
 from tgrag.encoders.encoder import Encoder
+from tgrag.encoders.log_encoding import LogEncoder
 from tgrag.encoders.rni_encoding import RNIEncoder
 from tgrag.gnn.GAT import GAT
 from tgrag.gnn.gCon import GCN
@@ -25,6 +26,7 @@ MODEL_CLASSES: Dict[str, Type[torch.nn.Module]] = {
 
 ENCODER_CLASSES: Dict[str, Encoder] = {
     'RNI': RNIEncoder(),
+    'LOG': LogEncoder(),
 }
 
 
@@ -142,7 +144,7 @@ def run_gnn_baseline(
         model.reset_parameters()
         optimizer = torch.optim.Adam(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
-        for epoch in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
+        for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             train(model, data, train_idx, optimizer, model_arguments.model)
             result = test(model, data, split_idx, model_arguments.model)
             loss_tuple_epoch.append(result)
@@ -151,5 +153,5 @@ def run_gnn_baseline(
         loss_tuple_run.append(loss_tuple_epoch)
 
     logging.info(logger.get_statistics())
-    plot_avg_rmse_loss(loss_tuple_run, model_arguments.model)
+    plot_avg_rmse_loss(loss_tuple_run, model_arguments.model, model_arguments.encoder)
     save_loss_results(loss_tuple_run, model_arguments.model, model_arguments.encoder)
