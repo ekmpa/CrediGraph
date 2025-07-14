@@ -1,5 +1,6 @@
 import logging
 import pickle
+from collections import defaultdict
 from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
@@ -15,13 +16,15 @@ from tgrag.utils.path import get_root_dir
 def plot_avg_rmse_loss(
     loss_tuple_run: List[List[Tuple[float, float, float]]],
     model_name: str,
+    encoder_used: str,
     save_filename: str = 'rmse_loss_plot.png',
 ) -> None:
     """Plots the averaged RMSE loss over trials for train, validation, and test sets.
 
     Parameters:
     - loss_tuple_run: List of runs (trials), each a list of (train, val, test) RMSE tuples per epoch.
-    - model_name: The name of the model
+    - model_name: The name of the model.
+    - encoder_used: The name of the encoder used.
     - save_filename: Name of the generated plot (name of png file).
     """
     num_epochs = len(loss_tuple_run[0])
@@ -35,7 +38,7 @@ def plot_avg_rmse_loss(
     avg_test = avg_rmse[:, 2]
 
     root = get_root_dir()
-    save_dir = root / 'results' / 'plots' / model_name
+    save_dir = root / 'results' / 'plots' / encoder_used / model_name
     save_dir.mkdir(parents=True, exist_ok=True)
     save_path = save_dir / save_filename
 
@@ -109,12 +112,112 @@ def plot_metric_across_models(
     plt.tight_layout()
 
     root = get_root_dir()
-    save_dir = root / 'results' / 'plots'
+    save_dir = root / 'results' / 'plots' / 'combined'
     save_dir.mkdir(parents=True, exist_ok=True)
     save_path = save_dir / save_filename
 
     plt.savefig(save_path)
     plt.close()
+
+
+def plot_model_per_encoder(
+    all_results: dict[str, list[list[tuple[float, float, float]]]],
+    metric: str = 'test',
+    save_prefix: str = 'model_plot',
+) -> None:
+    """Plots the selected metric for each model across encoders over epochs.
+
+    Args:
+        all_results: Dict from model_encoder to loss_tuple_run.
+        metric: One of "train", "valid", or "test".
+        save_prefix: Prefix for saved plot filenames.
+    """
+    metric_index = {'train': 0, 'valid': 1, 'test': 2}[metric]
+    model_grouped: Dict[str, Dict[str, list[list[tuple[float, float, float]]]]] = (
+        defaultdict(dict)
+    )  # {model: {encoder: loss_tuple_run}}
+
+    for key, loss_tuple_run in all_results.items():
+        try:
+            model, encoder = key.split('_')
+        except ValueError:
+            print(f'Skipping unrecognized key format: {key}')
+            continue
+        model_grouped[model][encoder] = loss_tuple_run
+
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / 'combined'
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    for model, encoder_dict in model_grouped.items():
+        plt.figure(figsize=(10, 6))
+        for encoder, loss_tuple_run in encoder_dict.items():
+            data = np.array(loss_tuple_run)  # shape: (runs, epochs, 3)
+            avg_over_runs = data.mean(axis=0)  # shape: (epochs, 3)
+            metric_values = avg_over_runs[:, metric_index]
+            epochs = np.arange(1, len(metric_values) + 1)
+            plt.plot(epochs, metric_values, label=encoder, linewidth=2)
+
+        plt.xlabel('Epoch')
+        plt.ylabel(f'{metric.capitalize()} RMSE')
+        plt.title(f'{model}: {metric.capitalize()} RMSE per Encoder')
+        plt.legend(title='Encoder')
+        plt.grid(True)
+        plt.tight_layout()
+
+        save_path = save_dir / f'{save_prefix}_{model}_rmse_over_models.png'
+        plt.savefig(save_path)
+        plt.close()
+
+
+def plot_metric_per_encoder(
+    all_results: dict[str, list[list[tuple[float, float, float]]]],
+    metric: str = 'test',
+    save_prefix: str = 'encoder_plot',
+) -> None:
+    """Plots the selected metric for each encoder across models over epochs.
+
+    Args:
+        all_results: Dict from model_encoder to loss_tuple_run.
+        metric: One of "train", "valid", or "test".
+        save_prefix: Prefix for saved plot filenames.
+    """
+    metric_index = {'train': 0, 'valid': 1, 'test': 2}[metric]
+    encoder_grouped: Dict[str, Dict[str, list[list[tuple[float, float, float]]]]] = (
+        defaultdict(dict)
+    )  # {model: {encoder: loss_tuple_run}}
+
+    for key, loss_tuple_run in all_results.items():
+        try:
+            model, encoder = key.split('_')
+        except ValueError:
+            print(f'Skipping unrecognized key format: {key}')
+            continue
+        encoder_grouped[encoder][model] = loss_tuple_run
+
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / 'combined'
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    for encoder, model_dict in encoder_grouped.items():
+        plt.figure(figsize=(10, 6))
+        for model, loss_tuple_run in model_dict.items():
+            data = np.array(loss_tuple_run)  # shape: (runs, epochs, 3)
+            avg_over_runs = data.mean(axis=0)  # shape: (epochs, 3)
+            metric_values = avg_over_runs[:, metric_index]
+            epochs = np.arange(1, len(metric_values) + 1)
+            plt.plot(epochs, metric_values, label=model, linewidth=2)
+
+        plt.xlabel('Epoch')
+        plt.ylabel(f'{metric.capitalize()} RMSE')
+        plt.title(f'{encoder}: {metric.capitalize()} RMSE per Model')
+        plt.legend(title='Model')
+        plt.grid(True)
+        plt.tight_layout()
+
+        save_path = save_dir / f'{save_prefix}_{encoder}.png'
+        plt.savefig(save_path)
+        plt.close()
 
 
 def plot_pr_cr_bin_correlation(heat_map: DataFrame) -> None:
