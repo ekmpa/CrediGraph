@@ -4,7 +4,12 @@ from tgrag.experiments.gnn_experiments.gnn_experiment import run_gnn_baseline
 from tgrag.utils.args import parse_args
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.path import get_root_dir
-from tgrag.utils.plot import load_all_loss_tuples, plot_metric_across_models
+from tgrag.utils.plot import (
+    load_all_loss_tuples,
+    plot_metric_across_models,
+    plot_metric_per_encoder,
+    plot_model_per_encoder,
+)
 from tgrag.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
@@ -30,6 +35,8 @@ def main() -> None:
         run_gnn_baseline(experiment_arg.data_args, experiment_arg.model_args)
     results = load_all_loss_tuples()
     plot_metric_across_models(results)
+    plot_metric_per_encoder(results)
+    plot_model_per_encoder(results)
 
 
 if __name__ == '__main__':
