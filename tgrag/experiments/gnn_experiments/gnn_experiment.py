@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple, Type, cast
 
 import torch
 import torch.nn.functional as F
+from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
@@ -45,25 +46,23 @@ def save_loss_results(
 
 def train(
     model: torch.nn.Module,
-    data: TemporalDataset,
-    train_idx: torch.Tensor,
+    train_loader: NeighborLoader,
     optimizer: torch.optim.Adam,
-    model_name: str,
 ) -> float:
     model.train()
-
+    total_loss = 0
     optimizer.zero_grad()
-    if model_name == 'GAT':
-        out = model(data.x, data.edge_index)[train_idx]
-    else:
-        out = model(data.x, data.adj_t)[train_idx]
-    loss = F.mse_loss(out.squeeze(), data.y.squeeze(1)[train_idx])
-    loss.backward()
-    optimizer.step()
+    for batch in train_loader:
+        out = model(batch.x, batch.edge_index)
+        loss = F.mse_loss(out.squeeze(), batch.y)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item() * batch.num_nodes
 
-    return loss.item()
+    return total_loss / len(train_loader.dataset)
 
 
+@torch.no_grad()
 def test(
     model: torch.nn.Module,
     data: TemporalDataset,
@@ -90,6 +89,25 @@ def test(
     ).item()
 
     return train_rmse, valid_rmse, test_rmse
+
+
+@torch.no_grad()
+def evaluate(
+    model: torch.nn.Module,
+    loader: NeighborLoader,
+) -> float:
+    model.eval()
+    device = next(model.parameters()).device
+    total_loss = 0
+    total_nodes = 0
+    for batch in loader:
+        batch = batch.to(device)
+        out = model(batch.x, batch.edge_index)
+        loss = F.mse_loss(out.squeeze(), batch.y)
+        total_loss += loss.item() * batch.y.size(0)
+        total_nodes += batch.y.size(0)
+
+    return torch.sqrt(torch.tensor(total_loss / total_nodes)).item()
 
 
 def run_gnn_baseline(
@@ -123,10 +141,34 @@ def run_gnn_baseline(
         encoding=encoding_dict,
     )
     data = dataset[0]
+    data.y = data.y.squeeze(1)
     data = data.to(device)
 
     split_idx = dataset.get_idx_split()
-    train_idx = split_idx['train'].to(device)
+
+    train_loader = NeighborLoader(
+        data,
+        input_nodes=split_idx['train'],
+        num_neighbors=[15, 10],
+        batch_size=1024,
+        shuffle=True,
+    )
+
+    val_loader = NeighborLoader(
+        data,
+        input_nodes=split_idx['valid'],
+        num_neighbors=[15, 10],
+        batch_size=1024,
+        shuffle=True,
+    )
+
+    test_loader = NeighborLoader(
+        data,
+        input_nodes=split_idx['test'],
+        num_neighbors=[15, 10],
+        batch_size=1024,
+        shuffle=True,
+    )
 
     model = model_class(
         data.num_features,
@@ -134,6 +176,7 @@ def run_gnn_baseline(
         1,
         model_arguments.num_layers,
         model_arguments.dropout,
+        cached=False,
     ).to(device)
 
     logger = Logger(model_arguments.runs)
@@ -145,8 +188,11 @@ def run_gnn_baseline(
         optimizer = torch.optim.Adam(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
-            train(model, data, train_idx, optimizer, model_arguments.model)
-            result = test(model, data, split_idx, model_arguments.model)
+            train(model, train_loader, optimizer)
+            train_rmse = evaluate(model, train_loader)
+            valid_rmse = evaluate(model, val_loader)
+            test_rmse = evaluate(model, test_loader)
+            result = (train_rmse, valid_rmse, test_rmse)
             loss_tuple_epoch.append(result)
             logger.add_result(run, result)
 
