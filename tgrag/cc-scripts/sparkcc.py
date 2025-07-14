@@ -126,6 +126,10 @@ class CCSparkJob(object):
             ' profiling metrics if job has finished,'
             ' cf. spark.python.profile',
         )
+        arg_parser.add_argument(
+            '--trusted_domains',
+            help='The trusted domains pc1 .csv file to filter the WET file domains',
+        )
 
         self.add_arguments(arg_parser)
         args = arg_parser.parse_args()
