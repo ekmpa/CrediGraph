@@ -46,9 +46,9 @@ cd bash_scripts
 
 ### Running GNN Baseline Experiment
 
-Given the size of our datasets we must leverage mini-batching in our GNN experiments. We use PyG's neighbor_loader,
+Given the size of our datasets we must leverage mini-batching in our GNN experiments. To do this we use PyG's neighbor_loader,
 which requires additional libraries having undocumented build-time dependencies. As such, users are required to install them in their
-own venv. seperate form `uv sync`.
+own venv. seperate from `uv sync`.
 
 pyg-lib:
 
