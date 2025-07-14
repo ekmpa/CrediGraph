@@ -16,15 +16,14 @@ CRAWL="$1"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 VENV_PATH="$PROJECT_ROOT/.venv"
+SPARK_WAREHOUSE="spark-warehouse"
 
 # Use SCRATCH if defined, else fallback to project-local data dir
 # For cluster use
 if [ -z "$SCRATCH" ]; then
     DATA_DIR="$PROJECT_ROOT/data"
-    SPARK_WAREHOUSE="spark-warehouse"
 else
     DATA_DIR="$SCRATCH"
-    SPARK_WAREHOUSE="$SCRATCH/spark-warehouse"
 fi
 
 # Activate the virtual environment
