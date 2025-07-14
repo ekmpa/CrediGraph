@@ -4,7 +4,6 @@ from typing import Callable, Dict, List, Optional
 import pandas as pd
 import torch
 from torch_geometric.data import Data, InMemoryDataset
-from torch_geometric.utils import to_torch_csr_tensor
 
 from tgrag.encoders.encoder import Encoder
 from tgrag.utils.data_loading import load_edge_csv, load_node_csv
@@ -67,10 +66,10 @@ class TemporalDataset(InMemoryDataset):
             path=edge_path, src_index_col='src', dst_index_col='dst', encoders=None
         )
 
-        adj_t = to_torch_csr_tensor(edge_index, size=(x_full.size(0), x_full.size(0)))
+        # adj_t = to_torch_csr_tensor(edge_index, size=(x_full.size(0), x_full.size(0)))
 
         data = Data(x=x_full, y=cr_score, edge_index=edge_index, edge_attr=edge_attr)
-        data.adj_t = adj_t
+        # data.adj_t = adj_t
 
         data.labeled_mask = torch.tensor(labeled_mask, dtype=torch.bool)
 
