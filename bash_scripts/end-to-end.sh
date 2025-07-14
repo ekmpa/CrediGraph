@@ -34,7 +34,8 @@ CRAWL_ARG="$1"
 
 if [ -f "$CRAWL_ARG" ]; then
   echo "Crawl list file detected: $CRAWL_ARG"
-  CRAWLS=$(cat "$CRAWL_ARG")
+  #CRAWLS=$(cat "$CRAWL_ARG")
+  mapfile -t CRAWLS < "$CRAWL_ARG"
 else
   echo "Single crawl ID detected: $CRAWL_ARG"
   CRAWLS="$CRAWL_ARG"
@@ -45,7 +46,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 for data_type in  "${cc_file_types[@]}" ; do
-  while read -r CRAWL || [[ -n "$CRAWL" ]]; do
+  #while read -r CRAWL || [[ -n "$CRAWL" ]]; do
+  for CRAWL in "${CRAWLS[@]}"; do
       # Skip empty lines or comments
       [[ -z "$CRAWL" || "$CRAWL" =~ ^# ]] && continue
 
@@ -72,4 +74,4 @@ for data_type in  "${cc_file_types[@]}" ; do
       fi
   echo "********************** End Of $data_type Task **********************"
   done
-done < "$CRAWLS"
+done #< "$CRAWLS"
