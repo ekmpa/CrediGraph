@@ -22,6 +22,7 @@ ExperimentArguments:
         is_regression: true
         node_file: "temporal_nodes.csv"
         edge_file: "temporal_edges.csv"
+        is_scratch_location: false
         num_test_shards: 2
     SAGE_RNI:
       model_args:
@@ -41,6 +42,7 @@ ExperimentArguments:
         is_regression: true
         node_file: "temporal_nodes.csv"
         edge_file: "temporal_edges.csv"
+        is_scratch_location: false
         num_test_shards: 2
     GAT_RNI:
       model_args:
@@ -60,4 +62,5 @@ ExperimentArguments:
         is_regression: true
         node_file: "temporal_nodes.csv"
         edge_file: "temporal_edges.csv"
+        is_scratch_location: false
         num_test_shards: 2
