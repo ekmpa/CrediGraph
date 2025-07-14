@@ -40,11 +40,13 @@ export PYSPARK_DRIVER_PYTHON="$VENV_PATH/bin/python"
 # Cluster / full usage: ""$INPUT_DIR/all_wat_$CRAWL.txt"
 "$VENV_PATH/bin/spark-submit" \
   --py-files "$PROJECT_ROOT/tgrag/cc-scripts/sparkcc.py" \
-  "$PROJECT_ROOT/tgrag/cc-scripts/wat_extract_links.py" \
-  "$INPUT_DIR/test_wat.txt" \
-  "wat_output_table" \
-  --input_base_url https://data.commoncrawl.org/
-
+  "$PROJECT_ROOT/tgrag/cc-scripts/wet_extract_domain_content.py" \
+  "$INPUT_DIR/test_wet.txt" \
+  "wat_extract_content_table" \
+  --trusted_domains "../data/dqr/domain_pc1.csv"\
+  --output_format "parquet" \
+  --output_compression "snappy" \
+  --log_level "WARN"
 
 
 #  ../../data/crawl-data/CC-MAIN-2025-21/input/test_wat.txt   wat_output_table   --input_base_url https://data.commoncrawl.org/

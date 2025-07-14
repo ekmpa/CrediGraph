@@ -1,4 +1,5 @@
 import os
+import shutil
 import re
 from urllib.parse import urljoin, urlparse
 
@@ -6,7 +7,7 @@ import idna
 from json_importer import json
 from pyspark.sql.types import StringType, StructField, StructType
 from sparkcc import CCSparkJob
-
+# os.environ["PYSPARK_SUBMIT_ARGS"] = "--driver-memory MEM 4g"
 
 class ExtractLinksJob(CCSparkJob):
     """Extract links from WAT files and redirects from WARC files
@@ -103,6 +104,7 @@ class ExtractLinksJob(CCSparkJob):
             self.records_response_wat.add(1)
             url = warc_header['WARC-Target-URI']
             for link in self.get_links(url, wat_record):
+                # print("link=",link)
                 link_count += 1
                 yield link
         elif self.is_response_record(record):
@@ -315,13 +317,24 @@ class ExtractLinksJob(CCSparkJob):
 
     def run_job(self, session):
         output = None
+
         session.sql("DROP TABLE IF EXISTS host_graph_output_vertices")
         session.sql("DROP TABLE IF EXISTS host_graph_output_edges")
+        out_path = str(session.conf.get("spark.sql.warehouse.dir")).split(":")[-1] + "/" + self.args.output
+        if os.path.exists(out_path):
+            shutil.rmtree(out_path)
         if self.args.input != '':
             input_data = session.sparkContext.textFile(
                 self.args.input, minPartitions=self.args.num_input_partitions
             )
             output = input_data.mapPartitionsWithIndex(self.process_warcs)
+            ############################################
+            # collected_data = output.collect()
+            # # Save the collected data to a local file
+            # with open("output_mapPartitionsWithIndex_v0.txt", "w") as f:
+            #     for row in collected_data:
+            #         f.write(f"{row}\n")
+            ##############################################
 
         if not self.args.intermediate_output:
             df = session.createDataFrame(output, schema=self.output_schema)

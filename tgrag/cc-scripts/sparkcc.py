@@ -126,6 +126,10 @@ class CCSparkJob(object):
             ' profiling metrics if job has finished,'
             ' cf. spark.python.profile',
         )
+        arg_parser.add_argument(
+            '--trusted_domains',
+            help='The trusted domains pc1 .csv file to filter the WET file domains',
+        )
 
         self.add_arguments(arg_parser)
         args = arg_parser.parse_args()
@@ -195,6 +199,9 @@ class CCSparkJob(object):
 
         builder = (SparkSession.builder\
                    .appName(self.name)
+                   # .config("spark.executor.instances", str(os.cpu_count()/4))   # Number of executor JVMs (workers)
+                   .config("spark.executor.cores", "1")
+                   .config("spark.executor.memory", "2g")
                    .config("spark.driver.memory", "4g")
                    .config("spark.hadoop.dfs.block.size", "256m")
                    .config("spark.sql.files.maxPartitionBytes", "64mb"))
@@ -371,7 +378,6 @@ class CCSparkJob(object):
         """Process WARC/WAT/WET files, calling iterate_records(...) for each file"""
         for uri in iterator:
             self.warc_input_processed.add(1)
-
             stream = self.fetch_warc(uri, self.args.input_base_url)
             if not stream:
                 continue
