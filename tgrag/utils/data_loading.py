@@ -16,7 +16,7 @@ def load_node_csv(
         xs = []
         for key, encoder in encoders.items():
             if key in df.columns:
-                xs.append(encoder(df[key]))
+                xs.append(encoder(df[key].values))
             else:
                 # Global encoder (In our case the RNIEncoder)
                 xs.append(encoder(df.shape[0]))
