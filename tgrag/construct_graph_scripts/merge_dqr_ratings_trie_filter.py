@@ -3,6 +3,7 @@ import logging
 import multiprocessing as mp
 import os
 import random
+import time
 from typing import Any, Dict, Generator, Iterable, List, Tuple, TypedDict, cast
 
 from tqdm import tqdm
@@ -172,6 +173,13 @@ def merge_dqr_to_node_parallel(
 
     logging.info(f'Matched domains: {total_matched:,}')
     logging.info(f'Unmatched domains: {total_unmatched:,}')
+
+    logging.info('Flushing and syncing node output file...')
+    with open(output_path, 'a', encoding='utf-8') as f:
+        f.flush()
+        os.fsync(f.fileno())
+
+    time.sleep(0.5)
 
     logging.info(f'Filtering edges to include only 1-hop neighbors...')
     print('filtering')
