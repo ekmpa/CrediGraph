@@ -41,17 +41,18 @@ rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
 
 echo "Cleaning up:"
-rm -rf "$SPARK_WAREHOUSE/host_graph_output_vertices"
-rm -rf "$SPARK_WAREHOUSE/host_graph_output_edges"
+rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse/host_graph_output_vertices"
+rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse/host_graph_output_edges"
 
 "$VENV_PATH"/bin/spark-submit \
-  --driver-memory 2g \
-  --executor-memory 2g \
-  --conf spark.sql.shuffle.partitions=4 \
+  --driver-memory 64g \
+  --executor-memory 4g \
+  --conf spark.sql.shuffle.partitions=512 \
   --conf spark.io.compression.codec=snappy \
+  --conf spark.default.parallelism=512
   --py-files "$PROJECT_ROOT/tgrag/cc-scripts/sparkcc.py,$PROJECT_ROOT/tgrag/cc-scripts/wat_extract_links.py,$PROJECT_ROOT/tgrag/cc-scripts/json_importer.py" \
   "$PROJECT_ROOT/tgrag/cc-scripts/hostlinks_to_graph.py" \
-  "$SPARK_WAREHOUSE/wat_output_table" \
+  "$PROJECT_ROOT/bash_scripts/spark-warehouse/wat_output_table" \
   host_graph_output \
   --output_format "parquet" \
   --output_compression "snappy" \

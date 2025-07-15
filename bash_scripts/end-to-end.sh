@@ -50,7 +50,6 @@ for data_type in  "${cc_file_types[@]}" ; do
   for CRAWL in "${CRAWLS[@]}"; do
       # Skip empty lines or comments
       [[ -z "$CRAWL" || "$CRAWL" =~ ^# ]] && continue
-
       echo "Processing $CRAWL..."
       echo "Removing previous $CRAWL spark-warehouse"
       rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse"
