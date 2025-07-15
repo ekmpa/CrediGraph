@@ -55,7 +55,7 @@ def move_and_append_outputs(source_base: str, target_base_root: str) -> None:
             with gzip.open(target_path, 'rt', encoding='utf-8') as f:
                 combined_data.extend(f.readlines())
 
-        # Test: deduplicate lines
+        # TO DO: Test: deduplicate lines
         # combined_data = list(set(combined_data))
 
         with gzip.open(target_path, 'wt', encoding='utf-8') as f:
@@ -168,5 +168,9 @@ def move_and_append_compressed_outputs(source_base: str, target_base_root: str) 
 
     wanted_domains = get_labelled_set()
     wanted_ids = get_ids_from_set(wanted_domains, source_base)
+
+    # TO DO: aggregate wanted_ids with set from PR/HC sampling (Seb)
+    # Currently, just labelled set
+
     endpoint_ids = append_edges(wanted_ids, source_base, target_base_root)
     append_nodes(endpoint_ids, source_base, target_base_root)
