@@ -193,9 +193,9 @@ def merge_dqr_to_node_parallel(
     )
 
 
-def get_average_importance(edge_path: str) -> float:
+def get_average_importance(edges_path: str) -> float:
     with (
-        open(edge_path, 'r', encoding='utf-8') as in_f,
+        open(edges_path, 'r', encoding='utf-8') as in_f,
     ):
         reader = csv.DictReader(in_f)
         importance_run: float = 0.0
@@ -209,14 +209,14 @@ def get_average_importance(edge_path: str) -> float:
 
 
 def filter_edges(
-    edge_path: str,
+    edges_path: str,
     matched_ids: set,
     output_path: str,
 ) -> None:
     logging.info('Getting average importance.')
-    average_importance = get_average_importance(edge_path)
+    average_importance = get_average_importance(edges_path)
     with (
-        open(edge_path, 'r', encoding='utf-8') as in_f,
+        open(edges_path, 'r', encoding='utf-8') as in_f,
         open(output_path, 'w', newline='', encoding='utf-8') as out_f,
     ):
         reader = csv.DictReader(in_f)
@@ -280,16 +280,18 @@ if __name__ == '__main__':
     node_path = f'{root}/data/crawl-data/temporal/temporal_nodes.csv'
     edges_path = f'{root}/data/crawl-data/temporal/temporal_edges.csv'
     dqr_path = f'{root}/data/dqr/domain_pc1.csv'
-    output_path = f'{root}/data/crawl-data/temporal/temporal_nodes_scored.csv'
+    filtered_node_output_path = (
+        f'{root}/data/crawl-data/temporal/filtered/temporal_nodes_scored.csv'
+    )
     filter_edges_output_path = (
-        f'{root}/data/crawl-data/temporal/temporal_edges_filtered.csv'
+        f'{root}/data/crawl-data/temporal/filtered/temporal_edges_filtered.csv'
     )
     workers = 16
     merge_dqr_to_node_parallel(
         node_path,
         dqr_path,
         edges_path,
-        output_path,
+        filtered_node_output_path,
         filter_edges_output_path,
         workers=workers,
         chunk_size=100_000,
