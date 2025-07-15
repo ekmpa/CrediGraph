@@ -36,27 +36,25 @@ echo "start_idx=$start_idx end_idx=$end_idx"
 # Get the root of the project (one level above this script's directory)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+SPARK_WAREHOUSE="spark-warehouse"
+BASE_URL=https://data.commoncrawl.org # Base URL used to download the path listings
 
-# Use SCRATCH if defined, else fallback to project-local data dir
-# For cluster use
 if [ -z "$SCRATCH" ]; then
     echo "[WARN] SCRATCH not set, using local data directory."
     DATA_DIR="$PROJECT_ROOT/data"
-    SPARK_WAREHOUSE="spark-warehouse"
+
 else
     DATA_DIR="$SCRATCH"
-    SPARK_WAREHOUSE="$SCRATCH/CrediGraph/spark-warehouse"
     echo "Using SCRATCH directory: $DATA_DIR"
 fi
-
-# Base URL used to download the path listings
-BASE_URL=https://data.commoncrawl.org
-
 
 mkdir -p "$DATA_DIR/"
 INPUT_DIR="$DATA_DIR/crawl-data/$CRAWL/input"
 mkdir -p "$INPUT_DIR"
 
+if [ -d "$SPARK_WAREHOUSE" ]; then
+    rm -r "$SPARK_WAREHOUSE"/*
+fi
 
 #for data_type in warc wat wet; do
 for data_type in  "${cc_file_types[@]}" ; do
@@ -67,6 +65,7 @@ for data_type in  "${cc_file_types[@]}" ; do
     listing="$DATA_DIR/crawl-data/$CRAWL/$data_type.paths.gz"
     cd "$DATA_DIR/crawl-data/$CRAWL/"
     wget --timestamping "$BASE_URL/crawl-data/$CRAWL/$data_type.paths.gz"
+    sleep 2
     cd -
 
     echo "Downloading sample ${data_type} file..."
@@ -98,7 +97,7 @@ for data_type in  "${cc_file_types[@]}" ; do
     echo "Test file: $input"
     if [ -e "$input" ]; then
         rm "$input"
-        echo "File $input already exists. delete it."
+        echo "File $input already existed. deleted it."
     fi
     while IFS= read -r wat_file; do
       echo "file:$DATA_DIR/$wat_file" >>"$input"
@@ -110,11 +109,13 @@ for data_type in  "${cc_file_types[@]}" ; do
       first=$(echo "$wat_file" | awk -F '$BASE_URL' '{print $1}')
       first=$(echo "$first" | awk -F '/'$data_type'/' '{print $1}')
 #      echo "first=" "$first"
-      file_path="../data/$wat_file"
+      #file_path="../data/$wat_file"
+      file_path="$DATA_DIR/$wat_file"
       if [ -f "$file_path" ]; then
           echo "File '$file_path' exists."
       else
-          wget --timestamping -P "../data/$first/$data_type/" "$BASE_URL/$wat_file"
+          #wget --timestamping -P "../data/$first/$data_type/" "$BASE_URL/$wat_file"
+          wget --timestamping -P "$DATA_DIR/$first/$data_type/" "$BASE_URL/$wat_file"
       fi
     done <<< "$wat_files"
 

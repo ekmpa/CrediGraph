@@ -1,8 +1,14 @@
+import glob
+import gzip
+import os
 from typing import Dict, Tuple
 
 import pandas as pd
 import torch
 from torch import Tensor
+
+from tgrag.utils.matching import reverse_domain
+from tgrag.utils.path import get_root_dir
 
 
 def load_node_csv(
@@ -54,3 +60,60 @@ def load_edge_csv(
         edge_attr = torch.cat(edge_attrs, dim=-1)
 
     return edge_index, edge_attr
+
+
+def get_labelled_set() -> set[str]:
+    """Get a list (set) of labelled domains."""
+    path = os.path.join(get_root_dir(), 'data', 'dqr', 'domain_pc1.csv')
+    wanted_domains = set()
+
+    with open(path, 'r', encoding='utf-8') as f:
+        for line in f:
+            parts = line.strip().split(',')
+            if len(parts) >= 1:
+                domain = parts[0].strip()
+                if domain:  # skip empty lines
+                    wanted_domains.add(domain)
+
+    # print(f'[INFO] Found {len(wanted_domains)} domains ')
+    return wanted_domains
+
+
+def get_ids_from_set(wanted_domains: set[str], source_base: str) -> set[str]:
+    """Get the node ids in the graph of the nodes in the wanted_domains set."""
+    source_dir = os.path.join(source_base, 'vertices')
+    matches = glob.glob(os.path.join(source_dir, '*.txt.gz'))
+
+    if not matches:
+        print(f'[WARN] No .txt.gz files found in {source_dir}, skipping.')
+        return set()
+
+    matched_ids = set()
+    for source_file in matches:
+        with gzip.open(source_file, 'rt', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+
+                parts = line.split()
+                if len(parts) < 2:
+                    continue
+
+                vertex_id = parts[0].strip()
+                rev_domain = parts[1].strip()
+
+                normal_domain = reverse_domain(rev_domain).lower()
+
+                # Match exact or parent domains
+                domain_parts = normal_domain.split('.')
+                for i in range(len(domain_parts) - 1):
+                    candidate = '.'.join(
+                        domain_parts[i:]
+                    )  # e.g. sub.domain.com, domain.com, com
+                    if candidate in wanted_domains:
+                        matched_ids.add(vertex_id)
+                        break
+
+    # print(f'[INFO] Found {len(matched_ids)} matching vertex IDs.')
+    return matched_ids

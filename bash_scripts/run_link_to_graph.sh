@@ -16,6 +16,7 @@ CRAWL="$1"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 VENV_PATH="$PROJECT_ROOT/.venv"
+SPARK_WAREHOUSE="spark-warehouse"
 
 # Use SCRATCH if defined, else fallback to project-local data dir
 # For cluster use
@@ -48,7 +49,7 @@ rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse/host_graph_output_edges"
   --executor-memory 4g \
   --conf spark.sql.shuffle.partitions=512 \
   --conf spark.io.compression.codec=snappy \
-  --conf spark.default.parallelism=512
+  --conf spark.default.parallelism=512 \
   --py-files "$PROJECT_ROOT/tgrag/cc-scripts/sparkcc.py,$PROJECT_ROOT/tgrag/cc-scripts/wat_extract_links.py,$PROJECT_ROOT/tgrag/cc-scripts/json_importer.py" \
   "$PROJECT_ROOT/tgrag/cc-scripts/hostlinks_to_graph.py" \
   "$PROJECT_ROOT/bash_scripts/spark-warehouse/wat_output_table" \
