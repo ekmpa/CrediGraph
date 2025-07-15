@@ -47,7 +47,6 @@ for data_type in  "${cc_file_types[@]}" ; do
   while read -r CRAWL || [[ -n "$CRAWL" ]]; do
       # Skip empty lines or comments
       [[ -z "$CRAWL" || "$CRAWL" =~ ^# ]] && continue
-
       echo "Processing $CRAWL..."
       echo "Removing previous $CRAWL spark-warehouse"
       # Use SCRATCH if defined, else fallback to project-local data dir

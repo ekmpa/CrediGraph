@@ -1,3 +1,6 @@
+import os
+from pathlib import Path
+
 import pandas as pd
 
 from tgrag.utils.matching import extract_graph_domains
@@ -9,20 +12,23 @@ def load_credibility_scores(path: str, use_core: bool = False) -> pd.DataFrame:
     return cred_df[['match_domain', 'pc1']]
 
 
-def get_credibility_intersection(source_path: str, time_slice: str) -> None:
-    # Adjust paths
-    cred_scores_path = f'{source_path}/dqr/domain_pc1.csv'
-    vertices_path = (
-        f'{source_path}/crawl-data/{time_slice}/output_text_dir/vertices.txt.gz'
-    )
+def get_credibility_intersection(
+    data_path: str, label_path: Path, time_slice: str
+) -> None:
+    cred_scores_path = f'{label_path}/data/dqr/domain_pc1.csv'
+    vertices_path = os.path.join(data_path, 'output_text_dir', 'vertices.txt.gz')
+    output_csv_path = os.path.join(data_path, 'output_text_dir', 'vertices.csv')
+
     print(f'Opening vertices file: {vertices_path}')
-    output_csv_path = f'{source_path}/crawl-data/{time_slice}/node_credibility.csv'
 
     cred_df = load_credibility_scores(cred_scores_path)
-
     vertices_df = extract_graph_domains(vertices_path)
 
-    enriched_df = pd.merge(vertices_df, cred_df, on='match_domain', how='inner')
+    enriched_df = pd.merge(vertices_df, cred_df, on='match_domain', how='left')
+    enriched_df['pc1'] = enriched_df['pc1'].fillna(-1)
+    enriched_df = enriched_df[
+        enriched_df['match_domain'].notnull() & (enriched_df['match_domain'] != '')
+    ]  # drop empty domains
     enriched_df.to_csv(output_csv_path, index=False)
 
     print(f'INFO: Merge done. Annotated file saved to {output_csv_path}')
@@ -31,11 +37,8 @@ def get_credibility_intersection(source_path: str, time_slice: str) -> None:
     graph_domains_set = set(vertices_df['match_domain'].unique())
     cred_labels_set = set(cred_df['match_domain'].unique())
 
-    common = graph_domains_set.intersection(cred_labels_set)
-    print(f'Number of common domains: {len(common)}')
-
     # Node annotation stats
-    annotated_nodes = len(enriched_df)
+    annotated_nodes = (enriched_df['pc1'] != -1).sum()
     total_nodes = len(vertices_df)
     node_percentage = (annotated_nodes / total_nodes) * 100
 

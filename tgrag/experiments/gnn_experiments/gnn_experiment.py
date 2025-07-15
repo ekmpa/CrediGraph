@@ -150,7 +150,6 @@ def run_gnn_baseline(
 
         loss_tuple_run.append(loss_tuple_epoch)
 
-
     logging.info(logger.get_statistics())
     plot_avg_rmse_loss(loss_tuple_run, model_arguments.model)
     save_loss_results(loss_tuple_run, model_arguments.model, model_arguments.encoder)

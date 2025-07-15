@@ -1,6 +1,6 @@
 import argparse
 
-from tgrag.experiments.gnn_experiment import run_gnn_baseline
+from tgrag.experiments.gnn_experiments.gnn_experiment import run_gnn_baseline
 from tgrag.utils.args import parse_args
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.path import get_root_dir
