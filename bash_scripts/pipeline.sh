@@ -38,8 +38,6 @@ write_summary() {
 }
 
 while read -r CRAWL || [[ -n "$CRAWL" ]]; do
-
-    # Reset counters for each crawl if needed
     TOTAL_NODES=0
     TOTAL_EDGES=0
     TOTAL_STEPS=0
@@ -60,20 +58,20 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
 
     for (( start_idx=2100; start_idx<=TOTAL_FILES; start_idx+=STEP )); do
 
+        end_idx=$((start_idx+STEP-1))
+
         TOTAL_STEPS=$((TOTAL_STEPS+1))
         slice_size=$((end_idx - start_idx + 1))
         TOTAL_FILES_DECOMPRESSED=$((TOTAL_FILES_DECOMPRESSED + slice_size))
-
-        end_idx=$((start_idx+STEP-1))
 
         if [ "$end_idx" -gt "$TOTAL_FILES" ]; then # Clamp to TOTAL_FILES if end_idx exceeds it
             end_idx=$TOTAL_FILES
         fi
 
-        echo "Running slice: $start_idx-$end_idx"
+        echo "Running on: $start_idx-$end_idx"
 
+        # Run end-to-end on the given subset + aggregate to partial graph
         bash end-to-end.sh "$CRAWL" $start_idx $end_idx
-
         python ../tgrag/utils/aggregate.py --source "$DATA_DIR/$CRAWL/output_text_dir" --target "$DATA_DIR/$CRAWL/output"
 
         for f in edges vertices; do
@@ -90,6 +88,8 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
             fi
         done
     done
+
+    echo "Finished $CRAWL"
 
     trap - EXIT
     write_summary # when slice is done, write summary
