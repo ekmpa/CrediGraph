@@ -63,6 +63,7 @@ def load_edge_csv(
 
 
 def get_labelled_set() -> set[str]:
+    """Get a list (set) of labelled domains."""
     path = os.path.join(get_root_dir(), 'data', 'dqr', 'domain_pc1.csv')
     wanted_domains = set()
 
@@ -79,6 +80,7 @@ def get_labelled_set() -> set[str]:
 
 
 def get_ids_from_set(wanted_domains: set[str], source_base: str) -> set[str]:
+    """Get the node ids in the graph of the nodes in the wanted_domains set."""
     source_dir = os.path.join(source_base, 'vertices')
     matches = glob.glob(os.path.join(source_dir, '*.txt.gz'))
 
