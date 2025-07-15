@@ -24,7 +24,28 @@ else
     DATA_DIR="$SCRATCH/crawl-data"
 fi
 
+write_summary() {
+    mkdir -p logs
+    SUMMARY_FILE="logs/${CRAWL}-summary.txt"
+    {
+        echo "Nodes: $TOTAL_NODES"
+        echo "Edges: $TOTAL_EDGES"
+        echo "Steps: $TOTAL_STEPS"
+        echo "Files decompressed: $TOTAL_FILES_DECOMPRESSED"
+        # TO DO: add stats from topological experiments in summary file
+    } > "$SUMMARY_FILE"
+    echo "Summary written to $SUMMARY_FILE"
+}
+
 while read -r CRAWL || [[ -n "$CRAWL" ]]; do
+
+    # Reset counters for each crawl if needed
+    TOTAL_NODES=0
+    TOTAL_EDGES=0
+    TOTAL_STEPS=0
+    TOTAL_FILES_DECOMPRESSED=0
+
+    trap write_summary EXIT # on exit from error, write summary
 
     if [ "$2" != "--keep" ]; then
         rm -rf "$DATA_DIR/$CRAWL/output"
@@ -37,7 +58,12 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
 
     STEP=300
 
-    for (( start_idx=1; start_idx<=TOTAL_FILES; start_idx+=STEP )); do
+    for (( start_idx=2100; start_idx<=TOTAL_FILES; start_idx+=STEP )); do
+
+        TOTAL_STEPS=$((TOTAL_STEPS+1))
+        slice_size=$((end_idx - start_idx + 1))
+        TOTAL_FILES_DECOMPRESSED=$((TOTAL_FILES_DECOMPRESSED + slice_size))
+
         end_idx=$((start_idx+STEP-1))
 
         if [ "$end_idx" -gt "$TOTAL_FILES" ]; then # Clamp to TOTAL_FILES if end_idx exceeds it
@@ -55,7 +81,17 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
             if [ -f "$target_file" ]; then
                 num_lines=$(gzip -dc "$target_file" | wc -l)
                 echo "[INFO] After slice $start_idx-$end_idx: $f has $num_lines records"
+
+                if [ "$f" == "edges" ]; then
+                    TOTAL_EDGES=$num_lines
+                else
+                    TOTAL_NODES=$num_lines
+                fi
             fi
         done
     done
+
+    trap - EXIT
+    write_summary # when slice is done, write summary
+
 done < "$CRAWL_LIST_FILE"
