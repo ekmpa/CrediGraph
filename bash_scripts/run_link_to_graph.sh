@@ -12,6 +12,13 @@ fi
 
 CRAWL="$1"
 
+if [ -z "$2" ]; then
+    outputTableName="wat_output_table"
+else
+  outputTableName="$2"
+fi
+
+
 # Get the root of the project (one level above this script's directory)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -52,7 +59,7 @@ rm -rf "$SPARK_WAREHOUSE/host_graph_output_edges"
   --conf spark.io.compression.codec=snappy \
   --py-files "$PROJECT_ROOT/tgrag/cc-scripts/sparkcc.py,$PROJECT_ROOT/tgrag/cc-scripts/wat_extract_links.py,$PROJECT_ROOT/tgrag/cc-scripts/json_importer.py" \
   "$PROJECT_ROOT/tgrag/cc-scripts/hostlinks_to_graph.py" \
-  "$SPARK_WAREHOUSE/wat_output_table" \
+  "$SPARK_WAREHOUSE/$outputTableName" \
   host_graph_output \
   --output_format "parquet" \
   --output_compression "snappy" \

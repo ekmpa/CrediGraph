@@ -9,8 +9,13 @@ if [ -z "$1" ]; then
     echo "Example: $0 CC-MAIN-2017-13"
     exit 1
 fi
-
 CRAWL="$1"
+if [ -z "$2" ]; then
+    outputTableName="wat_extract_content_table"
+else
+  outputTableName="$2"
+fi
+
 
 # Get the root of the project (one level above this script's directory)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -42,7 +47,7 @@ export PYSPARK_DRIVER_PYTHON="$VENV_PATH/bin/python"
   --py-files "$PROJECT_ROOT/tgrag/cc-scripts/sparkcc.py" \
   "$PROJECT_ROOT/tgrag/cc-scripts/wet_extract_domain_content.py" \
   "$INPUT_DIR/test_wet.txt" \
-  "wat_extract_content_table" \
+  "$outputTableName" \
   --trusted_domains "../data/dqr/domain_pc1.csv"\
   --output_format "parquet" \
   --output_compression "snappy" \

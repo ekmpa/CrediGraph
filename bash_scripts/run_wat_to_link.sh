@@ -9,8 +9,15 @@ if [ -z "$1" ]; then
     echo "Example: $0 CC-MAIN-2017-13"
     exit 1
 fi
-
 CRAWL="$1"
+
+if [ -z "$2" ]; then
+    outputTableName="wat_output_table"
+else
+  outputTableName="$2"
+fi
+
+
 
 # Get the root of the project (one level above this script's directory)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -42,7 +49,7 @@ export PYSPARK_DRIVER_PYTHON="$VENV_PATH/bin/python"
   --py-files "$PROJECT_ROOT/tgrag/cc-scripts/sparkcc.py" \
   "$PROJECT_ROOT/tgrag/cc-scripts/wat_extract_links.py" \
   "$INPUT_DIR/test_wat.txt" \
-  "wat_output_table" \
+  "$outputTableName" \
   --input_base_url https://data.commoncrawl.org/
 
 

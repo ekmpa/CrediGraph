@@ -52,27 +52,40 @@ for data_type in  "${cc_file_types[@]}" ; do
       echo "Removing previous $CRAWL spark-warehouse"
       # Use SCRATCH if defined, else fallback to project-local data dir
       # For cluster usage
-      if [ -z "$SCRATCH" ]; then
-          rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse" # Remove re-created directories before running
-      else
-          rm -rf "$SCRATCH/spark-warehouse" # Remove re-created directories before running
-      fi
+#      if [ -z "$SCRATCH" ]; then
+#          rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse" # Remove re-created directories before running
+#      else
+#          rm -rf "$SCRATCH/spark-warehouse" # Remove re-created directories before running
+#      fi
+
       echo $CRAWL
       echo "################################### run get data ###################################"
       ./get_data.sh "$CRAWL" $start_idx $end_idx "[$data_type]"
       echo "Data Downloaded for $CRAWL."
+      echo "################ Start Processing Processing $data_type Files ######################"
+      lCRAWL="${CRAWL,,}" # to lower string
       if [ "$data_type" = "wat" ]; then
-        echo "################ Start Processing Processing $data_type Files ######################"
+        if [ -z "$SCRATCH" ]; then
+          rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse/wat_link_to_graph_batch_${lCRAWL//-/}_${start_idx}_${end_idx}/" # Remove re-created directories before running
+        else
+            rm -rf "$SCRATCH/spark-warehouse/wat_link_to_graph_batch_${lCRAWL//-/}_${start_idx}_${end_idx}/" # Remove re-created directories before running
+        fi
         echo "#####################  run_wat_to_link #####################"
         ./run_wat_to_link.sh "$CRAWL"
         echo "wat_output_table constructed for $CRAWL."
         echo "#####################  run_link_to_graph #####################"
         ./run_link_to_graph.sh "$CRAWL"
-        echo "Compressed graphs constructed for $CRAWL."
+        echo "Compressed graphs constructed for $CRAWL batch_${start_idx}_${end_idx}"
       elif [ "$data_type" = "wet" ]; then
         echo "#####################  run_wet_content_extraction #####################"
-        ./run_extract_wet_content.sh "$CRAWL"
-        echo "wat_extract_content_table constructed for $CRAWL."
+         if [ -z "$SCRATCH" ]; then
+#            echo "$PROJECT_ROOT/bash_scripts/spark-warehouse/wet_extract_content_batch_${lCRAWL//-/}_${start_idx}_${end_idx}/"
+            rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse/wet_extract_content_batch_${lCRAWL//-/}_${start_idx}_${end_idx}/" # Remove re-created directories before running
+         else
+            rm -rf "$SCRATCH/spark-warehouse/wet_extract_cotent_batch_${lCRAWL//-/}_${start_idx}_${end_idx}/" # Remove re-created directories before running
+         fi
+        ./run_extract_wet_content.sh "$CRAWL" "wet_extract_content_batch_${lCRAWL//-/}_${start_idx}_${end_idx}"
+        echo "wet_extract_content_table constructed for $CRAWL batch_${start_idx}_${end_idx}"
       fi
   echo "********************** End Of $data_type Task **********************"
   done
