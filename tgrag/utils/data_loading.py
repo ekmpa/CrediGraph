@@ -8,7 +8,6 @@ import torch
 from torch import Tensor
 
 from tgrag.utils.matching import reverse_domain
-from tgrag.utils.path import get_root_dir
 
 
 def load_node_csv(
@@ -60,23 +59,6 @@ def load_edge_csv(
         edge_attr = torch.cat(edge_attrs, dim=-1)
 
     return edge_index, edge_attr
-
-
-def get_labelled_set() -> set[str]:
-    """Get a list (set) of labelled domains."""
-    path = os.path.join(get_root_dir(), 'data', 'dqr', 'domain_pc1.csv')
-    wanted_domains = set()
-
-    with open(path, 'r', encoding='utf-8') as f:
-        for line in f:
-            parts = line.strip().split(',')
-            if len(parts) >= 1:
-                domain = parts[0].strip()
-                if domain:  # skip empty lines
-                    wanted_domains.add(domain)
-
-    # print(f'[INFO] Found {len(wanted_domains)} domains ')
-    return wanted_domains
 
 
 def get_ids_from_set(wanted_domains: set[str], source_base: str) -> set[str]:
