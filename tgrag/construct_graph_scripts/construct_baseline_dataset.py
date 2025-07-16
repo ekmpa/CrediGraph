@@ -1,12 +1,14 @@
 import argparse
 import logging
 
-from tgrag.utils.logger import setup_logging
-from tgrag.utils.merge_dqr_ratings_trie_filter import (
+from tgrag.construct_graph_scripts.merge_dqr_ratings_trie_filter import (
     merge_dqr_to_node_parallel,
 )
+from tgrag.construct_graph_scripts.txt_to_csv_sqlite import (
+    merge_vertices_rank_centrality,
+)
+from tgrag.utils.logger import setup_logging
 from tgrag.utils.path import get_root_dir
-from tgrag.utils.txt_to_csv_sqlite import merge_vertices_rank_centrality
 
 parser = argparse.ArgumentParser(
     description='Baseline Dataset Construction',
