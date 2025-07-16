@@ -1,7 +1,7 @@
 import argparse
+import glob
 import gzip
 import os
-import glob
 
 from tgrag.utils.data_loading import get_ids_from_set
 from tgrag.utils.load_labels import get_labelled_set
