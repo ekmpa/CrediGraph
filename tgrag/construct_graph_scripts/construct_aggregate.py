@@ -1,35 +1,13 @@
+import argparse
 import glob
 import gzip
 import os
-import shutil
 
-from tgrag.utils.data_loading import get_ids_from_set, get_labelled_set
-
-
-def move_and_rename_compressed_outputs(source_base: str, target_base_root: str) -> None:
-    os.makedirs(target_base_root, exist_ok=True)
-
-    for subdir in ['edges', 'vertices']:
-        source_dir = os.path.join(source_base, subdir)
-        target_filename = f'{subdir}.txt.gz'
-
-        matches = glob.glob(os.path.join(source_dir, '*.txt.gz'))
-        if not matches:
-            print(f'[WARN] No .txt.gz file found in {source_dir}, skipping.')
-            continue
-
-        for source_file in matches:
-            target_path = os.path.join(target_base_root, target_filename)
-
-            if not os.path.exists(target_path):
-                shutil.copy2(source_file, target_path)
-                print(f'Copied {source_file} → {target_path}')
-            else:
-                print(f'Skipped: {target_path} already exists')
-            break  # only process the first match
+from tgrag.utils.data_loading import get_ids_from_set
+from tgrag.utils.load_labels import get_labelled_set
 
 
-def move_and_append_outputs(source_base: str, target_base_root: str) -> None:
+def gradual_full(source_base: str, target_base_root: str) -> None:
     """This append function works for gradual building of the entire graph."""
     os.makedirs(target_base_root, exist_ok=True)
 
@@ -160,7 +138,7 @@ def append_nodes(
     return len(kept_ids)
 
 
-def move_and_append_compressed_outputs(source_base: str, target_base_root: str) -> None:
+def gradual_subset(source_base: str, target_base_root: str) -> None:
     """This append function works for the gradual building of the subgraph based on a 1-hop neighborhood of the wanted set.
     For now, the 'wanted set' is just our labelled nodes. To be supplemented later.
     """
@@ -174,3 +152,27 @@ def move_and_append_compressed_outputs(source_base: str, target_base_root: str) 
 
     endpoint_ids = append_edges(wanted_ids, source_base, target_base_root)
     append_nodes(endpoint_ids, source_base, target_base_root)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description='Aggregate and append compressed outputs (edges and vertices).'
+    )
+    parser.add_argument(
+        '--source',
+        type=str,
+        help='Source base directory containing the new output subdirectories (edges/vertices).',
+    )
+    parser.add_argument(
+        '--target',
+        type=str,
+        help='Target base directory where the aggregated output will be stored.',
+    )
+
+    args = parser.parse_args()
+
+    gradual_subset(args.source, args.target)
+
+
+if __name__ == '__main__':
+    main()

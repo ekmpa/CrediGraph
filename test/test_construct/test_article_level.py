@@ -5,8 +5,8 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from tgrag.utils.article_merger import ArticleMerger, extract_registered_domain
-from tgrag.utils.merger import Merger
+from tgrag.utils.matching import extract_registered_domain
+from tgrag.utils.mergers import ArticleMerger, Merger
 
 
 @pytest.fixture
