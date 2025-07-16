@@ -72,7 +72,7 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
 
         # Run end-to-end on the given subset + aggregate to partial graph
         bash end-to-end.sh "$CRAWL" $start_idx $end_idx
-        python ../tgrag/construct_graph_scripts/construct_aggregate.py --source "$DATA_DIR/$CRAWL/output_text_dir" --target "$DATA_DIR/$CRAWL/output"
+        python ../tgrag/utils/aggregate.py --source "$DATA_DIR/$CRAWL/output_text_dir" --target "$DATA_DIR/$CRAWL/output"
 
         for f in edges vertices; do
             target_file="$DATA_DIR/$CRAWL/output/${f}.txt.gz"
