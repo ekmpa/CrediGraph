@@ -1,6 +1,6 @@
 import pytest
 
-from tgrag.construct_graph_scripts.subnetwork_construct import (
+from tgrag.construct_graph_scripts.construct_subnetwork import (
     contains_base_domain,
 )
 

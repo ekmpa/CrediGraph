@@ -5,17 +5,15 @@ from typing import List
 
 import pandas as pd
 
-from tgrag.construct_graph_scripts.load_labels import (
-    get_credibility_intersection,
-)
-from tgrag.construct_graph_scripts.process_compressed_text import (
-    move_and_rename_compressed_outputs,
-)
-from tgrag.construct_graph_scripts.subnetwork_construct import (
+from tgrag.construct_graph_scripts.construct_subnetwork import (
     construct_subnetwork,
 )
-from tgrag.construct_graph_scripts.temporal_merge import TemporalGraphMerger
+from tgrag.utils.load_labels import get_credibility_intersection
+from tgrag.utils.mergers import TemporalGraphMerger
 from tgrag.utils.path import get_crawl_data_path, get_root_dir
+from tgrag.utils.process_compressed_text import (
+    move_and_rename_compressed_outputs,
+)
 
 parser = argparse.ArgumentParser(
     description='Construct Temporal Dataset.',

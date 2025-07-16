@@ -5,9 +5,8 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from tgrag.utils.article_merger import ArticleMerger, extract_registered_domain
-from tgrag.utils.merger import Merger
-
+from tgrag.utils.mergers import Merger, ArticleMerger
+from tgrag.utils.matching import extract_registered_domain
 
 @pytest.fixture
 def merger(tmp_path: Path) -> Merger:
@@ -128,7 +127,7 @@ def test_article_merger_real_wet_contains_edge(tmp_path: Path) -> None:
     def dummy_get_wet_file_path(slice_id: str, root_dir: str) -> str:
         return 'test_WET_2017_13.gz'
 
-    with patch('tgrag.utils.article_merger.get_wet_file_path', dummy_get_wet_file_path):
+    with patch('tgrag.utils.path.get_wet_file_path', dummy_get_wet_file_path):
         merger.merge()
 
     assert merger.matched_articles >= 1
