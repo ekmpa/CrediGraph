@@ -1,0 +1,21 @@
+MetaArguments:
+  log_file_path: "topological_experiment.log"
+
+ExperimentArguments:
+  exp_args:
+    IN_DEG:
+      model_args:
+        model: "in-degree"
+      data_args:
+        task_name: "in-degree"
+        slice_id: "CC-MAIN-2024-nov"
+        node_file: "vertices.txt.gz"
+        edge_file: "edges.txt.gz"
+    OUT_DEG:
+      model_args:
+        model: "out-degree"
+      data_args:
+        task_name: "out-degree"
+        slice_id: "CC-MAIN-2024-nov"
+        node_file: "vertices.txt.gz"
+        edge_file: "edges.txt.gz"

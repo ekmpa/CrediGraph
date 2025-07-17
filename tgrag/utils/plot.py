@@ -475,3 +475,310 @@ def plot_pr_vs_cr_scatter(heat_map: pd.DataFrame) -> None:
     plt.close()
 
     logging.info(f'Scatter plot saved to: {save_path}')
+
+
+def plot_pr_cr_bin_correlation(heat_map: DataFrame) -> None:
+    bins = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    pr_labels = ['v_low_pr', 'low_pr', 'mid_pr', 'high_pr', 'v_high_pr']
+    cr_labels = ['v_low_cr', 'low_cr', 'mid_cr', 'high_cr', 'v_high_cr']
+
+    heat_map['pr_bin'] = pd.cut(
+        heat_map['pr_value'],
+        bins=bins,
+        labels=pr_labels,
+        include_lowest=True,
+        right=False,
+    )
+    heat_map['cr_bin'] = pd.cut(
+        heat_map['cr_score'],
+        bins=bins,
+        labels=cr_labels,
+        include_lowest=True,
+        right=False,
+    )
+
+    contingency = pd.crosstab(heat_map['cr_bin'], heat_map['pr_bin'], normalize='all')
+
+    root = get_root_dir()
+    save_dir = root / 'results' / 'correlation' / 'plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / 'pr_cr_bin_correlation_heatmap.png'
+
+    sns.heatmap(contingency, annot=True, fmt='.4f', cmap='YlGnBu')
+    plt.title('PR/CR Binned Correlation Heatmap')
+    plt.xlabel('PageRank Bins')
+    plt.ylabel('Credibility Score Bins')
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+    logging.info(f'Binned heat_map saved to: {save_path}')
+
+
+def plot_pr_correlation(heat_map: DataFrame) -> None:
+    numeric_cols = heat_map.select_dtypes(include=[np.number])
+    correlation_matrix = numeric_cols.corr(method='pearson')
+
+    root = get_root_dir()
+    save_dir = root / 'results' / 'correlation' / 'plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / 'pr_cr_correlation_heatmap.png'
+    sns.heatmap(correlation_matrix, annot=True, fmt='.5f', cmap='coolwarm', square=True)
+    plt.title('Correlation Heatmap: pr_value vs cr_score')
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+    logging.info(f'Heatmap saved to: {save_path}')
+
+
+def plot_pr_correlation_log_scale(heat_map: DataFrame) -> None:
+    epsilon = 1e-10  # To avoid log(0)
+    heat_map['log_pr'] = np.log(heat_map['pr_value'] + epsilon)
+
+    pr_labels = ['v_low_pr', 'low_pr', 'mid_pr', 'high_pr', 'v_high_pr']
+    cr_labels = ['v_low_cr', 'low_cr', 'mid_cr', 'high_cr', 'v_high_cr']
+
+    heat_map['pr_bin'] = pd.qcut(heat_map['log_pr'], q=5, labels=pr_labels)
+
+    bins = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    heat_map['cr_bin'] = pd.cut(
+        heat_map['cr_score'],
+        bins=bins,
+        labels=cr_labels,
+        include_lowest=True,
+        right=False,
+    )
+
+    contingency = pd.crosstab(heat_map['cr_bin'], heat_map['pr_bin'], normalize='all')
+
+    root = get_root_dir()
+    save_dir = root / 'results' / 'correlation' / 'plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / 'pr_cr_bin_correlation_heatmap_log_scale.png'
+
+    sns.heatmap(contingency, annot=True, fmt='.4f', cmap='YlGnBu')
+    plt.title('PR/CR Binned Correlation Heatmap (Log PageRank Bins)')
+    plt.xlabel('PageRank Bins (log-scale quantiles)')
+    plt.ylabel('Credibility Score Bins')
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+
+    logging.info(f'Binned heatmap saved to: {save_path}')
+
+
+def plot_pr_correlation_auto_bin(heat_map: DataFrame) -> None:
+    pr_labels = ['v_low_pr', 'low_pr', 'mid_pr', 'high_pr', 'v_high_pr']
+    cr_labels = ['v_low_cr', 'low_cr', 'mid_cr', 'high_cr', 'v_high_cr']
+
+    min_pr, max_pr = heat_map['pr_value'].min(), heat_map['pr_value'].max()
+    if max_pr - min_pr < 1e-6:
+        logging.warning('Not enough variation in pr_value to create bins.')
+        return
+    pr_bins = np.linspace(min_pr, max_pr, num=6)  # 5 bins = 6 edges
+    heat_map['pr_bin'] = pd.cut(
+        heat_map['pr_value'],
+        bins=pr_bins,
+        labels=pr_labels,
+        include_lowest=True,
+        right=False,
+    )
+
+    min_cr, max_cr = heat_map['cr_score'].min(), heat_map['cr_score'].max()
+    if max_cr - min_cr < 1e-6:
+        logging.warning('Not enough variation in cr_score to create bins.')
+        return
+    cr_bins = np.linspace(min_cr, max_cr, num=6)
+    heat_map['cr_bin'] = pd.cut(
+        heat_map['cr_score'],
+        bins=cr_bins,
+        labels=cr_labels,
+        include_lowest=True,
+        right=False,
+    )
+
+    contingency = pd.crosstab(heat_map['cr_bin'], heat_map['pr_bin'], normalize='all')
+
+    root = get_root_dir()
+    save_dir = root / 'results' / 'correlation' / 'plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / 'pr_cr_bin_correlation_heatmap_adaptive_both.png'
+
+    sns.heatmap(contingency, annot=True, fmt='.4f', cmap='YlGnBu')
+    plt.title('PR/CR Binned Correlation Heatmap (Adaptive PR & CR Bins)')
+    plt.xlabel('PageRank Bins (adaptive)')
+    plt.ylabel('Credibility Score Bins (adaptive)')
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+
+    logging.info(f'Adaptive PR/CR binning heatmap saved to: {save_path}')
+
+
+def plot_joint_pr_cr_heatmap(df: pd.DataFrame) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'correlation' / 'plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    df['pr_bin'] = (100 * df['pr_value']).round(1).astype(int)
+    df['cr_bin'] = (100 * df['cr_score']).round(1).astype(int)
+
+    df = df[(df['pr_bin'] >= 0) & (df['pr_bin'] <= 100)]
+    df = df[(df['cr_bin'] >= 0) & (df['cr_bin'] <= 100)]
+
+    joint_counts = df.groupby(['cr_bin', 'pr_bin']).size().reset_index(name='count')
+
+    heat = np.zeros((10, 10))  # 10x10 bins
+    for i in range(10):
+        for j in range(10):
+            cr_val = i * 10
+            pr_val = j * 10
+            cell = joint_counts[
+                (joint_counts['cr_bin'] == cr_val) & (joint_counts['pr_bin'] == pr_val)
+            ]['count'].values
+            heat[i, j] = cell[0] if len(cell) else 0
+
+    # Apply Gaussian smoothing for interpretability
+    smoothed = gaussian_filter(heat, sigma=1.5)
+
+    plt.figure(figsize=(8, 6))
+    ax = sns.heatmap(
+        smoothed,
+        cmap='coolwarm_r',
+        vmin=smoothed.min(),
+        vmax=smoothed.max(),
+        cbar_kws={'label': 'Node Count (smoothed)'},
+    )
+
+    ax.set_title('Joint PR–CR Distribution')
+    ax.set_xlabel('PageRank Group')
+    ax.set_ylabel('Credibility Score Group')
+
+    ax.set_xticks([0, 5, 9])
+    ax.set_xticklabels([0.0, 0.5, 1.0])
+
+    ax.set_yticks([0, 5, 9])
+    ax.set_yticklabels([1.0, 0.5, 0.0])  # Flip to match matrix orientation
+
+    plt.tight_layout()
+    plt.savefig(save_dir / 'joint_pr_cr_heatmap.png', dpi=300)
+    plt.close()
+
+
+def plot_spearman_pr_cr_correlation(heat_map: DataFrame) -> None:
+    spearman_corr = heat_map.corr(method='spearman')
+
+    root = get_root_dir()
+    save_dir = root / 'results' / 'correlation' / 'plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / 'spearman_pr_cr_correlation_heatmap.png'
+
+    sns.heatmap(
+        spearman_corr,
+        annot=True,
+        fmt='.4f',
+        cmap='coolwarm',
+        square=True,
+        cbar_kws={'label': 'Spearman Correlation'},
+    )
+    plt.title('Spearman Correlation: PageRank vs Credibility')
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+
+    logging.info(f'Spearman correlation heatmap saved to: {save_path}')
+
+
+def plot_pr_cr_scatter_logx(heat_map: DataFrame) -> None:
+    heat_map = heat_map[heat_map['pr_value'] > 0]
+
+    root = get_root_dir()
+    save_dir = root / 'results' / 'correlation' / 'plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / 'pr_cr_scatter_logx.png'
+
+    plt.figure(figsize=(8, 6))
+    sns.scatterplot(data=heat_map, x='pr_value', y='cr_score', alpha=0.4, s=8)
+    plt.xscale('log')
+    plt.xlabel('PageRank (log scale)')
+    plt.ylabel('Credibility Score')
+    plt.title('PR vs CR Scatter Plot (Log X-Axis)')
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+
+    logging.info(f'Scatter plot saved to: {save_path}')
+
+
+def plot_pr_vs_cr_scatter(heat_map: pd.DataFrame) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'correlation' / 'plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / 'scatter_pr_vs_cr.png'
+
+    plt.figure(figsize=(8, 6))
+    sns.scatterplot(
+        data=heat_map,
+        x='pr_value',
+        y='cr_score',
+        alpha=0.3,
+        edgecolor=None,
+        s=10,
+    )
+    plt.title('Scatter Plot: PageRank vs Credibility Score')
+    plt.xlabel('PageRank Value')
+    plt.ylabel('Credibility Score')
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+
+    logging.info(f'Scatter plot saved to: {save_path}')
+
+
+def plot_degree_distribution(degrees: list[int], experiment_name: str) -> None:
+    os.makedirs('results', exist_ok=True)
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    bins = np.logspace(np.log10(1), np.log10(max(degrees)+1), 50)
+    ax.hist(degrees, bins=bins, color='steelblue', alpha=0.7)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_xlabel('Degree')
+    ax.set_ylabel('Frequency')
+    ax.set_title(f'{experiment_name} Degree Distribution (log-log)')
+    plt.tight_layout()
+    plt.savefig(f'results/{experiment_name}_degree_loghist.png')
+    plt.close()
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.kdeplot(np.log10(degrees), fill=True, color='darkred', bw_adjust=0.5)
+    ax.set_xlabel('log10(Degree)')
+    ax.set_ylabel('Density')
+    ax.set_title(f'{experiment_name} Degree KDE (log scale)')
+    plt.tight_layout()
+    plt.savefig(f'results/{experiment_name}_degree_kde.png')
+    plt.close()
+
+def plot_domain_scores(gov_scores: list[float], org_scores: list[float]) -> None:
+    os.makedirs('results', exist_ok=True)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.kdeplot(gov_scores, fill=True, color='green', label='.gov', bw_adjust=0.5)
+    sns.kdeplot(org_scores, fill=True, color='red', label='.org', bw_adjust=0.5)
+    ax.set_xlabel('Domain PC1 Score')
+    ax.set_ylabel('Density')
+    ax.set_title('Domain PC1 Score Distribution')
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig('results/domain_pc1_kde.png')
+    plt.close()
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.hist(gov_scores, bins=20, alpha=0.6, label='.gov', color='green')
+    ax.hist(org_scores, bins=20, alpha=0.6, label='.org', color='red')
+    ax.set_xlabel('Domain PC1 Score')
+    ax.set_ylabel('Count')
+    ax.set_title('Domain PC1 Score Histogram')
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig('results/domain_pc1_hist.png')
+    plt.close()
