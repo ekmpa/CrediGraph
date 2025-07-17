@@ -8,7 +8,7 @@ def get_root_dir() -> Path:
 
 
 def get_no_backup() -> Path:
-    return Path('/NOBACKUP/')
+    return Path('/NOBACKUP')
 
 
 def get_cwd() -> Path:
