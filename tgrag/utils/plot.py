@@ -110,3 +110,53 @@ def plot_metric_across_models(
 
     plt.savefig(save_path)
     plt.close()
+
+
+def plot_degree_distribution(degrees: list[int], experiment_name: str) -> None:
+    os.makedirs('results', exist_ok=True)
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    bins = np.logspace(np.log10(1), np.log10(max(degrees)+1), 50)
+    ax.hist(degrees, bins=bins, color='steelblue', alpha=0.7)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_xlabel('Degree')
+    ax.set_ylabel('Frequency')
+    ax.set_title(f'{experiment_name} Degree Distribution (log-log)')
+    plt.tight_layout()
+    plt.savefig(f'results/{experiment_name}_degree_loghist.png')
+    plt.close()
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.kdeplot(np.log10(degrees), fill=True, color='darkred', bw_adjust=0.5)
+    ax.set_xlabel('log10(Degree)')
+    ax.set_ylabel('Density')
+    ax.set_title(f'{experiment_name} Degree KDE (log scale)')
+    plt.tight_layout()
+    plt.savefig(f'results/{experiment_name}_degree_kde.png')
+    plt.close()
+
+def plot_domain_scores(gov_scores: list[float], org_scores: list[float]) -> None:
+    os.makedirs('results', exist_ok=True)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.kdeplot(gov_scores, fill=True, color='green', label='.gov', bw_adjust=0.5)
+    sns.kdeplot(org_scores, fill=True, color='red', label='.org', bw_adjust=0.5)
+    ax.set_xlabel('Domain PC1 Score')
+    ax.set_ylabel('Density')
+    ax.set_title('Domain PC1 Score Distribution')
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig('results/domain_pc1_kde.png')
+    plt.close()
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.hist(gov_scores, bins=20, alpha=0.6, label='.gov', color='green')
+    ax.hist(org_scores, bins=20, alpha=0.6, label='.org', color='red')
+    ax.set_xlabel('Domain PC1 Score')
+    ax.set_ylabel('Count')
+    ax.set_title('Domain PC1 Score Histogram')
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig('results/domain_pc1_hist.png')
+    plt.close()
