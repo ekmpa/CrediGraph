@@ -50,9 +50,11 @@ def train(
     optimizer: torch.optim.Adam,
 ) -> float:
     model.train()
+    device = next(model.parameters()).device
     total_loss = 0
     optimizer.zero_grad()
-    for batch in train_loader:
+    for batch in tqdm(train_loader, desc='Batchs', leave=False):
+        batch = batch.to(device)
         out = model(batch.x, batch.edge_index)
         loss = F.mse_loss(out.squeeze(), batch.y)
         loss.backward()
@@ -142,32 +144,43 @@ def run_gnn_baseline(
     )
     data = dataset[0]
     data.y = data.y.squeeze(1)
-    data = data.to(device)
-
     split_idx = dataset.get_idx_split()
+
+    logging.info(f"Training set size: {split_idx['train'].size()}")
+    logging.info(f"Validation set size: {split_idx['valid'].size()}")
+    logging.info(f"Testing set size: {split_idx['test'].size()}")
 
     train_loader = NeighborLoader(
         data,
         input_nodes=split_idx['train'],
-        num_neighbors=[15, 10],
-        batch_size=1024,
+        num_neighbors=[5, 5],
+        batch_size=128,
         shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True,
     )
 
     val_loader = NeighborLoader(
         data,
         input_nodes=split_idx['valid'],
-        num_neighbors=[15, 10],
-        batch_size=1024,
+        num_neighbors=[5, 5],
+        batch_size=128,
         shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True,
     )
 
     test_loader = NeighborLoader(
         data,
         input_nodes=split_idx['test'],
-        num_neighbors=[15, 10],
-        batch_size=1024,
+        num_neighbors=[5, 5],
+        batch_size=128,
         shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True,
     )
 
     model = model_class(
