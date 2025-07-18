@@ -9,4 +9,8 @@ class LogEncoder(Encoder):
         self.scale = scale
 
     def __call__(self, input: float) -> Tensor:
-        return torch.Tensor(input).unsqueeze(1)
+        x = torch.as_tensor(input, dtype=torch.float32).unsqueeze(-1)
+        x = torch.log1p(x)
+        if self.scale:
+            x = x * self.scale
+        return x
