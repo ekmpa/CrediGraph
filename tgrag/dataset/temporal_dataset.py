@@ -57,11 +57,8 @@ class TemporalDataset(InMemoryDataset):
         df = df.set_index('node_id').loc[mapping.keys()]
 
         # Transductive nodes only:
-        labeled_mask = df['cr_score'].notna().values
-        cr_score = torch.tensor(
-            df['cr_score'].fillna(-1).values, dtype=torch.float
-        ).unsqueeze(1)
-
+        labeled_mask = (df['cr_score'] != -1.0).values
+        cr_score = torch.tensor(df['cr_score'].values, dtype=torch.float).unsqueeze(1)
         edge_index, edge_attr = load_edge_csv(
             path=edge_path, src_index_col='src', dst_index_col='dst', encoders=None
         )

@@ -165,7 +165,7 @@ def merge_dqr_to_node_parallel(
             for row in result_rows:
                 if row['cr_score'] != -1.0:
                     matched_domain_ids.add(
-                        row['domain']
+                        row['node_id']
                     )  # assumes column is named domain_id
 
         pool.close()
