@@ -46,8 +46,8 @@ def construct_baseline() -> None:
     merge_dqr_to_node_parallel(
         node_path,
         dqr_path,
-        output_path,
         edges_path,
+        output_path,
         filter_edges_output_path,
         workers=workers,
         chunk_size=100_000,
