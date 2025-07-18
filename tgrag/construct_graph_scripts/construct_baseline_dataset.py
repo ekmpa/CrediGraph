@@ -23,7 +23,7 @@ parser.add_argument(
 parser.add_argument(
     '--log-file',
     type=str,
-    default='script_correlation.log',
+    default='baseline_construction.log',
     help='Name of log file at project root.',
 )
 
