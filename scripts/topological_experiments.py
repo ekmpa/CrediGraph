@@ -5,6 +5,8 @@ import statistics
 from collections import Counter, defaultdict
 from typing import DefaultDict, List, Optional
 
+from tqdm import tqdm
+
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.path import get_root_dir
 from tgrag.utils.plot import plot_degree_distribution, plot_domain_scores
@@ -43,15 +45,14 @@ def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> N
 
     with open(node_file, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
-        for row in reader:
+        for row in tqdm(reader, desc='Collecting node file node_id/domain'):
             node_id = row['node_id'].strip()
             domain = row['domain'].strip()
             id_to_domain[node_id] = domain
 
     logging.info(f'Edge file: {edge_file}')
 
-    in_degree: Counter[str] = Counter()
-    out_degree: Counter[str] = Counter()
+    degree_counter: Counter[str] = Counter()
     unique_nodes = set()
 
     edge_count = 0
@@ -60,11 +61,13 @@ def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> N
         open(edge_file, 'r', encoding='utf-8') as in_f,
     ):
         reader = csv.DictReader(in_f)
-        for row in reader:
+        for row in tqdm(reader, desc='Collecting src/dst node_ids'):
             src_id = row['src']
             dst_id = row['dst']
-            out_degree[src_id] += 1
-            in_degree[dst_id] += 1
+            if outdegree:
+                degree_counter[src_id] += 1
+            else:
+                degree_counter[dst_id] += 1
             unique_nodes.add(src_id)
             unique_nodes.add(dst_id)
 
@@ -73,13 +76,8 @@ def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> N
     logging.info(f'Total edges processed: {edge_count:,}')
     logging.info(f'Total unique nodes: {len(unique_nodes):,}')
 
-    if outdegree:
-        degree_counter = out_degree
-    else:
-        degree_counter = in_degree
-
     degrees = list(degree_counter.values())
-    experiment_name = 'out-degree' if out_degree else 'in-degree'
+    experiment_name = 'in-degree' if outdegree else 'out-degree'
     plot_degree_distribution(degrees, experiment_name)
 
     if not degrees:
