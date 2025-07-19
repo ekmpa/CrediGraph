@@ -18,7 +18,6 @@ from typing import (
 from tqdm import tqdm
 
 from tgrag.utils.matching import reverse_domain
-from tgrag.utils.path import get_root_dir
 from tgrag.utils.prob import (
     get_importance_node,
     get_importance_probability_node,
@@ -439,27 +438,4 @@ def merge_dqr_to_node_parallel(
         random_ids=random_domain_ids,
         workers=workers,
         chunk_size=chunk_size,
-    )
-
-
-if __name__ == '__main__':
-    root = get_root_dir()
-    node_path = f'{root}/data/crawl-data/temporal/temporal_nodes_hc.csv'
-    edges_path = f'{root}/data/crawl-data/temporal/temporal_edges.csv'
-    dqr_path = f'{root}/data/dqr/domain_pc1.csv'
-    node_output_path = (
-        f'{root}/data/crawl-data/temporal/filtered/temporal_nodes_scored.csv'
-    )
-    filter_edges_output_path = (
-        f'{root}/data/crawl-data/temporal/filtered/temporal_edges_filtered.csv'
-    )
-    workers = 16
-    merge_dqr_to_node_parallel(
-        node_path=node_path,
-        dqr_path=dqr_path,
-        edges_path=edges_path,
-        output_path=node_output_path,
-        filtered_edges_output_path=filter_edges_output_path,
-        workers=workers,
-        chunk_size=100_000,
     )
