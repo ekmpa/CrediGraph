@@ -491,7 +491,7 @@ def plot_degree_distribution(degrees: list[int], experiment_name: str) -> None:
     ax.set_ylabel('Frequency')
     ax.set_title(f'{experiment_name} Degree Distribution (log-log)')
     plt.tight_layout()
-    plt.savefig(save_dir / f'{experiment_name}_degree_loghist.png')
+    plt.savefig(save_dir / f'{experiment_name}_loghist.png')
     plt.close()
 
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -500,7 +500,7 @@ def plot_degree_distribution(degrees: list[int], experiment_name: str) -> None:
     ax.set_ylabel('Density')
     ax.set_title(f'{experiment_name} Degree KDE (log scale)')
     plt.tight_layout()
-    plt.savefig(save_dir / f'{experiment_name}_degree_kde.png')
+    plt.savefig(save_dir / f'{experiment_name}_kde.png')
     plt.close()
 
 
