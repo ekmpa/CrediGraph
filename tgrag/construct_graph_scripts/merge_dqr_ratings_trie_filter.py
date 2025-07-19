@@ -9,7 +9,6 @@ from typing import Any, Dict, Generator, Iterable, List, Tuple, TypedDict, cast
 from tqdm import tqdm
 
 from tgrag.utils.matching import reverse_domain
-from tgrag.utils.path import get_root_dir
 from tgrag.utils.prob import get_importance, get_importance_probability
 
 
@@ -273,26 +272,3 @@ def filter_nodes_by_edges_and_matches(
                 writer.writerow(row)
                 kept += 1
         logging.info(f'Filtered node file written with {kept:,} nodes')
-
-
-if __name__ == '__main__':
-    root = get_root_dir()
-    node_path = f'{root}/data/crawl-data/temporal/temporal_nodes.csv'
-    edges_path = f'{root}/data/crawl-data/temporal/temporal_edges.csv'
-    dqr_path = f'{root}/data/dqr/domain_pc1.csv'
-    filtered_node_output_path = (
-        f'{root}/data/crawl-data/temporal/filtered/temporal_nodes_scored.csv'
-    )
-    filter_edges_output_path = (
-        f'{root}/data/crawl-data/temporal/filtered/temporal_edges_filtered.csv'
-    )
-    workers = 16
-    merge_dqr_to_node_parallel(
-        node_path,
-        dqr_path,
-        edges_path,
-        filtered_node_output_path,
-        filter_edges_output_path,
-        workers=workers,
-        chunk_size=100_000,
-    )
