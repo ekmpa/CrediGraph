@@ -65,35 +65,6 @@ def train(
 
 
 @torch.no_grad()
-def test(
-    model: torch.nn.Module,
-    data: TemporalDataset,
-    split_idx: Dict,
-    model_name: str,
-) -> Tuple[float, float, float]:
-    model.eval()
-    if model_name == 'GAT':
-        out = model(data.x, data.edge_index)
-    else:
-        out = model(data.x, data.adj_t)
-
-    y_true = data.y
-    y_pred = out
-
-    train_rmse = torch.sqrt(
-        F.mse_loss(y_pred[split_idx['train']], y_true[split_idx['train']])
-    ).item()
-    valid_rmse = torch.sqrt(
-        F.mse_loss(y_pred[split_idx['valid']], y_true[split_idx['valid']])
-    ).item()
-    test_rmse = torch.sqrt(
-        F.mse_loss(y_pred[split_idx['test']], y_true[split_idx['test']])
-    ).item()
-
-    return train_rmse, valid_rmse, test_rmse
-
-
-@torch.no_grad()
 def evaluate(
     model: torch.nn.Module,
     loader: NeighborLoader,
@@ -160,6 +131,7 @@ def run_gnn_baseline(
         pin_memory=True,
         persistent_workers=True,
     )
+    logging.info('Train loader created')
 
     val_loader = NeighborLoader(
         data,
@@ -172,6 +144,7 @@ def run_gnn_baseline(
         persistent_workers=True,
     )
 
+    logging.info('Valid loader created')
     test_loader = NeighborLoader(
         data,
         input_nodes=split_idx['test'],
@@ -182,7 +155,7 @@ def run_gnn_baseline(
         pin_memory=True,
         persistent_workers=True,
     )
-
+    logging.info('Test loader created')
     model = model_class(
         data.num_features,
         model_arguments.hidden_channels,
