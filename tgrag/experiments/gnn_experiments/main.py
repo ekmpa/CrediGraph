@@ -29,7 +29,7 @@ parser.add_argument(
 parser.add_argument(
     '--full-batch',
     action='store_true',
-    help='Whether to use full-batching. Mini-batching is be default.',
+    help='Whether to use full-batching. Mini-batching is by default.',
 )
 
 
