@@ -53,15 +53,17 @@ def train(
     device = next(model.parameters()).device
     total_loss = 0
     optimizer.zero_grad()
+    total_nodes = 0
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         batch = batch.to(device)
         out = model(batch.x, batch.edge_index)
         loss = F.mse_loss(out.squeeze(), batch.y)
         loss.backward()
         optimizer.step()
-        total_loss += loss.item() * batch.num_nodes
+        total_loss += loss.item() * batch.y.size(0)
+        total_nodes += batch.y.size(0)
 
-    return total_loss / len(train_loader.dataset)
+    return torch.sqrt(torch.tensor(total_loss / total_nodes)).item()
 
 
 @torch.no_grad()
@@ -185,5 +187,7 @@ def run_gnn_baseline(
         loss_tuple_run.append(loss_tuple_epoch)
 
     logging.info(logger.get_statistics())
+    logging.info('Constructing RMSE plots')
     plot_avg_rmse_loss(loss_tuple_run, model_arguments.model, model_arguments.encoder)
+    logging.info('Saving pkl of results')
     save_loss_results(loss_tuple_run, model_arguments.model, model_arguments.encoder)

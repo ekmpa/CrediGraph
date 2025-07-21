@@ -48,8 +48,11 @@ def main() -> None:
         else:
             run_gnn_baseline(experiment_arg.data_args, experiment_arg.model_args)
     results = load_all_loss_tuples()
+    logging.info('Constructing Plots, across models')
     plot_metric_across_models(results)
+    logging.info('Constructing Plots, metric per-encoder')
     plot_metric_per_encoder(results)
+    logging.info('Constructing Plots, model per-encoder')
     plot_model_per_encoder(results)
 
 
