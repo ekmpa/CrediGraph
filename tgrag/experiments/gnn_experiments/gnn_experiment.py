@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple, Type, cast
 
 import torch
 import torch.nn.functional as F
-from torch_geometric.loader import NeighborLoader
+from torch_geometric.loader import DataLoader, NeighborLoader
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
@@ -83,44 +83,9 @@ def evaluate(
     return torch.sqrt(torch.tensor(total_loss / total_nodes)).item()
 
 
-def run_gnn_baseline(
-    data_arguments: DataArguments,
-    model_arguments: ModelArguments,
-) -> None:
-    logging.info(
-        'Setting up training for task of: %s on model: %s',
-        data_arguments.task_name,
-        model_arguments.model,
-    )
-    device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
-    device = torch.device(device)
-
-    root_dir = get_root_dir()
-
-    model_class = MODEL_CLASSES[model_arguments.model]
-    encoder_class = ENCODER_CLASSES[model_arguments.encoder]
-    logging.info(
-        'Encoder: %s is used on column: %s',
-        model_arguments.encoder,
-        model_arguments.encoder_col,
-    )
-
-    encoding_dict: Dict[str, Encoder] = {model_arguments.encoder_col: encoder_class}
-
-    dataset = TemporalDataset(
-        root=f'{root_dir}/data/crawl-data/temporal',
-        node_file=cast(str, data_arguments.node_file),
-        edge_file=cast(str, data_arguments.edge_file),
-        encoding=encoding_dict,
-    )
-    data = dataset[0]
-    data.y = data.y.squeeze(1)
-    split_idx = dataset.get_idx_split()
-
-    logging.info(f"Training set size: {split_idx['train'].size()}")
-    logging.info(f"Validation set size: {split_idx['valid'].size()}")
-    logging.info(f"Testing set size: {split_idx['test'].size()}")
-
+def get_neighbor_loaders(
+    data: TemporalDataset, split_idx: Dict
+) -> Tuple[NeighborLoader, NeighborLoader, NeighborLoader]:
     train_loader = NeighborLoader(
         data,
         input_nodes=split_idx['train'],
@@ -155,6 +120,62 @@ def run_gnn_baseline(
         pin_memory=True,
         persistent_workers=True,
     )
+    return train_loader, test_loader, val_loader
+
+
+def get_data_loaders(
+    data: TemporalDataset, split_idx: Dict
+) -> Tuple[DataLoader, DataLoader, DataLoader]:
+    train_loader = DataLoader(data[split_idx['train']], batch_size=128)
+    valid_loader = DataLoader(data[split_idx['valid']], batch_size=128)
+    test_loader = DataLoader(data[split_idx['test']], batch_size=128)
+    return train_loader, valid_loader, test_loader
+
+
+def run_gnn_baseline(
+    data_arguments: DataArguments,
+    model_arguments: ModelArguments,
+    data_loading: bool,
+) -> None:
+    logging.info(
+        'Setting up training for task of: %s on model: %s',
+        data_arguments.task_name,
+        model_arguments.model,
+    )
+    device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
+    device = torch.device(device)
+
+    root_dir = get_root_dir()
+
+    model_class = MODEL_CLASSES[model_arguments.model]
+    encoder_class = ENCODER_CLASSES[model_arguments.encoder]
+    logging.info(
+        'Encoder: %s is used on column: %s',
+        model_arguments.encoder,
+        model_arguments.encoder_col,
+    )
+
+    encoding_dict: Dict[str, Encoder] = {model_arguments.encoder_col: encoder_class}
+
+    dataset = TemporalDataset(
+        root=f'{root_dir}/data/crawl-data/temporal',
+        node_file=cast(str, data_arguments.node_file),
+        edge_file=cast(str, data_arguments.edge_file),
+        encoding=encoding_dict,
+    )
+    data = dataset[0]
+    data.y = data.y.squeeze(1)
+    split_idx = dataset.get_idx_split()
+
+    logging.info(f'Training set size: {split_idx["train"].size()}')
+    logging.info(f'Validation set size: {split_idx["valid"].size()}')
+    logging.info(f'Testing set size: {split_idx["test"].size()}')
+
+    if data_loading:
+        train_loader, test_loader, val_loader = get_data_loaders(data, split_idx)
+    else:
+        train_loader, test_loader, val_loader = get_neighbor_loaders(data, split_idx)
+
     logging.info('Test loader created')
     model = model_class(
         data.num_features,

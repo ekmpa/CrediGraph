@@ -27,6 +27,11 @@ parser.add_argument(
     help='Path to yaml configuration file to use',
 )
 parser.add_argument(
+    '--data-loading',
+    action='store_true',
+    help='Whether to use data loader in mini-batching. Neighbour loader by default.',
+)
+parser.add_argument(
     '--full-batch',
     action='store_true',
     help='Whether to use full-batching. Mini-batching is by default.',
@@ -46,7 +51,9 @@ def main() -> None:
                 experiment_arg.data_args, experiment_arg.model_args
             )
         else:
-            run_gnn_baseline(experiment_arg.data_args, experiment_arg.model_args)
+            run_gnn_baseline(
+                experiment_arg.data_args, experiment_arg.model_args, args.data_loading
+            )
     results = load_all_loss_tuples()
     plot_metric_across_models(results)
     plot_metric_per_encoder(results)
