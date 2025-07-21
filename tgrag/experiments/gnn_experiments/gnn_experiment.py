@@ -119,9 +119,9 @@ def run_gnn_baseline(
     data.y = data.y.squeeze(1)
     split_idx = dataset.get_idx_split()
 
-    logging.info(f"Training set size: {split_idx['train'].size()}")
-    logging.info(f"Validation set size: {split_idx['valid'].size()}")
-    logging.info(f"Testing set size: {split_idx['test'].size()}")
+    logging.info(f'Training set size: {split_idx["train"].size()}')
+    logging.info(f'Validation set size: {split_idx["valid"].size()}')
+    logging.info(f'Testing set size: {split_idx["test"].size()}')
 
     train_loader = NeighborLoader(
         data,
@@ -186,7 +186,9 @@ def run_gnn_baseline(
 
         loss_tuple_run.append(loss_tuple_epoch)
 
+    logging.info('*** Statistics ***')
     logging.info(logger.get_statistics())
+    logging.info(logger.get_avg_statistics())
     logging.info('Constructing RMSE plots')
     plot_avg_rmse_loss(loss_tuple_run, model_arguments.model, model_arguments.encoder)
     logging.info('Saving pkl of results')
