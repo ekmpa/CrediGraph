@@ -63,7 +63,7 @@ def train(
         total_loss += loss.item() * batch.y.size(0)
         total_nodes += batch.y.size(0)
 
-    return total_loss / total_nodes
+    return torch.sqrt(torch.tensor(total_loss / total_nodes)).item()
 
 
 @torch.no_grad()
