@@ -6,10 +6,27 @@ import pandas as pd
 from tgrag.utils.matching import extract_graph_domains
 from tgrag.utils.path import get_root_dir
 
+
 def load_credibility_scores(path: str, use_core: bool = False) -> pd.DataFrame:
     cred_df = pd.read_csv(path)
     cred_df['match_domain'] = cred_df['domain']
     return cred_df[['match_domain', 'pc1']]
+
+
+def get_target_set() -> set[str]:
+    """Get a list (set) of target domains."""
+    path = os.path.join(get_root_dir(), 'data', 'target_set.txt')
+    wanted_domains = set()
+
+    with open(path, 'r', encoding='utf-8') as f:
+        for line in f:
+            parts = line.strip().split(',')
+            if len(parts) >= 1:
+                domain = parts[0].strip()
+                if domain:  # skip empty lines
+                    wanted_domains.add(domain)
+
+    return wanted_domains
 
 
 def get_labelled_set() -> set[str]:

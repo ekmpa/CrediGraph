@@ -56,7 +56,7 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
 
     STEP=300
 
-    for (( start_idx=2100; start_idx<=TOTAL_FILES; start_idx+=STEP )); do
+    for (( start_idx=0; start_idx<=TOTAL_FILES; start_idx+=STEP )); do
 
         end_idx=$((start_idx+STEP-1))
 

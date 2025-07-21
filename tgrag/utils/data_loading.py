@@ -8,6 +8,7 @@ import torch
 from torch import Tensor
 
 from tgrag.utils.matching import reverse_domain
+from tgrag.utils.path import get_root_dir
 
 
 def load_node_csv(
@@ -99,3 +100,18 @@ def get_ids_from_set(wanted_domains: set[str], source_base: str) -> set[str]:
 
     # print(f'[INFO] Found {len(matched_ids)} matching vertex IDs.')
     return matched_ids
+
+
+def get_baseline_domains() -> set[str]:
+    """Get a set of baseline domains from cc-baseline-domains.txt."""
+    path = os.path.join(get_root_dir(), 'data', 'cc-baseline-domains.txt')
+    baseline_domains = set()
+
+    with open(path, 'r', encoding='utf-8') as f:
+        for line in f:
+            domain = line.strip()
+            if domain:  # skip empty lines
+                baseline_domains.add(domain)
+
+    print(f'[INFO] Found {len(baseline_domains)} baseline domains')
+    return baseline_domains
