@@ -4,7 +4,7 @@ import gzip
 import os
 
 from tgrag.utils.data_loading import get_ids_from_set
-from tgrag.utils.load_labels import get_labelled_set
+from tgrag.utils.load_labels import get_target_set
 
 
 def gradual_full(source_base: str, target_base_root: str) -> None:
@@ -144,7 +144,7 @@ def gradual_subset(source_base: str, target_base_root: str) -> None:
     """
     os.makedirs(target_base_root, exist_ok=True)
 
-    wanted_domains = get_labelled_set()
+    wanted_domains = get_target_set()
     wanted_ids = get_ids_from_set(wanted_domains, source_base)
 
     # TO DO: aggregate wanted_ids with set from PR/HC sampling (Seb)
