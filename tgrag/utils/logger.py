@@ -106,3 +106,37 @@ class Logger(object):
             lines.append(f'Final Test Loss: {r.mean():.4f}')
 
         return '\n'.join(lines)
+
+    def get_avg_statistics(self) -> str:
+        lines = []
+        avg = torch.tensor(self.results).mean(dim=0)
+
+        train_mean_curve = avg[:, 0]
+        val_mean_curve = avg[:, 1]
+        test_mean_curve = avg[:, 2]
+
+        final_train = train_mean_curve[-1].item()
+        best_train = train_mean_curve.min().item()
+        train_at_val_best = train_mean_curve[val_mean_curve.argmin()].item()
+
+        lines.append('Average Across Runs')
+        lines.append(f'Average Final Train: {final_train:.4f}')
+        lines.append(f'Average Best Train: {best_train:.4f}')
+        lines.append(f'Average Train @ Best Validation: {train_at_val_best:.4f}')
+
+        final_val = train_mean_curve[-1].item()
+        best_val = train_mean_curve.min().item()
+
+        lines.append(f'Average Final Valid: {final_val:.4f}')
+        lines.append(f'Average Best Valid: {best_val:.4f}')
+        lines.append(f'Best Validation: {train_at_val_best:.4f}')
+
+        final_test = test_mean_curve[-1].item()
+        best_test = test_mean_curve.min().item()
+        test_at_val_best = test_mean_curve[val_mean_curve.argmin()].item()
+
+        lines.append(f'Average Final Test: {final_test:.4f}')
+        lines.append(f'Average Best Test: {best_test:.4f}')
+        lines.append(f'Average Test @ Best Validation: {test_at_val_best:.4f}')
+
+        return '\n'.join(lines)
