@@ -1,6 +1,10 @@
 import argparse
+import logging
 
 from tgrag.experiments.gnn_experiments.gnn_experiment import run_gnn_baseline
+from tgrag.experiments.gnn_experiments.gnn_experiment_full_batch import (
+    run_gnn_baseline_full_batch,
+)
 from tgrag.utils.args import parse_args
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.path import get_root_dir
@@ -22,6 +26,11 @@ parser.add_argument(
     default='configs/gnn_rni/base.yaml',
     help='Path to yaml configuration file to use',
 )
+parser.add_argument(
+    '--full-batch',
+    action='store_true',
+    help='Whether to use full-batching. Mini-batching is by default.',
+)
 
 
 def main() -> None:
@@ -31,8 +40,13 @@ def main() -> None:
     setup_logging(meta_args.log_file_path)
     seed_everything(meta_args.global_seed)
     for experiment, experiment_arg in experiment_args.exp_args.items():
-        print(f'Running: {experiment}')
-        run_gnn_baseline(experiment_arg.data_args, experiment_arg.model_args)
+        logging.info(f'Running: {experiment}')
+        if args.full_batch:
+            run_gnn_baseline_full_batch(
+                experiment_arg.data_args, experiment_arg.model_args
+            )
+        else:
+            run_gnn_baseline(experiment_arg.data_args, experiment_arg.model_args)
     results = load_all_loss_tuples()
     plot_metric_across_models(results)
     plot_metric_per_encoder(results)

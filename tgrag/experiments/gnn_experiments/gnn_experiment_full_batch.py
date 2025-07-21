@@ -4,7 +4,6 @@ from typing import Dict, List, Tuple, Type, cast
 
 import torch
 import torch.nn.functional as F
-from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
@@ -46,47 +45,50 @@ def save_loss_results(
 
 def train(
     model: torch.nn.Module,
-    train_loader: NeighborLoader,
+    data: TemporalDataset,
+    train_idx: torch.Tensor,
     optimizer: torch.optim.Adam,
 ) -> float:
     model.train()
-    device = next(model.parameters()).device
-    total_loss = 0
     optimizer.zero_grad()
-    for batch in tqdm(train_loader, desc='Batchs', leave=False):
-        batch = batch.to(device)
-        out = model(batch.x, batch.edge_index)
-        loss = F.mse_loss(out.squeeze(), batch.y)
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item() * batch.num_nodes
+    out = model(data.x, data.adj_t)[train_idx]
+    loss = F.mse_loss(out.squeeze(), data.y.squeeze(1)[train_idx])
+    loss.backward()
+    optimizer.step()
 
-    return total_loss / len(train_loader.dataset)
+    return loss.item()
 
 
 @torch.no_grad()
 def evaluate(
     model: torch.nn.Module,
-    loader: NeighborLoader,
-) -> float:
+    data: TemporalDataset,
+    split_idx: Dict,
+) -> Tuple[float, float, float]:
     model.eval()
-    device = next(model.parameters()).device
-    total_loss = 0
-    total_nodes = 0
-    for batch in loader:
-        batch = batch.to(device)
-        out = model(batch.x, batch.edge_index)
-        loss = F.mse_loss(out.squeeze(), batch.y)
-        total_loss += loss.item() * batch.y.size(0)
-        total_nodes += batch.y.size(0)
+    out = model(data.x, data.edge_index)
 
-    return torch.sqrt(torch.tensor(total_loss / total_nodes)).item()
+    y_true = data.y
+    y_pred = out
+
+    train_rmse = torch.sqrt(
+        F.mse_loss(y_pred[split_idx['train']], y_true[split_idx['train']])
+    ).item()
+    valid_rmse = torch.sqrt(
+        F.mse_loss(y_pred[split_idx['valid']], y_true[split_idx['valid']])
+    ).item()
+    test_rmse = torch.sqrt(
+        F.mse_loss(y_pred[split_idx['test']], y_true[split_idx['test']])
+    ).item()
+
+    return train_rmse, valid_rmse, test_rmse
 
 
-def run_gnn_baseline(
+def run_gnn_baseline_full_batch(
     data_arguments: DataArguments,
     model_arguments: ModelArguments,
 ) -> None:
+    logging.info('Running Full-Batch')
     logging.info(
         'Setting up training for task of: %s on model: %s',
         data_arguments.task_name,
@@ -116,46 +118,12 @@ def run_gnn_baseline(
     data = dataset[0]
     data.y = data.y.squeeze(1)
     split_idx = dataset.get_idx_split()
+    train_idx = split_idx['train'].to(device)
 
-    logging.info(f"Training set size: {split_idx['train'].size()}")
-    logging.info(f"Validation set size: {split_idx['valid'].size()}")
-    logging.info(f"Testing set size: {split_idx['test'].size()}")
+    logging.info(f'Training set size: {split_idx["train"].size()}')
+    logging.info(f'Validation set size: {split_idx["valid"].size()}')
+    logging.info(f'Testing set size: {split_idx["test"].size()}')
 
-    train_loader = NeighborLoader(
-        data,
-        input_nodes=split_idx['train'],
-        num_neighbors=[5, 5],
-        batch_size=128,
-        shuffle=True,
-        num_workers=4,
-        pin_memory=True,
-        persistent_workers=True,
-    )
-    logging.info('Train loader created')
-
-    val_loader = NeighborLoader(
-        data,
-        input_nodes=split_idx['valid'],
-        num_neighbors=[5, 5],
-        batch_size=128,
-        shuffle=True,
-        num_workers=4,
-        pin_memory=True,
-        persistent_workers=True,
-    )
-
-    logging.info('Valid loader created')
-    test_loader = NeighborLoader(
-        data,
-        input_nodes=split_idx['test'],
-        num_neighbors=[5, 5],
-        batch_size=128,
-        shuffle=True,
-        num_workers=4,
-        pin_memory=True,
-        persistent_workers=True,
-    )
-    logging.info('Test loader created')
     model = model_class(
         data.num_features,
         model_arguments.hidden_channels,
@@ -174,11 +142,8 @@ def run_gnn_baseline(
         optimizer = torch.optim.Adam(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
-            train(model, train_loader, optimizer)
-            train_rmse = evaluate(model, train_loader)
-            valid_rmse = evaluate(model, val_loader)
-            test_rmse = evaluate(model, test_loader)
-            result = (train_rmse, valid_rmse, test_rmse)
+            train(model, data, train_idx, optimizer)
+            result = evaluate(model, data, split_idx)
             loss_tuple_epoch.append(result)
             logger.add_result(run, result)
 
