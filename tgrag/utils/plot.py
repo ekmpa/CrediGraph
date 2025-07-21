@@ -51,6 +51,7 @@ def plot_avg_rmse_loss(
 
     plt.xlabel('Epoch')
     plt.ylabel('RMSE Loss')
+    plt.yscale('log')
     plt.title(f'{model_name} : Average RMSE Loss over Trials')
     plt.legend()
     plt.grid(True)
@@ -106,6 +107,7 @@ def plot_metric_across_models(
 
     plt.xlabel('Epoch')
     plt.ylabel(f'{metric.capitalize()} RMSE')
+    plt.yscale('log')
     plt.title(f'Comparison of {metric.capitalize()} RMSE Across Models')
     plt.legend()
     plt.grid(True)
@@ -160,6 +162,7 @@ def plot_model_per_encoder(
 
         plt.xlabel('Epoch')
         plt.ylabel(f'{metric.capitalize()} RMSE')
+        plt.yscale('log')
         plt.title(f'{model}: {metric.capitalize()} RMSE per Encoder')
         plt.legend(title='Encoder')
         plt.grid(True)
@@ -210,6 +213,7 @@ def plot_metric_per_encoder(
 
         plt.xlabel('Epoch')
         plt.ylabel(f'{metric.capitalize()} RMSE')
+        plt.yscale('log')
         plt.title(f'{encoder}: {metric.capitalize()} RMSE per Model')
         plt.legend(title='Model')
         plt.grid(True)
