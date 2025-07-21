@@ -59,11 +59,26 @@ class Logger(object):
 
             best_results = []
             for r in result:
-                train1 = r[:, 0].min().item()
+                train = r[:, 0].min().item()
                 valid = r[:, 1].min().item()
-                train2 = r[r[:, 1].argmin(), 0].item()
-                test = r[r[:, 1].argmin(), 2].item()
-                best_results.append((train1, valid, train2, test))
+                test = r[:, 2].min().item()
+                val_selection_train = r[r[:, 1].argmin(), 0].item()
+                val_selection_test = r[r[:, 1].argmin(), 2].item()
+                final_train = r[-1, 0].item()
+                final_valid = r[-1, 1].item()
+                final_test = r[-1, 2].item()
+                best_results.append(
+                    (
+                        train,
+                        valid,
+                        test,
+                        val_selection_train,
+                        val_selection_test,
+                        final_train,
+                        final_valid,
+                        final_test,
+                    )
+                )
 
             best_result = torch.tensor(best_results)
 
@@ -71,10 +86,23 @@ class Logger(object):
             r = best_result[:, 0]
             lines.append(f'Lowest Train Loss: {r.mean():.4f} ± {r.std():.4f}')
             r = best_result[:, 1]
-            lines.append(f'Lowest Valid Loss: {r.mean():.4f} ± {r.std():.4f}')
+            lines.append(
+                f'Lowest Valid Loss (used in validation selection): {r.mean():.4f} ± {r.std():.4f}'
+            )
             r = best_result[:, 2]
-            lines.append(f'  Final Train Loss: {r.mean():.4f} ± {r.std():.4f}')
+            lines.append(f'Lowest Test Loss: {r.mean():.4f} ± {r.std():.4f}')
             r = best_result[:, 3]
-            lines.append(f'   Final Test Loss: {r.mean():.4f} ± {r.std():.4f}')
+            lines.append(
+                f'Train Loss @ Best Validation: {r.mean():.4f} ± {r.std():.4f}'
+            )
+            r = best_result[:, 4]
+            lines.append(f'Test Loss @ Best Validation: {r.mean():.4f} ± {r.std():.4f}')
+
+            r = best_result[:, 5]
+            lines.append(f'Final Train Loss: {r.mean():.4f}')
+            r = best_result[:, 6]
+            lines.append(f'Final Valid Loss: {r.mean():.4f}')
+            r = best_result[:, 7]
+            lines.append(f'Final Test Loss: {r.mean():.4f}')
 
         return '\n'.join(lines)
