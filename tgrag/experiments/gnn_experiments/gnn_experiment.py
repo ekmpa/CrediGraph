@@ -127,8 +127,11 @@ def get_data_loaders(
     data: TemporalDataset, split_idx: Dict
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     train_loader = DataLoader(data[split_idx['train']], batch_size=128)
+    logging.info('Train Loader created.')
     valid_loader = DataLoader(data[split_idx['valid']], batch_size=128)
+    logging.info('Valid Loader created.')
     test_loader = DataLoader(data[split_idx['test']], batch_size=128)
+    logging.info('Test Loader created.')
     return train_loader, valid_loader, test_loader
 
 
