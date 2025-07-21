@@ -19,23 +19,16 @@ def plot_avg_rmse_loss(
     encoder_used: str,
     save_filename: str = 'rmse_loss_plot.png',
 ) -> None:
-    """Plots the averaged RMSE loss over trials for train, validation, and test sets.
-
-    Parameters:
-    - loss_tuple_run: List of runs (trials), each a list of (train, val, test) RMSE tuples per epoch.
-    - model_name: The name of the model.
-    - encoder_used: The name of the encoder used.
-    - save_filename: Name of the generated plot (name of png file).
-    """
+    """Plots the averaged RMSE loss over trials for train, validation, and test sets with std dev bands."""
     num_epochs = len(loss_tuple_run[0])
 
     data = np.array(loss_tuple_run)  # shape: (num_trials, num_epochs, 3)
 
     avg_rmse = data.mean(axis=0)  # shape: (num_epochs, 3)
+    std_rmse = data.std(axis=0)  # shape: (num_epochs, 3)
 
-    avg_train = avg_rmse[:, 0]
-    avg_val = avg_rmse[:, 1]
-    avg_test = avg_rmse[:, 2]
+    avg_train, avg_val, avg_test = avg_rmse[:, 0], avg_rmse[:, 1], avg_rmse[:, 2]
+    std_train, std_val, std_test = std_rmse[:, 0], std_rmse[:, 1], std_rmse[:, 2]
 
     root = get_root_dir()
     save_dir = root / 'results' / 'plots' / encoder_used / model_name
@@ -46,15 +39,21 @@ def plot_avg_rmse_loss(
     epochs = np.arange(1, num_epochs + 1)
 
     plt.plot(epochs, avg_train, label='Train RMSE', linewidth=2)
+    plt.fill_between(epochs, avg_train - std_train, avg_train + std_train, alpha=0.2)
+
     plt.plot(epochs, avg_val, label='Validation RMSE', linewidth=2)
+    plt.fill_between(epochs, avg_val - std_val, avg_val + std_val, alpha=0.2)
+
     plt.plot(epochs, avg_test, label='Test RMSE', linewidth=2)
+    plt.fill_between(epochs, avg_test - std_test, avg_test + std_test, alpha=0.2)
+    print('DEBUG: hello')
 
     plt.xlabel('Epoch')
     plt.ylabel('RMSE Loss')
     plt.yscale('log')
     plt.title(f'{model_name} : Average RMSE Loss over Trials')
     plt.legend()
-    plt.grid(True)
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
