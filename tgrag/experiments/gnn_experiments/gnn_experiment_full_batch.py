@@ -51,7 +51,7 @@ def train(
 ) -> float:
     model.train()
     optimizer.zero_grad()
-    out = model(data.x, data.adj_t)[train_idx]
+    out = model(data.x, data.edge_index)[train_idx]
     loss = F.mse_loss(out.squeeze(), data.y.squeeze(1)[train_idx])
     loss.backward()
     optimizer.step()
