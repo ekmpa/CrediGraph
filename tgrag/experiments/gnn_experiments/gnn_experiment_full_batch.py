@@ -95,6 +95,7 @@ def run_gnn_baseline_full_batch(
         model_arguments.model,
     )
     device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
+    logging.info(f'Using device: {device}')
     device = torch.device(device)
 
     root_dir = get_root_dir()
@@ -117,6 +118,7 @@ def run_gnn_baseline_full_batch(
     )
     data = dataset[0]
     data.y = data.y.squeeze(1)
+    data = data.to(device)
     split_idx = dataset.get_idx_split()
     train_idx = split_idx['train'].to(device)
 
