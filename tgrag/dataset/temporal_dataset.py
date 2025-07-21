@@ -70,6 +70,8 @@ class TemporalDataset(InMemoryDataset):
 
         data.labeled_mask = torch.tensor(labeled_mask, dtype=torch.bool)
 
+        assert data.edge_index.max() < data.x.size(0), 'edge_index out of bounds'
+
         torch.save(self.collate([data]), self.processed_paths[0])
 
     def get_idx_split(self) -> Dict:
