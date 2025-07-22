@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
 from tgrag.encoders.encoder import Encoder
-from tgrag.encoders.log_encoding import LogEncoder
+from tgrag.encoders.norm_encoding import NormEncoder
 from tgrag.encoders.rni_encoding import RNIEncoder
 from tgrag.gnn.GAT import GAT
 from tgrag.gnn.gCon import GCN
@@ -27,7 +27,7 @@ MODEL_CLASSES: Dict[str, Type[torch.nn.Module]] = {
 
 ENCODER_CLASSES: Dict[str, Encoder] = {
     'RNI': RNIEncoder(),
-    'LOG': LogEncoder(),
+    'NORM': NormEncoder(),
 }
 
 
