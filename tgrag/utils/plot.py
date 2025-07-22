@@ -46,8 +46,6 @@ def plot_avg_rmse_loss(
 
     plt.plot(epochs, avg_test, label='Test RMSE', linewidth=2)
     plt.fill_between(epochs, avg_test - std_test, avg_test + std_test, alpha=0.2)
-    print('DEBUG: hello')
-
     plt.xlabel('Epoch')
     plt.ylabel('RMSE Loss')
     plt.yscale('log')
