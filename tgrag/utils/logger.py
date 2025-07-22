@@ -124,8 +124,8 @@ class Logger(object):
         lines.append(f'Average Best Train: {best_train:.4f}')
         lines.append(f'Average Train @ Best Validation: {train_at_val_best:.4f}')
 
-        final_val = train_mean_curve[-1].item()
-        best_val = train_mean_curve.min().item()
+        final_val = val_mean_curve[-1].item()
+        best_val = val_mean_curve.min().item()
 
         lines.append(f'Average Final Valid: {final_val:.4f}')
         lines.append(f'Average Best Valid: {best_val:.4f}')
