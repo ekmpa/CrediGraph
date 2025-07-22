@@ -69,14 +69,8 @@ class DataArguments:
                 return resolve(files)
             return [resolve(f) for f in files]
 
-        # Resolve both paths
         self.node_file = resolve_paths(self.node_file)
-        print(f'Node file: {self.node_file}')
         self.edge_file = resolve_paths(self.edge_file)
-
-        if self.slice_id is not None:
-            self.node_file = f'/network/scratch/k/kondrupe/crawl-data/{self.slice_id}/output_text_dir/vertices.txt.gz'
-            self.edge_file = f'/network/scratch/k/kondrupe/crawl-data/{self.slice_id}/output_text_dir/edges.txt.gz'
 
 
 @dataclass
