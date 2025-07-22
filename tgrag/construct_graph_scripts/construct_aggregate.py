@@ -4,7 +4,7 @@ import gzip
 import os
 
 from tgrag.utils.data_loading import get_ids_from_set
-from tgrag.utils.load_labels import get_target_set
+from tgrag.utils.load_labels import get_labelled_set, get_target_set
 
 
 def gradual_full(source_base: str, target_base_root: str) -> None:
@@ -32,9 +32,6 @@ def gradual_full(source_base: str, target_base_root: str) -> None:
         if os.path.exists(target_path):
             with gzip.open(target_path, 'rt', encoding='utf-8') as f:
                 combined_data.extend(f.readlines())
-
-        # TO DO: Test: deduplicate lines
-        # combined_data = list(set(combined_data))
 
         with gzip.open(target_path, 'wt', encoding='utf-8') as f:
             f.writelines(combined_data)
@@ -78,6 +75,8 @@ def append_edges(
     if os.path.exists(target_path):
         with gzip.open(target_path, 'rt', encoding='utf-8') as f:
             kept_edges.extend(f.readlines())
+
+    kept_edges = list(set(kept_edges))  # for duplicates
 
     with gzip.open(target_path, 'wt', encoding='utf-8') as f:
         f.writelines(kept_edges)
@@ -129,6 +128,8 @@ def append_nodes(
     with gzip.open(target_path, 'wt', encoding='utf-8') as f:
         f.writelines(kept_vertices)
 
+    kept_vertices = list(set(kept_vertices))  # for duplicates
+
     print(f'[INFO] Kept {len(kept_vertices)} vertices → {target_path}')
     print(
         f'[INFO] Discarded {discarded} vertices that were not in 1-hop neighborhood of wanted set.'
@@ -145,12 +146,12 @@ def gradual_subset(source_base: str, target_base_root: str) -> None:
     os.makedirs(target_base_root, exist_ok=True)
 
     wanted_domains = get_target_set()
+    wanted_domains.update(get_labelled_set())  # the target set may miss some labels
+
     wanted_ids = get_ids_from_set(wanted_domains, source_base)
 
-    # TO DO: aggregate wanted_ids with set from PR/HC sampling (Seb)
-    # Currently, just labelled set
-
     endpoint_ids = append_edges(wanted_ids, source_base, target_base_root)
+    endpoint_ids.update(wanted_ids)  # to get non-connected nodes
     append_nodes(endpoint_ids, source_base, target_base_root)
 
 
