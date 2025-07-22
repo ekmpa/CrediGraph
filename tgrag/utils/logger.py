@@ -109,34 +109,54 @@ class Logger(object):
 
     def get_avg_statistics(self) -> str:
         lines = []
-        avg = torch.tensor(self.results).mean(dim=0)
+        results_tensor = torch.tensor(self.results)  # shape: (runs, epochs, 3)
+        avg = results_tensor.mean(dim=0)  # shape: (epochs, 3)
+        std = results_tensor.std(dim=0)  # shape: (epochs, 3)
 
-        train_mean_curve = avg[:, 0]
-        val_mean_curve = avg[:, 1]
-        test_mean_curve = avg[:, 2]
+        train_mean_curve, val_mean_curve, test_mean_curve = (
+            avg[:, 0],
+            avg[:, 1],
+            avg[:, 2],
+        )
+        train_std_curve, val_std_curve, test_std_curve = std[:, 0], std[:, 1], std[:, 2]
+
+        best_val_idx = val_mean_curve.argmin()
 
         final_train = train_mean_curve[-1].item()
+        final_train_std = train_std_curve[-1].item()
+        final_val = val_mean_curve[-1].item()
+        final_val_std = val_std_curve[-1].item()
+        final_test = test_mean_curve[-1].item()
+        final_test_std = test_std_curve[-1].item()
+
         best_train = train_mean_curve.min().item()
-        train_at_val_best = train_mean_curve[val_mean_curve.argmin()].item()
+        best_train_std = train_std_curve[train_mean_curve.argmin()].item()
+        best_val = val_mean_curve[best_val_idx].item()
+        best_val_std = val_std_curve[best_val_idx].item()
+        best_test = test_mean_curve.min().item()
+        best_test_std = test_std_curve[test_mean_curve.argmin()].item()
+
+        train_at_val_best = train_mean_curve[best_val_idx].item()
+        train_at_val_best_std = train_std_curve[best_val_idx].item()
+        test_at_val_best = test_mean_curve[best_val_idx]
+        test_at_val_best_std = test_std_curve[best_val_idx]
 
         lines.append('Average Across Runs')
-        lines.append(f'Average Final Train: {final_train:.4f}')
-        lines.append(f'Average Best Train: {best_train:.4f}')
-        lines.append(f'Average Train @ Best Validation: {train_at_val_best:.4f}')
-
-        final_val = val_mean_curve[-1].item()
-        best_val = val_mean_curve.min().item()
-
-        lines.append(f'Average Final Valid: {final_val:.4f}')
-        lines.append(f'Average Best Valid: {best_val:.4f}')
-        lines.append(f'Best Validation: {train_at_val_best:.4f}')
-
-        final_test = test_mean_curve[-1].item()
-        best_test = test_mean_curve.min().item()
-        test_at_val_best = test_mean_curve[val_mean_curve.argmin()].item()
-
-        lines.append(f'Average Final Test: {final_test:.4f}')
-        lines.append(f'Average Best Test: {best_test:.4f}')
-        lines.append(f'Average Test @ Best Validation: {test_at_val_best:.4f}')
+        lines.append(f'Average Final Train: {final_train:.4f} ± {final_train_std:.4f}')
+        lines.append(f'Average Best Train: {best_train:.4f} ± {best_train_std:.4f}')
+        lines.append(
+            f'Train @ Best Validation: {train_at_val_best:.4f} ± {train_at_val_best_std:.4f}'
+        )
+        lines.append('')
+        lines.append(f'Average Final Valid: {final_val:.4f} ± {final_val_std:.4f}')
+        lines.append(
+            f'Best Validation (lowest avg val): {best_val:.4f} ± {best_val_std:.4f}'
+        )
+        lines.append('')
+        lines.append(f'Average Final Test: {final_test:.4f} ± {final_test_std:.4f}')
+        lines.append(f'Average Best Test: {best_test:.4f} ± {best_test_std:.4f}')
+        lines.append(
+            f'Test @ Best Validation: {test_at_val_best:.4f} ± {test_at_val_best_std:.4f}'
+        )
 
         return '\n'.join(lines)
