@@ -13,21 +13,6 @@ class MetaArguments:
     log_file_path: Optional[str] = field(
         metadata={'help': 'Path to the log file to use.'},
     )
-    global_seed: int = field(
-        default=1337,
-        metadata={'help': 'Random seed to use for reproducibiility.'},
-    )
-
-    def __post_init__(self) -> None:
-        if self.log_file_path is not None:
-            self.log_file_path = str(get_root_dir() / self.log_file_path)
-
-
-@dataclass
-class DataArguments:
-    task_name: str = field(
-        metadata={'help': 'The name of the task to train on'},
-    )
     node_file: Union[str, List[str]] = field(
         metadata={
             'help': 'A csv or list of csv files containing the nodes of the graph.'
@@ -38,17 +23,9 @@ class DataArguments:
             'help': 'A csv or list of csv files containing the nodes of the graph.'
         },
     )
-    num_test_shards: int = field(
-        metadata={'help': 'Number of test splits to do for uncertainty estimates.'},
-        default=1,
-    )
-    slice_id: str | None = field(
-        metadata={'help': 'Slice ID to use for topological experiments.'},
-        default=None,
-    )
-    is_regression: bool = field(
-        default=False,
-        metadata={'help': 'Is the task a regression or classification problem'},
+    global_seed: int = field(
+        default=1337,
+        metadata={'help': 'Random seed to use for reproducibiility.'},
     )
     is_scratch_location: bool = field(
         default=False,
@@ -71,6 +48,24 @@ class DataArguments:
 
         self.node_file = resolve_paths(self.node_file)
         self.edge_file = resolve_paths(self.edge_file)
+
+        if self.log_file_path is not None:
+            self.log_file_path = str(get_root_dir() / self.log_file_path)
+
+
+@dataclass
+class DataArguments:
+    task_name: str = field(
+        metadata={'help': 'The name of the task to train on'},
+    )
+    num_test_shards: int = field(
+        metadata={'help': 'Number of test splits to do for uncertainty estimates.'},
+        default=1,
+    )
+    is_regression: bool = field(
+        default=False,
+        metadata={'help': 'Is the task a regression or classification problem'},
+    )
 
 
 @dataclass
