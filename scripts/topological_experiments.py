@@ -1,5 +1,6 @@
 import argparse
 import csv
+import gzip
 import logging
 import statistics
 from collections import Counter, defaultdict
@@ -18,13 +19,11 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     '--node-file',
     type=str,
-    default='data/crawl-data/manual/temporal_nodes.csv',
     help='Path to file containing raw node file in CSV format',
 )
 parser.add_argument(
     '--edge-file',
     type=str,
-    default='data/crawl-data/manual/temporal_edges.csv',
     help='Path to file containing raw edge file in CSV format',
 )
 parser.add_argument(
@@ -41,13 +40,15 @@ parser.add_argument(
 
 
 def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> None:
-    id_to_domain = {}  # This may cause RAM issues when are data becomes large (MILA clusters may handle it.)
+    id_to_domain = {}
 
-    with open(node_file, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in tqdm(reader, desc='Collecting node file node_id/domain'):
-            node_id = row['node_id'].strip()
-            domain = row['domain'].strip()
+    open_node = gzip.open if node_file.endswith('.gz') else open
+    with open_node(node_file, 'rt', encoding='utf-8') as f:
+        for line in tqdm(f, desc='Collecting node file node_id/domain'):
+            parts = line.strip().split()
+            if len(parts) != 2:
+                continue
+            node_id, domain = parts
             id_to_domain[node_id] = domain
 
     logging.info(f'Edge file: {edge_file}')
@@ -57,13 +58,13 @@ def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> N
 
     edge_count = 0
 
-    with (
-        open(edge_file, 'r', encoding='utf-8') as in_f,
-    ):
-        reader = csv.DictReader(in_f)
-        for row in tqdm(reader, desc='Collecting src/dst node_ids'):
-            src_id = row['src']
-            dst_id = row['dst']
+    open_edge = gzip.open if edge_file.endswith('.gz') else open
+    with open_edge(edge_file, 'rt', encoding='utf-8') as f:
+        for line in tqdm(f, desc='Collecting src/dst node_ids'):
+            parts = line.strip().split()
+            if len(parts) != 2:
+                continue
+            src_id, dst_id = parts
             if outdegree:
                 degree_counter[src_id] += 1
             else:
