@@ -21,6 +21,12 @@ MODEL_CLASSES: Dict[str, Type[torch.nn.Module]] = {
     'SAGE': SAGE,
 }
 
+ENCODER_MAPPING: Dict[str, int] = {
+    'random': 0,
+    'pr_val': 1,
+    'hc_val': 2,
+}
+
 
 def save_loss_results(
     loss_tuple_run: List[List[Tuple[float, float, float]]],
@@ -95,6 +101,9 @@ def run_gnn_baseline_full_batch(
 
     data = dataset[0]
     data.y = data.y.squeeze(1)
+    data.x = data.x[:, ENCODER_MAPPING[data_arguments.initial_encoding_col]].unsqueeze(
+        -1
+    )
     data = data.to(device)
     split_idx = dataset.get_idx_split()
     train_idx = split_idx['train'].to(device)
