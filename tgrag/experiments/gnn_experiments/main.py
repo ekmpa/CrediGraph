@@ -57,7 +57,7 @@ def main() -> None:
         encoding_dict[index] = encoder_class
 
     dataset = TemporalDataset(
-        root=f'{root}/data/crawl-data/temporal',
+        root=f'{root}/data/',
         node_file=cast(str, meta_args.node_file),
         edge_file=cast(str, meta_args.edge_file),
         encoding=encoding_dict,
