@@ -111,8 +111,8 @@ def run_gnn_baseline(
     train_loader = NeighborLoader(
         data,
         input_nodes=split_idx['train'],
-        num_neighbors=[15, 10],
-        batch_size=128,
+        num_neighbors=model_arguments.num_neighbors,
+        batch_size=model_arguments.batch_size,
         shuffle=True,
         num_workers=4,
         pin_memory=True,
@@ -123,8 +123,8 @@ def run_gnn_baseline(
     val_loader = NeighborLoader(
         data,
         input_nodes=split_idx['valid'],
-        num_neighbors=[15, 10],
-        batch_size=128,
+        num_neighbors=model_arguments.num_neighbors,
+        batch_size=model_arguments.batch_size,
         shuffle=True,
         num_workers=4,
         pin_memory=True,
@@ -135,8 +135,8 @@ def run_gnn_baseline(
     test_loader = NeighborLoader(
         data,
         input_nodes=split_idx['test'],
-        num_neighbors=[15, 10],
-        batch_size=128,
+        num_neighbors=model_arguments.num_neighbors,
+        batch_size=model_arguments.batch_size,
         shuffle=True,
         num_workers=4,
         pin_memory=True,
