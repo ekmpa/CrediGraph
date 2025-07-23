@@ -1,12 +1,13 @@
 import logging
 import pickle
-from typing import Dict, List, Tuple, Type, cast
+from typing import Dict, List, Tuple, Type
 
 import torch
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
+from tgrag.dataset.temporal_dataset import TemporalDataset
 from tgrag.encoders.encoder import Encoder
 from tgrag.encoders.norm_encoding import NormEncoder
 from tgrag.encoders.rni_encoding import RNIEncoder
@@ -56,7 +57,7 @@ def train(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         batch = batch.to(device)
         out = model(batch.x, batch.edge_index)
-        #TODO: How many are negative in the output per batch?
+        # TODO: How many are negative in the output per batch?
         loss = F.mse_loss(out.squeeze(), batch.y)
         loss.backward()
         optimizer.step()
@@ -79,7 +80,7 @@ def evaluate(
         batch = batch.to(device)
         out = model(batch.x, batch.edge_index)
         loss = F.mse_loss(out.squeeze(), batch.y)
-        logging.info(f"Model predict: {out.squeeze()[0:10]}, label: {batch.y[0:10]}")
+        logging.info(f'Model predict: {out.squeeze()[0:10]}, label: {batch.y[0:10]}')
         total_loss += loss.item() * batch.y.size(0)
         total_nodes += batch.y.size(0)
 
@@ -89,7 +90,11 @@ def evaluate(
 def run_gnn_baseline(
     data_arguments: DataArguments,
     model_arguments: ModelArguments,
+    dataset: TemporalDataset,
 ) -> None:
+    data = dataset[0]
+    data.y = data.y.squeeze(1)
+    split_idx = dataset.get_idx_split()
     logging.info(
         'Setting up training for task of: %s on model: %s',
         data_arguments.task_name,
@@ -97,7 +102,6 @@ def run_gnn_baseline(
     )
     device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
     device = torch.device(device)
-
 
     model_class = MODEL_CLASSES[model_arguments.model]
     logging.info(f'Training set size: {split_idx["train"].size()}')
@@ -171,6 +175,6 @@ def run_gnn_baseline(
     logging.info(logger.get_statistics())
     logging.info(logger.get_avg_statistics())
     logging.info('Constructing RMSE plots')
-    plot_avg_rmse_loss(loss_tuple_run, model_arguments.model, model_arguments.encoder)
+    plot_avg_rmse_loss(loss_tuple_run, model_arguments.model, 'TODO')
     logging.info('Saving pkl of results')
-    save_loss_results(loss_tuple_run, model_arguments.model, model_arguments.encoder)
+    save_loss_results(loss_tuple_run, model_arguments.model, 'TODO')
