@@ -24,8 +24,10 @@ class MetaArguments:
         },
     )
     encoder_dict: Dict[str, str] = field(
-        default={'random': 'RNI', 'pr_val': 'NORM', 'hc_val': 'NORM'},
-        metadata={'help': 'Node encoder dictionary defines which column is encoded by which encoder. Key: column, Value: Encoder'},
+        default_factory=lambda: {'random': 'RNI', 'pr_val': 'NORM'},
+        metadata={
+            'help': 'Node encoder dictionary defines which column is encoded by which encoder. Key: column, Value: Encoder'
+        },
     )
     global_seed: int = field(
         default=1337,
@@ -61,6 +63,9 @@ class MetaArguments:
 class DataArguments:
     task_name: str = field(
         metadata={'help': 'The name of the task to train on'},
+    )
+    initial_encoding_col: str = field(
+        default='random', metadata={'help': 'The initial input to the GNN.'}
     )
     num_test_shards: int = field(
         metadata={'help': 'Number of test splits to do for uncertainty estimates.'},
