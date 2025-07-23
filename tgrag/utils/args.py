@@ -23,6 +23,10 @@ class MetaArguments:
             'help': 'A csv or list of csv files containing the nodes of the graph.'
         },
     )
+    encoder_dict: Dict[str, str] = field(
+        default={'random': 'RNI', 'pr_val': 'NORM', 'hc_val': 'NORM'},
+        metadata={'help': 'Node encoder dictionary defines which column is encoded by which encoder. Key: column, Value: Encoder'},
+    )
     global_seed: int = field(
         default=1337,
         metadata={'help': 'Random seed to use for reproducibiility.'},
@@ -73,13 +77,6 @@ class ModelArguments:
     model: str = field(
         default='GCN',
         metadata={'help': 'Model identifer for the GNN.'},
-    )
-    encoder: str = field(
-        default='RNI', metadata={'help': 'Encoder identifer for node encoding.'}
-    )
-    encoder_col: str = field(
-        default='random',
-        metadata={'help': 'The column for which the encoder will encoder.'},
     )
     num_layers: int = field(
         default=3,
