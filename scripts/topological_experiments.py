@@ -3,7 +3,7 @@ import csv
 import logging
 import statistics
 from collections import Counter, defaultdict
-from typing import DefaultDict, List, Optional
+from typing import DefaultDict, Dict, List, Optional
 
 from tqdm import tqdm
 
@@ -64,9 +64,9 @@ def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> N
         for row in tqdm(reader, desc='Collecting src/dst node_ids'):
             src_id = row['src']
             dst_id = row['dst']
-            if outdegree:
+            if outdegree and src_id in id_to_domain:
                 degree_counter[src_id] += 1
-            else:
+            elif not outdegree and dst_id in id_to_domain:
                 degree_counter[dst_id] += 1
             unique_nodes.add(src_id)
             unique_nodes.add(dst_id)
@@ -77,13 +77,20 @@ def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> N
     logging.info(f'Total unique nodes: {len(unique_nodes):,}')
 
     degrees = list(degree_counter.values())
-    experiment_name = 'in-degree' if outdegree else 'out-degree'
+    experiment_name = 'out-degree' if outdegree else 'in-degree'
+    logging.info(f'Experiment: {experiment_name}')
     plot_degree_distribution(degrees, experiment_name)
 
     if not degrees:
         logging.info('No degrees calculated. Exiting.')
         return
 
+    get_quartiles(degrees, degree_counter, id_to_domain)
+
+
+def get_quartiles(
+    degrees: List[int], degree_counter: Counter[str], id_to_domain: Dict[str, str]
+) -> None:
     max_deg = max(degrees)
     min_deg = min(degrees)
     max_nodes = [nid for nid, deg in degree_counter.items() if deg == max_deg]
@@ -108,7 +115,6 @@ def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> N
     )
     q4_count = sum(1 for d in degrees if q3 is not None and d > q3)
 
-    logging.info(f'Experiment: {experiment_name}')
     logging.info(f'Max degree: {max_deg}')
     if max_nodes:
         example_max_nid = max_nodes[0]
