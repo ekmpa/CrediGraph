@@ -3,7 +3,8 @@ import csv
 import logging
 import statistics
 from collections import Counter, defaultdict
-from typing import DefaultDict, List, Tuple
+
+from typing import DefaultDict, Dict, List, Optional
 
 from tqdm import tqdm
 
@@ -50,7 +51,6 @@ def compute_degree_stats(
         unique_nodes.update([src, dst])
     return counter, unique_nodes, len(edges)
 
-
 def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> None:
     id_to_domain, _ = load_node_domain_map(node_file)
     edges = load_edges(edge_file)
@@ -67,6 +67,12 @@ def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> N
         logging.info('No degrees calculated. Exiting.')
         return
 
+    get_quartiles(degrees, degree_counter, id_to_domain)
+
+
+def get_quartiles(
+    degrees: List[int], degree_counter: Counter[str], id_to_domain: Dict[str, str]
+) -> None:
     max_deg = max(degrees)
     min_deg = min(degrees)
     mean_deg = statistics.mean(degrees)
@@ -74,7 +80,6 @@ def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> N
     max_nodes = [nid for nid, deg in degree_counter.items() if deg == max_deg]
     min_nodes = [nid for nid, deg in degree_counter.items() if deg == min_deg]
 
-    logging.info(f'Experiment: {experiment_name}')
     logging.info(f'Max degree: {max_deg}')
     logging.info(f'Min degree: {min_deg}')
     logging.info(f'Mean degree: {mean_deg:.2f}')

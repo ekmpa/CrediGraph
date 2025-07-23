@@ -1,15 +1,12 @@
 import logging
 import pickle
-from typing import Dict, List, Tuple, Type, cast
+from typing import Dict, List, Tuple, Type
 
 import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
-from tgrag.encoders.encoder import Encoder
-from tgrag.encoders.norm_encoding import NormEncoder
-from tgrag.encoders.rni_encoding import RNIEncoder
 from tgrag.gnn.GAT import GAT
 from tgrag.gnn.gCon import GCN
 from tgrag.gnn.SAGE import SAGE
@@ -24,9 +21,10 @@ MODEL_CLASSES: Dict[str, Type[torch.nn.Module]] = {
     'SAGE': SAGE,
 }
 
-ENCODER_CLASSES: Dict[str, Encoder] = {
-    'RNI': RNIEncoder(),
-    'Norm': NormEncoder(),
+ENCODER_MAPPING: Dict[str, int] = {
+    'random': 0,
+    'pr_val': 1,
+    'hc_val': 2,
 }
 
 
@@ -87,6 +85,7 @@ def evaluate(
 def run_gnn_baseline_full_batch(
     data_arguments: DataArguments,
     model_arguments: ModelArguments,
+    dataset: TemporalDataset,
 ) -> None:
     logging.info('Running Full-Batch')
     logging.info(
@@ -98,26 +97,13 @@ def run_gnn_baseline_full_batch(
     logging.info(f'Using device: {device}')
     device = torch.device(device)
 
-    root_dir = get_root_dir()
-
     model_class = MODEL_CLASSES[model_arguments.model]
-    encoder_class = ENCODER_CLASSES[model_arguments.encoder]
-    logging.info(
-        'Encoder: %s is used on column: %s',
-        model_arguments.encoder,
-        model_arguments.encoder_col,
-    )
 
-    encoding_dict: Dict[str, Encoder] = {model_arguments.encoder_col: encoder_class}
-
-    dataset = TemporalDataset(
-        root=f'{root_dir}/data/crawl-data/temporal',
-        node_file=cast(str, data_arguments.node_file),
-        edge_file=cast(str, data_arguments.edge_file),
-        encoding=encoding_dict,
-    )
     data = dataset[0]
     data.y = data.y.squeeze(1)
+    data.x = data.x[:, ENCODER_MAPPING[data_arguments.initial_encoding_col]].unsqueeze(
+        -1
+    )
     data = data.to(device)
     split_idx = dataset.get_idx_split()
     train_idx = split_idx['train'].to(device)
@@ -153,6 +139,6 @@ def run_gnn_baseline_full_batch(
 
     logging.info(logger.get_statistics())
     logging.info('Constructing RMSE plots')
-    plot_avg_rmse_loss(loss_tuple_run, model_arguments.model, model_arguments.encoder)
+    plot_avg_rmse_loss(loss_tuple_run, model_arguments.model, 'todo')
     logging.info('Saving pkl of results')
-    save_loss_results(loss_tuple_run, model_arguments.model, model_arguments.encoder)
+    save_loss_results(loss_tuple_run, model_arguments.model, 'todo')
