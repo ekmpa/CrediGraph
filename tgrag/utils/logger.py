@@ -1,4 +1,5 @@
 import logging
+import statistics
 from typing import Any, List, Optional, Tuple
 
 import torch
@@ -160,3 +161,37 @@ class Logger(object):
         )
 
         return '\n'.join(lines)
+
+
+def log_quartiles(degrees: List[int], label: str) -> None:
+    if len(degrees) < 4:
+        logging.info(f'Not enough data points to compute quartiles for {label}.')
+        return
+
+    q1, q2, q3 = statistics.quantiles(degrees, n=4)
+    q1_count = sum(1 for d in degrees if d <= q1)
+    q2_count = sum(1 for d in degrees if q1 < d <= q2)
+    q3_count = sum(1 for d in degrees if q2 < d <= q3)
+    q4_count = sum(1 for d in degrees if d > q3)
+
+    logging.info(f'{label} Quartiles: Q1={q1:.2f}, Q2={q2:.2f}, Q3={q3:.2f}')
+    logging.info(f'  Q1: {q1_count} nodes')
+    logging.info(f'  Q2: {q2_count} nodes')
+    logging.info(f'  Q3: {q3_count} nodes')
+    logging.info(f'  Q4: {q4_count} nodes')
+
+    q4_degrees = [d for d in degrees if d > q3]
+    if len(q4_degrees) >= 4:
+        q4_q1, q4_q2, q4_q3 = statistics.quantiles(q4_degrees, n=4)
+        q4_sub_counts = [
+            sum(1 for d in q4_degrees if d <= q4_q1),
+            sum(1 for d in q4_degrees if q4_q1 < d <= q4_q2),
+            sum(1 for d in q4_degrees if q4_q2 < d <= q4_q3),
+            sum(1 for d in q4_degrees if d > q4_q3),
+        ]
+        logging.info('  Q4 Breakdown:')
+        for i, count in enumerate(q4_sub_counts, 1):
+            logging.info(f'    Q4.{i}: {count} nodes')
+        logging.info(f'    Mean (Q4): {statistics.mean(q4_degrees):.2f}')
+    else:
+        logging.info('  Not enough nodes in Q4 to compute sub-quartiles.')

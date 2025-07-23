@@ -3,11 +3,13 @@ import csv
 import logging
 import statistics
 from collections import Counter, defaultdict
+
 from typing import DefaultDict, Dict, List, Optional
 
 from tqdm import tqdm
 
-from tgrag.utils.logger import setup_logging
+from tgrag.utils.data_loading import load_edges, load_node_domain_map
+from tgrag.utils.logger import log_quartiles, setup_logging
 from tgrag.utils.path import get_root_dir
 from tgrag.utils.plot import plot_degree_distribution, plot_domain_scores
 
@@ -18,14 +20,12 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     '--node-file',
     type=str,
-    default='data/crawl-data/manual/temporal_nodes.csv',
-    help='Path to file containing raw node file in CSV format',
+    help="Path to raw node file, from a slice's output/ dir (.txt.gz)",
 )
 parser.add_argument(
     '--edge-file',
     type=str,
-    default='data/crawl-data/manual/temporal_edges.csv',
-    help='Path to file containing raw edge file in CSV format',
+    help="Path to raw edge file, from a slice's output/ dir (.txt.gz)",
 )
 parser.add_argument(
     '--outdegree',
@@ -40,45 +40,27 @@ parser.add_argument(
 )
 
 
-def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> None:
-    id_to_domain = {}  # This may cause RAM issues when are data becomes large (MILA clusters may handle it.)
-
-    with open(node_file, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in tqdm(reader, desc='Collecting node file node_id/domain'):
-            node_id = row['node_id'].strip()
-            domain = row['domain'].strip()
-            id_to_domain[node_id] = domain
-
-    logging.info(f'Edge file: {edge_file}')
-
-    degree_counter: Counter[str] = Counter()
+def compute_degree_stats(
+    edges: List[Tuple[str, str]], outdegree: bool
+) -> Tuple[Counter, set, int]:
+    counter: Counter[str] = Counter()
     unique_nodes = set()
+    for src, dst in edges:
+        node = src if outdegree else dst
+        counter[node] += 1
+        unique_nodes.update([src, dst])
+    return counter, unique_nodes, len(edges)
 
-    edge_count = 0
-
-    with (
-        open(edge_file, 'r', encoding='utf-8') as in_f,
-    ):
-        reader = csv.DictReader(in_f)
-        for row in tqdm(reader, desc='Collecting src/dst node_ids'):
-            src_id = row['src']
-            dst_id = row['dst']
-            if outdegree and src_id in id_to_domain:
-                degree_counter[src_id] += 1
-            elif not outdegree and dst_id in id_to_domain:
-                degree_counter[dst_id] += 1
-            unique_nodes.add(src_id)
-            unique_nodes.add(dst_id)
-
-            edge_count += 1
+def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> None:
+    id_to_domain, _ = load_node_domain_map(node_file)
+    edges = load_edges(edge_file)
+    degree_counter, unique_nodes, edge_count = compute_degree_stats(edges, outdegree)
 
     logging.info(f'Total edges processed: {edge_count:,}')
     logging.info(f'Total unique nodes: {len(unique_nodes):,}')
 
     degrees = list(degree_counter.values())
     experiment_name = 'out-degree' if outdegree else 'in-degree'
-    logging.info(f'Experiment: {experiment_name}')
     plot_degree_distribution(degrees, experiment_name)
 
     if not degrees:
@@ -93,96 +75,27 @@ def get_quartiles(
 ) -> None:
     max_deg = max(degrees)
     min_deg = min(degrees)
-    max_nodes = [nid for nid, deg in degree_counter.items() if deg == max_deg]
-    min_nodes = [nid for nid, deg in degree_counter.items() if deg == min_deg]
     mean_deg = statistics.mean(degrees)
 
-    q1: Optional[float]
-    q2: Optional[float]
-    q3: Optional[float]
-
-    if len(degrees) >= 4:
-        q1, q2, q3 = statistics.quantiles(degrees, n=4)
-    else:
-        q1 = q2 = q3 = None
-
-    q1_count = sum(1 for d in degrees if q1 is not None and d <= q1)
-    q2_count = sum(
-        1 for d in degrees if q1 is not None and q2 is not None and q1 < d <= int(q2)
-    )
-    q3_count = sum(
-        1 for d in degrees if q2 is not None and q3 is not None and q2 < d <= int(q3)
-    )
-    q4_count = sum(1 for d in degrees if q3 is not None and d > q3)
+    max_nodes = [nid for nid, deg in degree_counter.items() if deg == max_deg]
+    min_nodes = [nid for nid, deg in degree_counter.items() if deg == min_deg]
 
     logging.info(f'Max degree: {max_deg}')
-    if max_nodes:
-        example_max_nid = max_nodes[0]
-        domain = id_to_domain.get(example_max_nid, 'N/A')
-        logging.info(
-            f'  Example Node ID with max degree: {example_max_nid} Domain: {domain}'
-        )
-
     logging.info(f'Min degree: {min_deg}')
-    if min_nodes:
-        example_min_nid = min_nodes[0]
-        domain = id_to_domain.get(example_min_nid, 'N/A')
+    logging.info(f'Mean degree: {mean_deg:.2f}')
+
+    if max_nodes:
+        node = max_nodes[0]
         logging.info(
-            f'  Example Node ID with min degree: {example_min_nid} Domain: {domain}'
+            f'  Example max node: {node}, Domain: {id_to_domain.get(node, "N/A")}'
+        )
+    if min_nodes:
+        node = min_nodes[0]
+        logging.info(
+            f'  Example min node: {node}, Domain: {id_to_domain.get(node, "N/A")}'
         )
 
-    logging.info(f'Mean degree: {mean_deg:.2f}')
-    if q1 is not None:
-        degrees_sorted = sorted(degrees)
-        q1_range = (degrees_sorted[0], q1)
-        q2_range = (q1, q2)
-        q3_range = (q2, q3)
-        q4_range = (q3, degrees_sorted[-1])
-
-        logging.info(f'Quartiles: Q1={q1}, Q2={q2}, Q3={q3}')
-        logging.info(f'Nodes in quartiles:')
-        logging.info(f'  Q1: {q1_count} (range: {q1_range[0]} - {q1_range[1]:.2f})')
-        logging.info(f'  Q2: {q2_count} (range: {q2_range[0]:.2f} - {q2_range[1]:.2f})')
-        logging.info(f'  Q3: {q3_count} (range: {q3_range[0]:.2f} - {q3_range[1]:.2f})')
-        logging.info(f'  Q4: {q4_count} (range: {q4_range[0]:.2f} - {q4_range[1]})')
-
-        # Analyze Q4 separately
-        q4_degrees = [d for d in degrees if q3 is not None and int(d) > q3]
-        if len(q4_degrees) >= 4:
-            q4_q1, q4_q2, q4_q3 = statistics.quantiles(q4_degrees, n=4)
-            q4_sorted = sorted(q4_degrees)
-
-            q4_subq1_range = (q4_sorted[0], q4_q1)
-            q4_subq2_range = (q4_q1, q4_q2)
-            q4_subq3_range = (q4_q2, q4_q3)
-            q4_subq4_range = (q4_q3, q4_sorted[-1])
-
-            q4_subq1 = sum(1 for d in q4_degrees if d <= q4_q1)
-            q4_subq2 = sum(1 for d in q4_degrees if q4_q1 < d <= q4_q2)
-            q4_subq3 = sum(1 for d in q4_degrees if q4_q2 < d <= q4_q3)
-            q4_subq4 = sum(1 for d in q4_degrees if d > q4_q3)
-
-            mean_q4 = statistics.mean(q4_degrees)
-
-            logging.info(f'\n  Q4 Breakdown (sub-quartiles of Q4):')
-            logging.info(
-                f'     Q4.1: {q4_subq1} (range: {q4_subq1_range[0]:.2f} - {q4_subq1_range[1]:.2f})'
-            )
-            logging.info(
-                f'     Q4.2: {q4_subq2} (range: {q4_subq2_range[0]:.2f} - {q4_subq2_range[1]:.2f})'
-            )
-            logging.info(
-                f'     Q4.3: {q4_subq3} (range: {q4_subq3_range[0]:.2f} - {q4_subq3_range[1]:.2f})'
-            )
-            logging.info(
-                f'     Q4.4: {q4_subq4} (range: {q4_subq4_range[0]:.2f} - {q4_subq4_range[1]:.2f})'
-            )
-            logging.info(f'     Mean degree (Q4): {mean_q4:.2f}')
-        else:
-            logging.info('  Not enough nodes in Q4 to compute sub-quartiles.')
-    else:
-        logging.info('Not enough data points to compute quartiles.')
-    logging.info('---')
+    log_quartiles(degrees, experiment_name)
 
 
 def analyze_domain_pc1_distribution(csv_file: str) -> None:
@@ -197,7 +110,6 @@ def analyze_domain_pc1_distribution(csv_file: str) -> None:
                 pc1 = float(row['pc1'])
             except ValueError:
                 continue
-
             if domain.endswith('.gov'):
                 gov_scores.append(pc1)
             elif domain.endswith('.org'):
@@ -207,50 +119,123 @@ def analyze_domain_pc1_distribution(csv_file: str) -> None:
     logging.info(f'Total .org domains: {len(org_scores)}')
     plot_domain_scores(gov_scores, org_scores)
 
-    def report_quartiles(scores: List[float], label: str) -> None:
+    for scores, label in [(gov_scores, '.gov'), (org_scores, '.org')]:
         if len(scores) < 4:
             logging.info(f'Not enough {label} scores to compute quartiles.')
-            return
+            continue
 
         scores_sorted = sorted(scores)
         q1, q2, q3 = statistics.quantiles(scores_sorted, n=4)
-
-        q1_range = (scores_sorted[0], q1)
-        q2_range = (q1, q2)
-        q3_range = (q2, q3)
-        q4_range = (q3, scores_sorted[-1])
+        mean_score = statistics.mean(scores_sorted)
 
         quartile_counts: DefaultDict[str, int] = defaultdict(int)
-
         for score in scores_sorted:
             if score <= q1:
                 quartile_counts['Q1'] += 1
-            elif q1 < score <= q2:
+            elif score <= q2:
                 quartile_counts['Q2'] += 1
-            elif q2 < score <= q3:
+            elif score <= q3:
                 quartile_counts['Q3'] += 1
             else:
                 quartile_counts['Q4'] += 1
 
         logging.info(f'\n{label} domains quartile distribution:')
-        logging.info(
-            f'  Q1 (lowest): {quartile_counts["Q1"]} (range: {q1_range[0]:.4f} - {q1_range[1]:.4f})'
-        )
-        logging.info(
-            f'  Q2: {quartile_counts["Q2"]} (range: {q2_range[0]:.4f} - {q2_range[1]:.4f})'
-        )
-        logging.info(
-            f'  Q3: {quartile_counts["Q3"]} (range: {q3_range[0]:.4f} - {q3_range[1]:.4f})'
-        )
-        logging.info(
-            f'  Q4 (highest): {quartile_counts["Q4"]} (range: {q4_range[0]:.4f} - {q4_range[1]:.4f})'
-        )
-        logging.info(f'  Mean score: {statistics.mean(scores_sorted):.4f}')
+        for q in ['Q1', 'Q2', 'Q3', 'Q4']:
+            logging.info(f'  {q}: {quartile_counts[q]}')
+        logging.info(f'  Mean score: {mean_score:.4f}')
         logging.info(f'  Min score: {scores_sorted[0]:.4f}')
         logging.info(f'  Max score: {scores_sorted[-1]:.4f}')
 
-    report_quartiles(gov_scores, '.gov')
-    report_quartiles(org_scores, '.org')
+
+def analyze_subdomain_distribution(node_file: str, edge_file: str) -> None:
+    id_to_domain, domain_to_id = load_node_domain_map(node_file)
+    edges = load_edges(edge_file)
+
+    mother_to_subdomains = defaultdict(set)
+    domain_to_mother = {}
+
+    for domain in domain_to_id:
+        parts = domain.split('.')
+        if len(parts) >= 3:
+            # domain = flip(domain)
+            # ext = tldextract.extract(domain)
+            # mother = f"{ext.domain}.{ext.suffix}"
+            mother = '.'.join(parts[:2])
+            mother_to_subdomains[mother].add(domain)
+            domain_to_mother[domain] = mother
+
+    num_mothers = len(mother_to_subdomains)
+    total_subs = sum(len(s) for s in mother_to_subdomains.values())
+    avg_subs = total_subs / num_mothers if num_mothers else 0
+
+    logging.info(f'Total mother domains with subdomains: {num_mothers}')
+    logging.info(f'Total subdomains: {total_subs}')
+    logging.info(f'Average subdomains per mother: {avg_subs:.2f}')
+
+    sub_ids = {
+        domain_to_id[sub]
+        for subs in mother_to_subdomains.values()
+        for sub in subs
+        if sub in domain_to_id
+    }
+    logging.info(f'Unique nodes that are subdomains: {len(sub_ids)}')
+    logging.info(f'Total nodes: {len(id_to_domain)}')
+    logging.info(
+        f'Total nodes if subdomains collapsed to mothers: {len(id_to_domain) - len(sub_ids) + num_mothers}'
+    )
+
+    in_deg: DefaultDict[str, int] = defaultdict(int)
+    out_deg: DefaultDict[str, int] = defaultdict(int)
+    internal_edges = external_edges = 0
+
+    for src, dst in tqdm(edges, desc='Analyzing subdomain edges'):
+        src_dom = id_to_domain.get(src)
+        dst_dom = id_to_domain.get(dst)
+        src_mother = domain_to_mother.get(src_dom)
+        dst_mother = domain_to_mother.get(dst_dom)
+
+        if src_dom in domain_to_mother or dst_dom in domain_to_mother:
+            if src_mother and dst_mother and src_mother == dst_mother:
+                internal_edges += 1
+            else:
+                external_edges += 1
+
+        out_deg[src] += 1
+        in_deg[dst] += 1
+
+    logging.info(f'Total edges involving subdomains: {internal_edges + external_edges}')
+    logging.info(f'  Internal: {internal_edges}')
+    logging.info(f'  External: {external_edges}')
+
+    categories: dict[str, Tuple[List[int], List[int]]] = {
+        'Subdomains': ([], []),
+        'Mother domains': ([], []),
+        'Other domains': ([], []),
+    }
+
+    for node_id, domain in id_to_domain.items():
+        in_d = in_deg.get(node_id, 0)
+        out_d = out_deg.get(node_id, 0)
+        if domain in domain_to_mother:
+            categories['Subdomains'][0].append(in_d)
+            categories['Subdomains'][1].append(out_d)
+        elif domain in mother_to_subdomains:
+            categories['Mother domains'][0].append(in_d)
+            categories['Mother domains'][1].append(out_d)
+        else:
+            categories['Other domains'][0].append(in_d)
+            categories['Other domains'][1].append(out_d)
+
+    for label, (in_list, out_list) in categories.items():
+        if not in_list and not out_list:
+            logging.info(f'{label}: No nodes found.')
+            continue
+        logging.info(f'{label}:')
+        if in_list:
+            logging.info(f'  Avg in-degree: {statistics.mean(in_list):.2f}')
+        if out_list:
+            logging.info(f'  Avg out-degree: {statistics.mean(out_list):.2f}')
+        logging.info(f'  Total nodes: {len(in_list)}')
 
 
 def run_topological_experiment() -> None:
@@ -260,6 +245,7 @@ def run_topological_experiment() -> None:
     topological_experiment(args.edge_file, args.node_file, args.outdegree)
     pc1_path = f'{root}/data/dqr/domain_pc1.csv'
     analyze_domain_pc1_distribution(pc1_path)
+    analyze_subdomain_distribution(args.node_file, args.edge_file)
 
 
 if __name__ == '__main__':

@@ -1,14 +1,19 @@
 import glob
 import gzip
 import os
-from typing import Dict, Tuple
+from typing import IO, Callable, Dict, List, Tuple
 
 import pandas as pd
 import torch
 from torch import Tensor
+from tqdm import tqdm
 
 from tgrag.utils.matching import reverse_domain
 from tgrag.utils.path import get_root_dir
+
+
+def open_file(path: str) -> Callable[..., IO]:
+    return gzip.open if path.endswith('.gz') else open
 
 
 def load_node_csv(
@@ -60,6 +65,16 @@ def load_edge_csv(
         edge_attr = torch.cat(edge_attrs, dim=-1)
 
     return edge_index, edge_attr
+
+
+def load_edges(edge_file: str) -> List[Tuple[str, str]]:
+    edges = []
+    with open_file(edge_file)(edge_file, 'rt', encoding='utf-8') as f:
+        for line in tqdm(f, desc='Loading edge file'):
+            parts = line.strip().split()
+            if len(parts) == 2:
+                edges.append((parts[0], parts[1]))
+    return edges
 
 
 def get_ids_from_set(wanted_domains: set[str], source_base: str) -> set[str]:
@@ -115,3 +130,16 @@ def get_baseline_domains() -> set[str]:
 
     print(f'[INFO] Found {len(baseline_domains)} baseline domains')
     return baseline_domains
+
+
+def load_node_domain_map(node_file: str) -> Tuple[dict, dict]:
+    id_to_domain = {}
+    domain_to_id = {}
+    with open_file(node_file)(node_file, 'rt', encoding='utf-8') as f:
+        for line in tqdm(f, desc='Loading node file'):
+            parts = line.strip().split()
+            if len(parts) == 2:
+                node_id, domain = parts
+                id_to_domain[node_id] = domain
+                domain_to_id[domain] = node_id
+    return id_to_domain, domain_to_id
