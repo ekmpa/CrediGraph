@@ -8,9 +8,6 @@ from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
-from tgrag.encoders.encoder import Encoder
-from tgrag.encoders.norm_encoding import NormEncoder
-from tgrag.encoders.rni_encoding import RNIEncoder
 from tgrag.gnn.GAT import GAT
 from tgrag.gnn.gCon import GCN
 from tgrag.gnn.SAGE import SAGE
@@ -25,9 +22,10 @@ MODEL_CLASSES: Dict[str, Type[torch.nn.Module]] = {
     'SAGE': SAGE,
 }
 
-ENCODER_CLASSES: Dict[str, Encoder] = {
-    'RNI': RNIEncoder(),
-    'NORM': NormEncoder(),
+ENCODER_MAPPING: Dict[str, int] = {
+    'random': 0,
+    'pr_val': 1,
+    'hc_val': 2,
 }
 
 
@@ -80,7 +78,6 @@ def evaluate(
         batch = batch.to(device)
         out = model(batch.x, batch.edge_index)
         loss = F.mse_loss(out.squeeze(), batch.y)
-        logging.info(f'Model predict: {out.squeeze()[0:10]}, label: {batch.y[0:10]}')
         total_loss += loss.item() * batch.y.size(0)
         total_nodes += batch.y.size(0)
 
@@ -94,6 +91,9 @@ def run_gnn_baseline(
 ) -> None:
     data = dataset[0]
     data.y = data.y.squeeze(1)
+    data.x = data.x[:, ENCODER_MAPPING[data_arguments.initial_encoding_col]].unsqueeze(
+        -1
+    )
     split_idx = dataset.get_idx_split()
     logging.info(
         'Setting up training for task of: %s on model: %s',
