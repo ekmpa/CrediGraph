@@ -90,6 +90,13 @@ class ModelArguments:
     hidden_channels: int = field(
         default=256, metadata={'help': 'Inner dimension of update weight matrix.'}
     )
+    num_neighbors: list[int] = field(
+        default_factory=lambda: [15, 10],
+        metadata={'help': 'Number of neighbors in Neighbor Loader.'},
+    )
+    batch_size: int = field(
+        default=128, metadata={'help': 'Batch size in Neighbor loader.'}
+    )
     dropout: float = field(default=0.5, metadata={'help': 'Dropout value.'})
     lr: float = field(default=0.01, metadata={'help': 'Learning Rate.'})
     epochs: int = field(default=500, metadata={'help': 'Number of epochs.'})
