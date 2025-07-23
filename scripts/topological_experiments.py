@@ -19,12 +19,12 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     '--node-file',
     type=str,
-    help='Path to file containing raw node file in CSV format',
+    help="Path to raw node file, from a slice's output/ dir (.txt.gz)",
 )
 parser.add_argument(
     '--edge-file',
     type=str,
-    help='Path to file containing raw edge file in CSV format',
+    help="Path to raw edge file, from a slice's output/ dir (.txt.gz)",
 )
 parser.add_argument(
     '--outdegree',
@@ -248,6 +248,128 @@ def analyze_domain_pc1_distribution(csv_file: str) -> None:
     report_quartiles(org_scores, '.org')
 
 
+def analyze_subdomain_distribution(node_file: str, edge_file: str) -> None:
+    id_to_domain = {}
+    domain_to_id = {}
+
+    open_fn = gzip.open if node_file.endswith('.gz') else open
+    with open_fn(node_file, 'rt', encoding='utf-8') as f:
+        for line in tqdm(f, desc='Loading node domains'):
+            parts = line.strip().split()
+            if len(parts) < 2:
+                continue
+            node_id = parts[0]
+            domain = parts[1]
+            id_to_domain[node_id] = domain
+            domain_to_id[domain] = node_id
+
+    mother_to_subdomains = defaultdict(set)
+    domain_to_mother = {}
+
+    for domain in domain_to_id:
+        parts = domain.split('.')
+        if len(parts) >= 3:
+            mother = '.'.join(parts[:2])
+            mother_to_subdomains[mother].add(domain)
+            domain_to_mother[domain] = mother
+
+    num_mothers_with_subs = len(mother_to_subdomains)
+    total_subdomains = sum(len(subs) for subs in mother_to_subdomains.values())
+    avg_subdomains_per_mother = (
+        total_subdomains / num_mothers_with_subs if num_mothers_with_subs else 0
+    )
+
+    logging.info(f'Total mother domains with subdomains: {num_mothers_with_subs}')
+    logging.info(f'Total subdomains: {total_subdomains}')
+    logging.info(f'Average subdomains per mother: {avg_subdomains_per_mother:.2f}')
+
+    subdomain_node_ids = set()
+    for subs in mother_to_subdomains.values():
+        for sub in subs:
+            sub_id = domain_to_id.get(sub)
+            if sub_id:
+                subdomain_node_ids.add(sub_id)
+
+    logging.info(f'Unique nodes that are subdomains: {len(subdomain_node_ids)}')
+    logging.info(f'Total nodes: {len(id_to_domain)}')
+    logging.info(
+        f'Total nodes if subdomains collapsed to mothers: {len(id_to_domain) - len(subdomain_node_ids) + num_mothers_with_subs}'
+    )
+
+    internal_edges = 0
+    external_edges = 0
+    total_edges = 0
+
+    in_deg: DefaultDict[str, int] = defaultdict(int)
+    out_deg: DefaultDict[str, int] = defaultdict(int)
+
+    # In-/out-degree buckets by domain category
+    sub_in, sub_out = [], []
+    mother_in, mother_out = [], []
+    other_in, other_out = [], []
+
+    open_edge = gzip.open if edge_file.endswith('.gz') else open
+    with open_edge(edge_file, 'rt', encoding='utf-8') as f:
+        for line in tqdm(f, desc='Analyzing subdomain edge patterns'):
+            parts = line.strip().split()
+            if len(parts) != 2:
+                continue
+            src, dst = parts
+            src_dom = id_to_domain.get(src)
+            dst_dom = id_to_domain.get(dst)
+
+            src_mother = domain_to_mother.get(src_dom)
+            dst_mother = domain_to_mother.get(dst_dom)
+
+            if src_dom in domain_to_mother or dst_dom in domain_to_mother:
+                if src_mother and dst_mother and src_mother == dst_mother:
+                    internal_edges += 1
+                else:
+                    external_edges += 1
+            total_edges += 1
+
+            out_deg[src] += 1
+            in_deg[dst] += 1
+
+    # Classification pass for degree stats
+    for node_id in id_to_domain:
+        domain = id_to_domain[node_id]
+        indegree = in_deg.get(node_id, 0)
+        outdegree = out_deg.get(node_id, 0)
+
+        if domain in domain_to_mother:
+            sub_in.append(indegree)
+            sub_out.append(outdegree)
+        elif domain in mother_to_subdomains:
+            mother_in.append(indegree)
+            mother_out.append(outdegree)
+        else:
+            other_in.append(indegree)
+            other_out.append(outdegree)
+
+    # Subdomain connectivity
+    involved_edges = internal_edges + external_edges
+    logging.info(f'Total edges involving subdomains: {involved_edges}')
+    logging.info(f'  Internal (within same mother): {internal_edges}')
+    logging.info(f'  External (cross-mother or non-subdomain): {external_edges}')
+
+    # Average degree per group
+    def log_deg_stats(label: str, in_list: List[int], out_list: List[int]) -> None:
+        if not in_list and not out_list:
+            logging.info(f'{label}: No nodes found.')
+            return
+        logging.info(f'{label}:')
+        if in_list:
+            logging.info(f'  Avg in-degree: {statistics.mean(in_list):.2f}')
+        if out_list:
+            logging.info(f'  Avg out-degree: {statistics.mean(out_list):.2f}')
+        logging.info(f'  Total nodes: {len(in_list)}')
+
+    log_deg_stats('Subdomains', sub_in, sub_out)
+    log_deg_stats('Mother domains', mother_in, mother_out)
+    log_deg_stats('Other domains', other_in, other_out)
+
+
 def run_topological_experiment() -> None:
     root = get_root_dir()
     args = parser.parse_args()
@@ -255,6 +377,7 @@ def run_topological_experiment() -> None:
     topological_experiment(args.edge_file, args.node_file, args.outdegree)
     pc1_path = f'{root}/data/dqr/domain_pc1.csv'
     analyze_domain_pc1_distribution(pc1_path)
+    analyze_subdomain_distribution(args.node_file, args.edge_file)
 
 
 if __name__ == '__main__':
