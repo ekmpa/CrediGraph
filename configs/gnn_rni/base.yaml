@@ -1,5 +1,8 @@
 MetaArguments:
   log_file_path: "tgrag_gnn.log"
+  node_file: "data/crawl-data/temporal/temporal_nodes.csv"
+  edge_file: "data/crawl-data/temporal/temporal_edges.csv"
+  is_scratch_location: false
   global_seed: 42
 
 ExperimentArguments:
@@ -7,10 +10,9 @@ ExperimentArguments:
     GCN_RNI:
       model_args:
         model: "GCN"
-        encoder: "RNI"
-        encoder_col: "random"
         num_layers: 3
         hidden_channels: 128
+        batch_size: 128
         dropout: 0.5
         lr: 0.01
         epochs: 100
@@ -20,17 +22,13 @@ ExperimentArguments:
       data_args:
         task_name: "node-regression"
         is_regression: true
-        node_file: "data/crawl-data/manual/temporal_nodes.csv"
-        edge_file: "data/crawl-data/manual/temporal_edges.csv"
-        is_scratch_location: false
         num_test_shards: 2
     SAGE_RNI:
       model_args:
         model: "SAGE"
-        encoder: "RNI"
-        encoder_col: "random"
         num_layers: 3
         hidden_channels: 128
+        batch_size: 128
         dropout: 0.5
         lr: 0.01
         epochs: 100
@@ -40,17 +38,13 @@ ExperimentArguments:
       data_args:
         task_name: "node-regression"
         is_regression: true
-        node_file: "data/crawl-data/manual/temporal_nodes.csv"
-        edge_file: "data/crawl-data/manual/temporal_edges.csv"
-        is_scratch_location: false
         num_test_shards: 2
     GAT_RNI:
       model_args:
         model: "GAT"
-        encoder: "RNI"
-        encoder_col: "random"
         num_layers: 3
         hidden_channels: 64
+        batch_size: 128
         dropout: 0.5
         lr: 0.01
         epochs: 100
@@ -60,7 +54,4 @@ ExperimentArguments:
       data_args:
         task_name: "node-regression"
         is_regression: true
-        node_file: "data/crawl-data/manual/temporal_nodes.csv"
-        edge_file: "data/crawl-data/manual/temporal_edges.csv"
-        is_scratch_location: false
         num_test_shards: 2
