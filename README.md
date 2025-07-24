@@ -64,11 +64,13 @@ uv pip install torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-2.7.
 
 For information on installations of these additional libraries see [pyg-lib](https://github.com/pyg-team/pyg-lib) and [PyTorch Sparse](https://github.com/rusty1s/pytorch_sparse).
 
+To run our baseline static experimentation:
+
 ```sh
 uv run tgrag/experiments/main.py
 ```
 
-Alternatively, you can design you own configuration.
+Alternatively, you can design you own configuration, updating the model paramaters:
 
 ```sh
 uv run tgrag/experiments/main.py --config configs/your_config.yaml
