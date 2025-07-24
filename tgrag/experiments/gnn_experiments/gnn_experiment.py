@@ -62,7 +62,7 @@ def train(
         total_loss += loss.item() * batch.y.size(0)
         total_nodes += batch.y.size(0)
 
-    return torch.sqrt(torch.tensor(total_loss / total_nodes)).item()
+    return torch.tensor(total_loss / total_nodes).item()
 
 
 @torch.no_grad()
@@ -81,7 +81,7 @@ def evaluate(
         total_loss += loss.item() * batch.y.size(0)
         total_nodes += batch.y.size(0)
 
-    return torch.sqrt(torch.tensor(total_loss / total_nodes)).item()
+    return torch.tensor(total_loss / total_nodes).item()
 
 
 def run_gnn_baseline(

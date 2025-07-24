@@ -19,7 +19,7 @@ def plot_avg_rmse_loss(
     encoder_used: str,
     save_filename: str = 'rmse_loss_plot.png',
 ) -> None:
-    """Plots the averaged RMSE loss over trials for train, validation, and test sets with std dev bands."""
+    """Plots the averaged MSE loss over trials for train, validation, and test sets with std dev bands."""
     num_epochs = len(loss_tuple_run[0])
 
     data = np.array(loss_tuple_run)  # shape: (num_trials, num_epochs, 3)
@@ -38,18 +38,18 @@ def plot_avg_rmse_loss(
     plt.figure(figsize=(10, 6))
     epochs = np.arange(1, num_epochs + 1)
 
-    plt.plot(epochs, avg_train, label='Train RMSE', linewidth=2)
+    plt.plot(epochs, avg_train, label='Train MSE', linewidth=2)
     plt.fill_between(epochs, avg_train - std_train, avg_train + std_train, alpha=0.2)
 
-    plt.plot(epochs, avg_val, label='Validation RMSE', linewidth=2)
+    plt.plot(epochs, avg_val, label='Validation MSE', linewidth=2)
     plt.fill_between(epochs, avg_val - std_val, avg_val + std_val, alpha=0.2)
 
-    plt.plot(epochs, avg_test, label='Test RMSE', linewidth=2)
+    plt.plot(epochs, avg_test, label='Test MSE', linewidth=2)
     plt.fill_between(epochs, avg_test - std_test, avg_test + std_test, alpha=0.2)
     plt.xlabel('Epoch')
-    plt.ylabel('RMSE Loss')
+    plt.ylabel('MSE Loss')
     plt.yscale('log')
-    plt.title(f'{model_name} : Average RMSE Loss over Trials')
+    plt.title(f'{model_name} : Average MSE Loss over Trials')
     plt.legend()
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.tight_layout()
@@ -103,9 +103,9 @@ def plot_metric_across_models(
         plt.plot(epochs, metric_values, label=label, linewidth=2)
 
     plt.xlabel('Epoch')
-    plt.ylabel(f'{metric.capitalize()} RMSE')
+    plt.ylabel(f'{metric.capitalize()} MSE')
     plt.yscale('log')
-    plt.title(f'Comparison of {metric.capitalize()} RMSE Across Models')
+    plt.title(f'Comparison of {metric.capitalize()} MSE Across Models')
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
@@ -158,9 +158,9 @@ def plot_model_per_encoder(
             plt.plot(epochs, metric_values, label=encoder, linewidth=2)
 
         plt.xlabel('Epoch')
-        plt.ylabel(f'{metric.capitalize()} RMSE')
+        plt.ylabel(f'{metric.capitalize()} MSE')
         plt.yscale('log')
-        plt.title(f'{model}: {metric.capitalize()} RMSE per Encoder')
+        plt.title(f'{model}: {metric.capitalize()} MSE per Encoder')
         plt.legend(title='Encoder')
         plt.grid(True)
         plt.tight_layout()
@@ -209,9 +209,9 @@ def plot_metric_per_encoder(
             plt.plot(epochs, metric_values, label=model, linewidth=2)
 
         plt.xlabel('Epoch')
-        plt.ylabel(f'{metric.capitalize()} RMSE')
+        plt.ylabel(f'{metric.capitalize()} MSE')
         plt.yscale('log')
-        plt.title(f'{encoder}: {metric.capitalize()} RMSE per Model')
+        plt.title(f'{encoder}: {metric.capitalize()} MSE per Model')
         plt.legend(title='Model')
         plt.grid(True)
         plt.tight_layout()
