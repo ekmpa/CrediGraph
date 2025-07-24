@@ -1,9 +1,28 @@
 import csv
 import gzip
+import os
 from collections import Counter
 from typing import Set
 
 from tqdm import tqdm
+
+from tgrag.utils.path import get_root_dir
+
+
+def get_seed_set() -> set[str]:
+    """Get a list (set) of target domains."""
+    path = os.path.join(get_root_dir(), 'data', 'seed_set.txt')
+    wanted_domains = set()
+
+    with open(path, 'r', encoding='utf-8') as f:
+        for line in f:
+            parts = line.strip().split(',')
+            if len(parts) >= 1:
+                domain = parts[0].strip()
+                if domain:  # skip empty lines
+                    wanted_domains.add(domain)
+
+    return wanted_domains
 
 
 def generate(
