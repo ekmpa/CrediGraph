@@ -10,7 +10,9 @@ from tqdm import tqdm
 from tgrag.dataset.temporal_dataset import TemporalDataset
 from tgrag.gnn.GAT import GAT
 from tgrag.gnn.gCon import GCN
+from tgrag.gnn.GNNWrapper import GNNWrapper
 from tgrag.gnn.SAGE import SAGE
+from tgrag.head.decoder import NodePredictor
 from tgrag.utils.args import DataArguments, ModelArguments
 from tgrag.utils.logger import Logger
 from tgrag.utils.path import get_root_dir
@@ -143,22 +145,22 @@ def run_gnn_baseline(
         persistent_workers=True,
     )
     logging.info('Test loader created')
-    model = model_class(
+    gnn = model_class(
         data.num_features,
         model_arguments.hidden_channels,
-        1,
+        10,
         model_arguments.num_layers,
         model_arguments.dropout,
         cached=False,
     ).to(device)
-    # node_predictor = NodePredictor(10, 10, 1).to(device)
-    #
-    # model = GNNWrapper(gnn, node_predictor)
+    node_predictor = NodePredictor(10, 5, 1).to(device)
+    model = GNNWrapper(gnn, node_predictor)
     logger = Logger(model_arguments.runs)
 
     loss_tuple_run: List[List[Tuple[float, float, float]]] = []
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
+        model.reset_parameters()
         optimizer = torch.optim.Adam(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
