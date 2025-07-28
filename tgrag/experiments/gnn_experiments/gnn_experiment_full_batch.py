@@ -69,15 +69,13 @@ def evaluate(
     y_true = data.y
     y_pred = out
 
-    train_rmse = torch.sqrt(
-        F.mse_loss(y_pred[split_idx['train']], y_true[split_idx['train']])
+    train_rmse = F.mse_loss(
+        y_pred[split_idx['train']], y_true[split_idx['train']]
     ).item()
-    valid_rmse = torch.sqrt(
-        F.mse_loss(y_pred[split_idx['valid']], y_true[split_idx['valid']])
+    valid_rmse = F.mse_loss(
+        y_pred[split_idx['valid']], y_true[split_idx['valid']]
     ).item()
-    test_rmse = torch.sqrt(
-        F.mse_loss(y_pred[split_idx['test']], y_true[split_idx['test']])
-    ).item()
+    test_rmse = F.mse_loss(y_pred[split_idx['test']], y_true[split_idx['test']]).item()
 
     return train_rmse, valid_rmse, test_rmse
 

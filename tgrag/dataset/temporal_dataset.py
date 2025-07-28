@@ -75,6 +75,7 @@ class TemporalDataset(InMemoryDataset):
         torch.save(self.collate([data]), self.processed_paths[0])
 
     def get_idx_split(self) -> Dict:
+        # TODO: Include shuffle here
         data = self[0]
         labeled_idx = data.labeled_mask.nonzero(as_tuple=True)[0]
         n = labeled_idx.size(0)

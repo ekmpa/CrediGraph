@@ -62,7 +62,7 @@ def train(
         total_loss += loss.item() * batch.y.size(0)
         total_nodes += batch.y.size(0)
 
-    return torch.sqrt(torch.tensor(total_loss / total_nodes)).item()
+    return torch.tensor(total_loss / total_nodes).item()
 
 
 @torch.no_grad()
@@ -81,7 +81,7 @@ def evaluate(
         total_loss += loss.item() * batch.y.size(0)
         total_nodes += batch.y.size(0)
 
-    return torch.sqrt(torch.tensor(total_loss / total_nodes)).item()
+    return torch.tensor(total_loss / total_nodes).item()
 
 
 def run_gnn_baseline(
@@ -91,9 +91,9 @@ def run_gnn_baseline(
 ) -> None:
     data = dataset[0]
     data.y = data.y.squeeze(1)
-    data.x = data.x[:, ENCODER_MAPPING[data_arguments.initial_encoding_col]].unsqueeze(
-        -1
-    )
+    # data.x = data.x[:, ENCODER_MAPPING[data_arguments.initial_encoding_col]].unsqueeze(
+    #     -1
+    # )
     split_idx = dataset.get_idx_split()
     logging.info(
         'Setting up training for task of: %s on model: %s',
@@ -151,21 +151,22 @@ def run_gnn_baseline(
         model_arguments.dropout,
         cached=False,
     ).to(device)
-
+    # node_predictor = NodePredictor(10, 10, 1).to(device)
+    #
+    # model = GNNWrapper(gnn, node_predictor)
     logger = Logger(model_arguments.runs)
 
     loss_tuple_run: List[List[Tuple[float, float, float]]] = []
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
-        model.reset_parameters()
         optimizer = torch.optim.Adam(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             train(model, train_loader, optimizer)
-            train_rmse = evaluate(model, train_loader)
-            valid_rmse = evaluate(model, val_loader)
-            test_rmse = evaluate(model, test_loader)
-            result = (train_rmse, valid_rmse, test_rmse)
+            train_mse = evaluate(model, train_loader)
+            valid_mse = evaluate(model, val_loader)
+            test_mse = evaluate(model, test_loader)
+            result = (train_mse, valid_mse, test_mse)
             loss_tuple_epoch.append(result)
             logger.add_result(run, result)
 
