@@ -6,6 +6,7 @@ from typing import Set
 
 from tqdm import tqdm
 
+from tgrag.utils.matching import flip_if_needed, force_flip
 from tgrag.utils.path import get_root_dir
 
 
@@ -31,6 +32,7 @@ def generate(
     csv_domain_file: str,
     output_file: str,
     min_degree: int,
+    flip_csv: bool = False,
 ) -> None:
     # Load vertex ID -> domain mapping
     id_to_domain: dict[int, str] = {}
@@ -40,6 +42,7 @@ def generate(
             if len(parts) >= 2:
                 node_id = int(parts[0])
                 domain = parts[1]
+                domain = domain if flip_csv else flip_if_needed(domain)
                 id_to_domain[node_id] = domain
 
     # count degrees from edges
@@ -73,7 +76,8 @@ def generate(
         for row in reader:
             domain = row.get('domain')
             if domain:
-                csv_domains.add(domain.strip())
+                domain = force_flip(domain.strip()) if flip_csv else domain.strip()
+                csv_domains.add(domain)
     print(f'Read {len(csv_domains)} domains from CSV file')
 
     combined_domains: Set[str] = high_degree_domains.union(csv_domains)
