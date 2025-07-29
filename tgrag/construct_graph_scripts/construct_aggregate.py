@@ -3,8 +3,112 @@ import glob
 import gzip
 import os
 
+import tqdm
+
 from tgrag.utils.data_loading import get_ids_from_set
 from tgrag.utils.load_labels import get_labelled_set, get_target_set
+from tgrag.utils.seed_set import get_seed_set
+
+
+def append_edges(wanted_ids: set[str], source_base: str, target_base_root: str) -> None:
+    """Append edges where both endpoints are in wanted_ids to target.
+    Avoids duplicates.
+    """
+    source_dir = os.path.join(source_base, 'edges')
+    target_path = os.path.join(target_base_root, 'edges.txt.gz')
+    matches = glob.glob(os.path.join(source_dir, '*.txt.gz'))
+
+    if not matches:
+        print(f'[WARN] No .txt.gz files found in {source_dir}, skipping.')
+
+    kept_edges = set()
+    discarded = 0
+
+    for source_file in matches:
+        with gzip.open(source_file, 'rt', encoding='utf-8') as f:
+            for line in tqdm(f):
+                parts = line.strip().split()
+                if len(parts) < 2:
+                    continue  # skip malformed lines
+                src, dst = parts[0], parts[1]
+                if src in wanted_ids and dst in wanted_ids:
+                    kept_edges.add(line.strip())
+                else:
+                    discarded += 1
+
+    # Include existing target edges:
+    if os.path.exists(target_path):
+        with gzip.open(target_path, 'rt', encoding='utf-8') as f:
+            for line in f:
+                kept_edges.add(line.strip())
+
+    with gzip.open(target_path, 'wt', encoding='utf-8') as f:
+        for edge in kept_edges:
+            f.write(edge + '\n')
+
+    print(f'[INFO] Kept {len(kept_edges)} edges → {target_path}')
+    print(f'[INFO] Discarded {discarded} edges not connecting wanted IDs')
+
+
+def append_nodes(
+    endpoint_ids: set[str], source_base: str, target_base_root: str
+) -> None:
+    """Keep vertices with IDs in endpoint_ids.
+    Append to existing aggregated vertices file.
+    """
+    source_dir = os.path.join(source_base, 'vertices')
+    target_path = os.path.join(target_base_root, 'vertices.txt.gz')
+    matches = glob.glob(os.path.join(source_dir, '*.txt.gz'))
+
+    if not matches:
+        print(f'[WARN] No .txt.gz files found in {source_dir}, skipping.')
+
+    kept_vertices = []
+    kept_ids = set()
+    discarded = 0
+
+    for source_file in matches:
+        with gzip.open(source_file, 'rt', encoding='utf-8') as f:
+            for line in tqdm(f):
+                parts = line.strip().split(None, 1)
+                if len(parts) != 2:
+                    continue  # skip malformed lines
+                id_ = parts[0]
+                if id_ in endpoint_ids:
+                    kept_vertices.append(line)
+                    kept_ids.add(id_)
+                else:
+                    discarded += 1
+
+    # Include any existing target vertices:
+    if os.path.exists(target_path):
+        with gzip.open(target_path, 'rt', encoding='utf-8') as f:
+            kept_vertices.extend(f.readlines())
+
+    with gzip.open(target_path, 'wt', encoding='utf-8') as f:
+        f.writelines(kept_vertices)
+
+    kept_vertices = list(set(kept_vertices))  # for duplicates
+
+    print(f'[INFO] Kept {len(kept_vertices)} vertices → {target_path}')
+    print(f'[INFO] Discarded {discarded} vertices that were not in seed set.')
+    print(f'[INFO] Unique IDs in final vertices: {len(kept_ids)}')
+
+
+def gradual_seed(source_base: str, target_base_root: str) -> None:
+    """This append function works for the gradual building of the subgraph based on the seed set."""
+    os.makedirs(target_base_root, exist_ok=True)
+
+    wanted_domains = get_seed_set()
+
+    wanted_ids = get_ids_from_set(wanted_domains, source_base)
+    append_edges(wanted_ids, source_base, target_base_root)
+    append_nodes(wanted_ids, source_base, target_base_root)
+
+
+## BETWEEN HERE AND MAIN:
+## These are old logics we can eventually delete.
+## Keeping until we actually confirm our final construction
 
 
 def gradual_full(source_base: str, target_base_root: str) -> None:
@@ -39,9 +143,7 @@ def gradual_full(source_base: str, target_base_root: str) -> None:
         print(f'[INFO] Aggregated {len(matches)} file(s) → {target_path}')
 
 
-def append_edges(
-    wanted_ids: set[str], source_base: str, target_base_root: str
-) -> set[str]:
+def one_hop(wanted_ids: set[str], source_base: str, target_base_root: str) -> set[str]:
     """Keep edges with at least one endpoint in wanted_ids.
     Append to existing aggregated edges file.
     Return new set of all endpoint IDs in kept edges.
@@ -88,61 +190,8 @@ def append_edges(
     return new_endpoint_ids
 
 
-def append_nodes(
-    endpoint_ids: set[str], source_base: str, target_base_root: str
-) -> int:
-    """Keep vertices with IDs in endpoint_ids.
-    Append to existing aggregated vertices file.
-    Return the count of unique nodes kept.
-    """
-    source_dir = os.path.join(source_base, 'vertices')
-    target_path = os.path.join(target_base_root, 'vertices.txt.gz')
-    matches = glob.glob(os.path.join(source_dir, '*.txt.gz'))
-
-    if not matches:
-        print(f'[WARN] No .txt.gz files found in {source_dir}, skipping.')
-        return 0
-
-    kept_vertices = []
-    kept_ids = set()
-    discarded = 0
-
-    for source_file in matches:
-        with gzip.open(source_file, 'rt', encoding='utf-8') as f:
-            for line in f:
-                parts = line.strip().split(None, 1)
-                if len(parts) != 2:
-                    continue  # skip malformed lines
-                id_ = parts[0]
-                if id_ in endpoint_ids:
-                    kept_vertices.append(line)
-                    kept_ids.add(id_)
-                else:
-                    discarded += 1
-
-    # Include any existing target vertices:
-    if os.path.exists(target_path):
-        with gzip.open(target_path, 'rt', encoding='utf-8') as f:
-            kept_vertices.extend(f.readlines())
-
-    with gzip.open(target_path, 'wt', encoding='utf-8') as f:
-        f.writelines(kept_vertices)
-
-    kept_vertices = list(set(kept_vertices))  # for duplicates
-
-    print(f'[INFO] Kept {len(kept_vertices)} vertices → {target_path}')
-    print(
-        f'[INFO] Discarded {discarded} vertices that were not in 1-hop neighborhood of wanted set.'
-    )
-    print(f'[INFO] Unique IDs in final vertices: {len(kept_ids)}')
-
-    return len(kept_ids)
-
-
 def gradual_subset(source_base: str, target_base_root: str) -> None:
-    """This append function works for the gradual building of the subgraph based on a 1-hop neighborhood of the wanted set.
-    For now, the 'wanted set' is just our labelled nodes. To be supplemented later.
-    """
+    """This append function works for the gradual building of the subgraph based on a 1-hop neighborhood of the wanted set."""
     os.makedirs(target_base_root, exist_ok=True)
 
     wanted_domains = get_target_set()
@@ -150,7 +199,7 @@ def gradual_subset(source_base: str, target_base_root: str) -> None:
 
     wanted_ids = get_ids_from_set(wanted_domains, source_base)
 
-    endpoint_ids = append_edges(wanted_ids, source_base, target_base_root)
+    endpoint_ids = one_hop(wanted_ids, source_base, target_base_root)
     endpoint_ids.update(wanted_ids)  # to get non-connected nodes
     append_nodes(endpoint_ids, source_base, target_base_root)
 
@@ -172,7 +221,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    gradual_subset(args.source, args.target)
+    gradual_seed(args.source, args.target)
 
 
 if __name__ == '__main__':
