@@ -97,6 +97,9 @@ class ModelArguments:
     batch_size: int = field(
         default=128, metadata={'help': 'Batch size in Neighbor loader.'}
     )
+    embedding_dimension: int = field(
+        default=10, metadata={'help': 'The output dimension of the GNN.'}
+    )
     dropout: float = field(default=0.5, metadata={'help': 'Dropout value.'})
     lr: float = field(default=0.01, metadata={'help': 'Learning Rate.'})
     epochs: int = field(default=500, metadata={'help': 'Number of epochs.'})
