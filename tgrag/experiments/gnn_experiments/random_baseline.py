@@ -7,6 +7,7 @@ from torch_geometric.loader import NeighborLoader
 def evaluate_rand(
     model: torch.nn.Module,
     loader: NeighborLoader,
+    mask_name: str,
 ) -> float:
     model.eval()
     device = next(model.parameters()).device
@@ -15,8 +16,11 @@ def evaluate_rand(
     for batch in loader:
         batch = batch.to(device)
         random_out = torch.rand(batch.y.size(0)).to(device)
-        loss = F.binary_cross_entropy(random_out, batch.y)
-        total_loss += loss.item() * batch.y.size(0)
-        total_nodes += batch.y.size(0)
+        mask = getattr(batch, mask_name)
+        if mask.sum() == 0:
+            continue
+        loss = F.binary_cross_entropy(random_out, batch.y[mask])
+        total_loss += loss.item() * mask.sum().item()
+        total_nodes += mask.sum().item()
 
     return torch.tensor(total_loss / total_nodes).item()

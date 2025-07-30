@@ -172,9 +172,9 @@ def run_gnn_baseline(
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
             else:
-                train_mse = evaluate_rand(model, train_loader)
-                valid_mse = evaluate_rand(model, val_loader)
-                test_mse = evaluate_rand(model, test_loader)
+                train_mse = evaluate_rand(model, train_loader, 'train_mask')
+                valid_mse = evaluate_rand(model, val_loader, 'valid_mask')
+                test_mse = evaluate_rand(model, test_loader, 'test_mask')
                 result = (train_mse, valid_mse, test_mse)
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
