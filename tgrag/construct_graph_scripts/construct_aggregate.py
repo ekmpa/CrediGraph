@@ -3,8 +3,6 @@ import glob
 import gzip
 import os
 
-import tqdm
-
 from tgrag.utils.data_loading import get_ids_from_set
 from tgrag.utils.load_labels import get_labelled_set, get_target_set
 from tgrag.utils.seed_set import get_seed_set
@@ -26,7 +24,7 @@ def append_edges(wanted_ids: set[str], source_base: str, target_base_root: str) 
 
     for source_file in matches:
         with gzip.open(source_file, 'rt', encoding='utf-8') as f:
-            for line in tqdm(f):
+            for line in f:
                 parts = line.strip().split()
                 if len(parts) < 2:
                     continue  # skip malformed lines
@@ -69,7 +67,7 @@ def append_nodes(
 
     for source_file in matches:
         with gzip.open(source_file, 'rt', encoding='utf-8') as f:
-            for line in tqdm(f):
+            for line in f:
                 parts = line.strip().split(None, 1)
                 if len(parts) != 2:
                     continue  # skip malformed lines
