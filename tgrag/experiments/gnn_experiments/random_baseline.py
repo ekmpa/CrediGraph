@@ -15,10 +15,10 @@ def evaluate_rand(
     total_nodes = 0
     for batch in loader:
         batch = batch.to(device)
-        random_out = torch.rand(batch.y.size(0)).to(device)
         mask = getattr(batch, mask_name)
         if mask.sum() == 0:
             continue
+        random_out = torch.rand(batch.y[mask].size(0).to(device))
         loss = F.binary_cross_entropy(random_out, batch.y[mask])
         total_loss += loss.item() * mask.sum().item()
         total_nodes += mask.sum().item()
