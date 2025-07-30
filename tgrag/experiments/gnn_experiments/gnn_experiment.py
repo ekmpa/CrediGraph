@@ -1,5 +1,4 @@
 import logging
-import pickle
 from typing import Dict, List, Tuple, Type
 
 import torch
@@ -8,6 +7,7 @@ from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
+from tgrag.experiments.gnn_experiments.random_baseline import evaluate_rand
 from tgrag.gnn.GAT import GAT
 from tgrag.gnn.gCon import GCN
 from tgrag.gnn.GNNWrapper import GNNWrapper
@@ -15,13 +15,14 @@ from tgrag.gnn.SAGE import SAGE
 from tgrag.head.decoder import NodePredictor
 from tgrag.utils.args import DataArguments, ModelArguments
 from tgrag.utils.logger import Logger
-from tgrag.utils.path import get_root_dir
 from tgrag.utils.plot import plot_avg_rmse_loss
+from tgrag.utils.save import save_loss_results
 
 MODEL_CLASSES: Dict[str, Type[torch.nn.Module]] = {
     'GCN': GCN,
     'GAT': GAT,
     'SAGE': SAGE,
+    'RANDOM': GCN,
 }
 
 ENCODER_MAPPING: Dict[str, int] = {
@@ -29,19 +30,6 @@ ENCODER_MAPPING: Dict[str, int] = {
     'pr_val': 1,
     'hc_val': 2,
 }
-
-
-def save_loss_results(
-    loss_tuple_run: List[List[Tuple[float, float, float]]],
-    model_name: str,
-    encoder_name: str,
-) -> None:
-    root = get_root_dir()
-    save_dir = root / 'results' / 'logs' / model_name / encoder_name
-    save_dir.mkdir(parents=True, exist_ok=True)
-    save_path = save_dir / 'loss_tuple_run.pkl'
-    with open(save_path, 'wb') as f:
-        pickle.dump(loss_tuple_run, f)
 
 
 def train(
@@ -58,11 +46,17 @@ def train(
         batch = batch.to(device)
         out = model(batch.x, batch.edge_index)
         # TODO: How many are negative in the output per batch?
-        loss = F.mse_loss(out.squeeze(), batch.y)
+        train_mask = batch.train_mask
+        if train_mask.sum() == 0:
+            continue
+
+        loss = F.binary_cross_entropy_with_logits(
+            out.squeeze()[train_mask], batch.y[train_mask]
+        )
         loss.backward()
         optimizer.step()
-        total_loss += loss.item() * batch.y.size(0)
-        total_nodes += batch.y.size(0)
+        total_loss += loss.item() * train_mask.sum().item()
+        total_nodes += train_mask.sum().item()
 
     return torch.tensor(total_loss / total_nodes).item()
 
@@ -71,6 +65,7 @@ def train(
 def evaluate(
     model: torch.nn.Module,
     loader: NeighborLoader,
+    mask_name: str,
 ) -> float:
     model.eval()
     device = next(model.parameters()).device
@@ -79,9 +74,12 @@ def evaluate(
     for batch in loader:
         batch = batch.to(device)
         out = model(batch.x, batch.edge_index)
-        loss = F.mse_loss(out.squeeze(), batch.y)
-        total_loss += loss.item() * batch.y.size(0)
-        total_nodes += batch.y.size(0)
+        mask = getattr(batch, mask_name)
+        if mask.sum() == 0:
+            continue
+        loss = F.binary_cross_entropy_with_logits(out.squeeze()[mask], batch.y[mask])
+        total_loss += loss.item() * mask.sum().item()
+        total_nodes += mask.sum().item()
 
     return torch.tensor(total_loss / total_nodes).item()
 
@@ -91,6 +89,7 @@ def run_gnn_baseline(
     model_arguments: ModelArguments,
     dataset: TemporalDataset,
 ) -> None:
+    is_random = model_arguments.model.upper() == 'RANDOM'
     data = dataset[0]
     data.y = data.y.squeeze(1)
     # data.x = data.x[:, ENCODER_MAPPING[data_arguments.initial_encoding_col]].unsqueeze(
@@ -148,7 +147,7 @@ def run_gnn_baseline(
     gnn = model_class(
         data.num_features,
         model_arguments.hidden_channels,
-        10,
+        model_arguments.embedding_dimension,
         model_arguments.num_layers,
         model_arguments.dropout,
         cached=False,
@@ -164,13 +163,21 @@ def run_gnn_baseline(
         optimizer = torch.optim.Adam(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
-            train(model, train_loader, optimizer)
-            train_mse = evaluate(model, train_loader)
-            valid_mse = evaluate(model, val_loader)
-            test_mse = evaluate(model, test_loader)
-            result = (train_mse, valid_mse, test_mse)
-            loss_tuple_epoch.append(result)
-            logger.add_result(run, result)
+            if not is_random:
+                train(model, train_loader, optimizer)
+                train_mse = evaluate(model, train_loader, 'train_mask')
+                valid_mse = evaluate(model, val_loader, 'valid_mask')
+                test_mse = evaluate(model, test_loader, 'test_mask')
+                result = (train_mse, valid_mse, test_mse)
+                loss_tuple_epoch.append(result)
+                logger.add_result(run, result)
+            else:
+                train_mse = evaluate_rand(model, train_loader)
+                valid_mse = evaluate_rand(model, val_loader)
+                test_mse = evaluate_rand(model, test_loader)
+                result = (train_mse, valid_mse, test_mse)
+                loss_tuple_epoch.append(result)
+                logger.add_result(run, result)
 
         loss_tuple_run.append(loss_tuple_epoch)
 
