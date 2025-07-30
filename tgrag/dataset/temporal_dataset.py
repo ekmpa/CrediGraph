@@ -70,6 +70,24 @@ class TemporalDataset(InMemoryDataset):
 
         data.labeled_mask = torch.tensor(labeled_mask, dtype=torch.bool)
 
+        labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
+        n = labeled_idx.size(0)
+        train_end = int(0.6 * n)
+        valid_end = int(0.8 * n)
+
+        self.train_idx = labeled_idx[:train_end]
+        self.valid_idx = labeled_idx[train_end:valid_end]
+        self.test_idx = labeled_idx[valid_end:]
+
+        # Set global indices for our transductive nodes:
+        num_nodes = data.num_nodes
+        data.train_mask = torch.zeros(num_nodes, dtype=torch.bool)
+        data.train_mask[self.train_idx] = True
+        data.valid_mask = torch.zeros(num_nodes, dtype=torch.bool)
+        data.valid_mask[self.valid_idx] = True
+        data.test_mask = torch.zeros(num_nodes, dtype=torch.bool)
+        data.test_mask[self.test_idx] = True
+
         assert data.edge_index.max() < data.x.size(0), 'edge_index out of bounds'
 
         torch.save(self.collate([data]), self.processed_paths[0])
