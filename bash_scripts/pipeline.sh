@@ -45,8 +45,13 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
 
     trap write_summary EXIT # on exit from error, write summary
 
+    START_IDX=0
     if [ "$2" != "--keep" ]; then
         rm -rf "$DATA_DIR/$CRAWL/output"
+    else
+        if [[ "$3" =~ ^[0-9]+$ ]]; then
+                START_IDX="$3"
+        fi
     fi
     mkdir -p "$DATA_DIR/$CRAWL/output"
 
@@ -56,7 +61,7 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
 
     STEP=300
 
-    for (( start_idx=0; start_idx<=TOTAL_FILES; start_idx+=STEP )); do
+    for (( start_idx=$START_IDX; start_idx<=TOTAL_FILES; start_idx+=STEP )); do
 
         end_idx=$((start_idx+STEP-1))
 
