@@ -28,6 +28,35 @@ def flip(domain: str) -> str:
     return domain
 
 
+def flip_if_needed(domain: str) -> str:
+    """More comprehensive function for flipping. Use this instead of flip (deals with composite cases etc)."""
+    extract = tldextract.TLDExtract(include_psl_private_domains=True)
+
+    original_parts = domain.split('.')
+
+    # Try correct order
+    correct = extract(domain)
+    '.'.join(part for part in [correct.domain, correct.suffix] if part)
+
+    # Try reversed domain
+    reversed_domain = '.'.join(reversed(original_parts))
+    reversed_extract = extract(reversed_domain)
+    '.'.join(
+        part for part in [reversed_extract.domain, reversed_extract.suffix] if part
+    )
+
+    # Heuristic: pick the version with a known suffix and longer domain part
+    if reversed_extract.suffix and len(reversed_extract.domain) >= len(correct.domain):
+        return reversed_domain
+    else:
+        return domain
+
+
+def force_flip(domain: str) -> str:
+    parts = domain.strip().split('.')
+    return '.'.join(reversed(parts))
+
+
 def extract_registered_domain(url: str) -> str | None:
     url = flip(url)
     ext = tldextract.extract(url)
