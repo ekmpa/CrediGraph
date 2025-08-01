@@ -75,6 +75,9 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
 
         echo "Running on: $start_idx-$end_idx"
 
+        # clean the segments folder
+        rm -rf "$DATA_DIR/$CRAWL/segments/"*
+
         # Run end-to-end on the given subset + aggregate to partial graph
         bash end-to-end.sh "$CRAWL" $start_idx $end_idx
         uv run python ../tgrag/construct_graph_scripts/construct_aggregate.py --source "$DATA_DIR/$CRAWL/output_text_dir" --target "$DATA_DIR/$CRAWL/output"
