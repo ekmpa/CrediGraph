@@ -11,8 +11,8 @@ class NormEncoder(Encoder):
         if input.ndim == 1:
             input = input.reshape(-1, 1)
 
-        max = input.max(axis=0, keepdims=True)
-        min = input.min(axis=0, keepdims=True)
+        max_input = input.max(axis=0, keepdims=True)
+        min_input = input.min(axis=0, keepdims=True)
 
-        normalized = (input - min) / (max - min)
+        normalized = (input - min_input) / (max_input - min_input)
         return torch.tensor(normalized, dtype=torch.float32)
