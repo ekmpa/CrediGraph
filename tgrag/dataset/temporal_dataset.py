@@ -58,7 +58,9 @@ class TemporalDataset(InMemoryDataset):
 
         # Transductive nodes only:
         labeled_mask = (df['cr_score'] != -1.0).values
-        cr_score = torch.tensor(df['cr_score'].values, dtype=torch.float).unsqueeze(1)
+        cr_score = torch.tensor(df['cr_score'].values, dtype=torch.float).unsqueeze(
+            1
+        )  # CR_SCORE Shape? Does it include all the nodes
         edge_index, edge_attr = load_edge_csv(
             path=edge_path, src_index_col='src', dst_index_col='dst', encoders=None
         )
