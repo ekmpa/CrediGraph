@@ -7,7 +7,7 @@ from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
-from tgrag.experiments.gnn_experiments.random_baseline import (
+from tgrag.experiments.gnn_experiments.baseline import (
     evaluate_mean,
     evaluate_rand,
 )
