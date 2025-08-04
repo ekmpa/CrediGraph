@@ -91,17 +91,19 @@ class ModelArguments:
         default=256, metadata={'help': 'Inner dimension of update weight matrix.'}
     )
     num_neighbors: list[int] = field(
-        default_factory=lambda: [15, 10],
+        default_factory=lambda: [
+            -1
+        ],  # TODO: Where do MEM errors occur, what is the size?
         metadata={'help': 'Number of neighbors in Neighbor Loader.'},
     )
     batch_size: int = field(
         default=128, metadata={'help': 'Batch size in Neighbor loader.'}
     )
     embedding_dimension: int = field(
-        default=10, metadata={'help': 'The output dimension of the GNN.'}
+        default=256, metadata={'help': 'The output dimension of the GNN.'}
     )
-    dropout: float = field(default=0.5, metadata={'help': 'Dropout value.'})
-    lr: float = field(default=0.01, metadata={'help': 'Learning Rate.'})
+    dropout: float = field(default=0.1, metadata={'help': 'Dropout value.'})
+    lr: float = field(default=0.001, metadata={'help': 'Learning Rate.'})
     epochs: int = field(default=500, metadata={'help': 'Number of epochs.'})
     runs: int = field(default=100, metadata={'help': 'Number of trials.'})
     device: int = field(default=0, metadata={'help': 'Device to be used.'})
