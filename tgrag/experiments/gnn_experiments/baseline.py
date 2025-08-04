@@ -4,7 +4,7 @@ from torch_geometric.loader import NeighborLoader
 
 
 @torch.no_grad()
-def evaluate_rand(
+def evaluate_mean(
     model: torch.nn.Module,
     loader: NeighborLoader,
     mask_name: str,
@@ -27,7 +27,7 @@ def evaluate_rand(
 
 
 @torch.no_grad()
-def evaluate_mean(
+def evaluate_rand(
     model: torch.nn.Module,
     loader: NeighborLoader,
     mask_name: str,
