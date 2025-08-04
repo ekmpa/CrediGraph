@@ -177,7 +177,6 @@ def run_gnn_baseline(
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
             elif is_random:
-                logging.info('Evaluate Randomly')
                 train_mse = evaluate_rand(model, train_loader, 'train_mask')
                 valid_mse = evaluate_rand(model, val_loader, 'valid_mask')
                 test_mse = evaluate_rand(model, test_loader, 'test_mask')
@@ -185,7 +184,6 @@ def run_gnn_baseline(
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
             else:
-                logging.info('Evaluate by Mean')
                 train_mse = evaluate_mean(model, train_loader, 'train_mask')
                 valid_mse = evaluate_mean(model, val_loader, 'valid_mask')
                 test_mse = evaluate_mean(model, test_loader, 'test_mask')
