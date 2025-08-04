@@ -26,6 +26,7 @@ MODEL_CLASSES: Dict[str, Type[torch.nn.Module]] = {
     'GAT': GAT,
     'SAGE': SAGE,
     'RANDOM': GCN,
+    'MEAN': GCN,
 }
 
 ENCODER_MAPPING: Dict[str, int] = {
