@@ -33,6 +33,7 @@ ENCODER_MAPPING: Dict[str, int] = {
     'random': 0,
     'pr_val': 1,
     'hc_val': 2,
+    'text': 3,
 }
 
 
