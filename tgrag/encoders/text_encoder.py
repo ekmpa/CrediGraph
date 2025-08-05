@@ -1,3 +1,7 @@
+import os
+
+os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from torch import Tensor
@@ -14,4 +18,4 @@ class TextEncoder(Encoder):
         x = self.model.encode(
             input, show_progress_bar=True, convert_to_tensor=True, device=self.device
         )
-        return x.to(self.device)
+        return x.cpu()
