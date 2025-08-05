@@ -1,8 +1,10 @@
 import os
 from typing import Callable, Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 import torch
+from sklearn.model_selection import train_test_split
 from torch_geometric.data import Data, InMemoryDataset
 
 from tgrag.encoders.encoder import Encoder
@@ -18,11 +20,12 @@ class TemporalDataset(InMemoryDataset):
         encoding: Optional[Dict[str, Encoder]] = None,
         transform: Optional[Callable] = None,
         pre_transform: Optional[Callable] = None,
+        seed: int = 42,
     ):
         self.node_file = node_file
         self.edge_file = edge_file
-        self.idx_dict: Dict[str, List[int]]
         self.encoding = encoding
+        self.seed = seed
         super().__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
 
@@ -75,28 +78,35 @@ class TemporalDataset(InMemoryDataset):
         labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
         labeled_scores = cr_score[labeled_idx].squeeze().numpy()
 
-        thresholds = [0.0, 1 / 3, 2 / 3, 1.0]
-        train_idx, valid_idx, test_idx = [], [], []
+        quantiles = np.quantile(labeled_scores, [1 / 3, 2 / 3])
+        quartile_labels = np.digitize(labeled_scores, bins=quantiles)
 
-        for i in range(len(thresholds) - 1):
-            lower, upper = thresholds[i], thresholds[i + 1]
-            mask = (labeled_scores > lower) & (labeled_scores <= upper)
-            bucket_indices = labeled_idx[mask]
+        train_idx, temp_idx, _, _ = train_test_split(
+            labeled_idx,
+            quartile_labels,
+            train_size=0.6,
+            stratify=quartile_labels,
+            random_state=self.seed,
+        )
 
-            perm = torch.randperm(bucket_indices.size(0))
-            bucket_indices = bucket_indices[perm]
+        temp_idx_np = (
+            temp_idx.numpy() if isinstance(temp_idx, torch.Tensor) else temp_idx
+        )
 
-            n = bucket_indices.size(0)
-            train_end = int(0.6 * n)
-            valid_end = int(0.8 * n)
+        quartile_labels_temp = quartile_labels[
+            np.isin(labeled_idx.numpy(), temp_idx_np)
+        ]
 
-            train_idx.append(bucket_indices[:train_end])
-            valid_idx.append(bucket_indices[train_end:valid_end])
-            test_idx.append(bucket_indices[valid_end:])
+        valid_idx, test_idx = train_test_split(
+            temp_idx,
+            train_size=0.5,
+            stratify=quartile_labels_temp,
+            random_state=self.seed,
+        )
 
-        train_idx = torch.cat(train_idx)
-        valid_idx = torch.cat(valid_idx)
-        test_idx = torch.cat(test_idx)
+        train_idx = torch.as_tensor(train_idx)
+        valid_idx = torch.as_tensor(valid_idx)
+        test_idx = torch.as_tensor(test_idx)
 
         # Set global indices for our transductive nodes:
         num_nodes = data.num_nodes
@@ -106,7 +116,7 @@ class TemporalDataset(InMemoryDataset):
         data.valid_mask[valid_idx] = True
         data.test_mask = torch.zeros(num_nodes, dtype=torch.bool)
         data.test_mask[test_idx] = True
-        self.idx_dict = {
+        data.idx_dict = {
             'train': train_idx,
             'valid': valid_idx,
             'test': test_idx,
@@ -117,6 +127,7 @@ class TemporalDataset(InMemoryDataset):
         torch.save(self.collate([data]), self.processed_paths[0])
 
     def get_idx_split(self) -> Dict:
-        if self.idx_dict is not None:
-            return self.idx_dict
+        data = self[0]
+        if hasattr(data, 'idx_dict') and data.idx_dict is not None:
+            return data.idx_dict
         raise TypeError('idx split is empty.')

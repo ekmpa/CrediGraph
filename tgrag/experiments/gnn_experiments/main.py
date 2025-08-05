@@ -61,6 +61,7 @@ def main() -> None:
         node_file=cast(str, meta_args.node_file),
         edge_file=cast(str, meta_args.edge_file),
         encoding=encoding_dict,
+        seed=meta_args.global_seed,
     )
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
