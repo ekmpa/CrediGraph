@@ -6,6 +6,7 @@ from tgrag.dataset.temporal_dataset import TemporalDataset
 from tgrag.encoders.encoder import Encoder
 from tgrag.encoders.norm_encoding import NormEncoder
 from tgrag.encoders.rni_encoding import RNIEncoder
+from tgrag.encoders.text_encoder import TextEncoder
 from tgrag.experiments.gnn_experiments.gnn_experiment import run_gnn_baseline
 from tgrag.experiments.gnn_experiments.gnn_experiment_full_batch import (
     run_gnn_baseline_full_batch,
@@ -24,6 +25,7 @@ from tgrag.utils.seed import seed_everything
 ENCODER_CLASSES: Dict[str, Encoder] = {
     'RNI': RNIEncoder(),
     'NORM': NormEncoder(),
+    'TEXT': TextEncoder(),
 }
 
 parser = argparse.ArgumentParser(

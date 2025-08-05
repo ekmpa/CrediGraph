@@ -24,7 +24,12 @@ class MetaArguments:
         },
     )
     encoder_dict: Dict[str, str] = field(
-        default_factory=lambda: {'random': 'RNI', 'pr_val': 'NORM'},
+        default_factory=lambda: {
+            'random': 'RNI',
+            'pr_val': 'NORM',
+            'hc_val': 'NORM',
+            'text': 'TEXT',
+        },
         metadata={
             'help': 'Node encoder dictionary defines which column is encoded by which encoder. Key: column, Value: Encoder'
         },
@@ -35,7 +40,7 @@ class MetaArguments:
     )
     is_scratch_location: bool = field(
         default=False,
-        metadata={'help': 'Whether to use the /NOBACKUP/ disk on server.'},
+        metadata={'help': 'Whether to use the /NOBACKUP/ or /SCRATCH/ disk on server.'},
     )
 
     def __post_init__(self) -> None:
