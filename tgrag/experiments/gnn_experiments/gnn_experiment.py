@@ -7,7 +7,10 @@ from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
-from tgrag.experiments.gnn_experiments.random_baseline import evaluate_rand
+from tgrag.experiments.gnn_experiments.baseline import (
+    evaluate_mean,
+    evaluate_rand,
+)
 from tgrag.gnn.GAT import GAT
 from tgrag.gnn.gCon import GCN
 from tgrag.gnn.GNNWrapper import GNNWrapper
@@ -23,6 +26,7 @@ MODEL_CLASSES: Dict[str, Type[torch.nn.Module]] = {
     'GAT': GAT,
     'SAGE': SAGE,
     'RANDOM': GCN,
+    'MEAN': GCN,
 }
 
 ENCODER_MAPPING: Dict[str, int] = {
@@ -58,7 +62,7 @@ def train(
         total_loss += loss.item() * train_mask.sum().item()
         total_nodes += train_mask.sum().item()
 
-    return torch.tensor(total_loss / total_nodes).item()
+    return total_loss / total_nodes
 
 
 @torch.no_grad()
@@ -81,7 +85,7 @@ def evaluate(
         total_loss += loss.item() * mask.sum().item()
         total_nodes += mask.sum().item()
 
-    return torch.tensor(total_loss / total_nodes).item()
+    return total_loss / total_nodes
 
 
 def run_gnn_baseline(
@@ -90,6 +94,7 @@ def run_gnn_baseline(
     dataset: TemporalDataset,
 ) -> None:
     is_random = model_arguments.model.upper() == 'RANDOM'
+    is_mean = model_arguments.model.upper() == 'MEAN'
     data = dataset[0]
     data.y = data.y.squeeze(1)
     # data.x = data.x[:, ENCODER_MAPPING[data_arguments.initial_encoding_col]].unsqueeze(
@@ -152,7 +157,7 @@ def run_gnn_baseline(
         model_arguments.dropout,
         cached=False,
     ).to(device)
-    node_predictor = NodePredictor(10, 5, 1).to(device)
+    node_predictor = NodePredictor(model_arguments.embedding_dimension, 5, 1).to(device)
     model = GNNWrapper(gnn, node_predictor)
     logger = Logger(model_arguments.runs)
 
@@ -163,7 +168,7 @@ def run_gnn_baseline(
         optimizer = torch.optim.Adam(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
-            if not is_random:
+            if not is_random and not is_mean:
                 train(model, train_loader, optimizer)
                 train_mse = evaluate(model, train_loader, 'train_mask')
                 valid_mse = evaluate(model, val_loader, 'valid_mask')
@@ -171,10 +176,17 @@ def run_gnn_baseline(
                 result = (train_mse, valid_mse, test_mse)
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
+            elif is_random:
+                train_mse = evaluate_rand(model, train_loader, 'train_mask')
+                valid_mse = evaluate_rand(model, val_loader, 'valid_mask')
+                test_mse = evaluate_rand(model, test_loader, 'test_mask')
+                result = (train_mse, valid_mse, test_mse)
+                loss_tuple_epoch.append(result)
+                logger.add_result(run, result)
             else:
-                train_mse = evaluate_rand(model, train_loader)
-                valid_mse = evaluate_rand(model, val_loader)
-                test_mse = evaluate_rand(model, test_loader)
+                train_mse = evaluate_mean(model, train_loader, 'train_mask')
+                valid_mse = evaluate_mean(model, val_loader, 'valid_mask')
+                test_mse = evaluate_mean(model, test_loader, 'test_mask')
                 result = (train_mse, valid_mse, test_mse)
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
