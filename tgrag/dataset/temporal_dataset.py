@@ -81,7 +81,7 @@ class TemporalDataset(InMemoryDataset):
         quantiles = np.quantile(labeled_scores, [1 / 3, 2 / 3])
         quartile_labels = np.digitize(labeled_scores, bins=quantiles)
 
-        train_idx, temp_idx, _, _ = train_test_split(
+        train_idx, temp_idx, _, quartile_labels_temp = train_test_split(
             labeled_idx,
             quartile_labels,
             train_size=0.6,
@@ -89,13 +89,7 @@ class TemporalDataset(InMemoryDataset):
             random_state=self.seed,
         )
 
-        temp_idx_np = (
-            temp_idx.numpy() if isinstance(temp_idx, torch.Tensor) else temp_idx
-        )
-
-        quartile_labels_temp = quartile_labels[
-            np.isin(labeled_idx.numpy(), temp_idx_np)
-        ]
+        quartile_labels_temp = quartile_labels_temp.sort()
 
         valid_idx, test_idx = train_test_split(
             temp_idx,
