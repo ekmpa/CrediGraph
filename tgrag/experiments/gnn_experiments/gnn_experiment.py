@@ -29,13 +29,6 @@ MODEL_CLASSES: Dict[str, Type[torch.nn.Module]] = {
     'MEAN': GCN,
 }
 
-ENCODER_MAPPING: Dict[str, int] = {
-    'random': 0,
-    'pr_val': 1,
-    'hc_val': 2,
-    'text': 3,
-}
-
 
 def train(
     model: torch.nn.Module,
@@ -98,9 +91,6 @@ def run_gnn_baseline(
     is_mean = model_arguments.model.upper() == 'MEAN'
     data = dataset[0]
     data.y = data.y.squeeze(1)
-    # data.x = data.x[:, ENCODER_MAPPING[data_arguments.initial_encoding_col]].unsqueeze(
-    #     -1
-    # )
     split_idx = dataset.get_idx_split()
     logging.info(
         'Setting up training for task of: %s on model: %s',
