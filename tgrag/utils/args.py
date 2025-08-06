@@ -23,6 +23,26 @@ class MetaArguments:
             'help': 'A csv or list of csv files containing the nodes of the graph.'
         },
     )
+    target_file: Union[str, List[str]] = field(
+        metadata={'help': 'A csv or list of csv files containing the targets.'},
+    )
+    target_col: str = field(
+        default='cr_score',
+        metadata={'help': 'The target column name in the target csv file.'},
+    )
+    edge_src_col: str = field(
+        default='src', metadata={'help': 'The source column name in the edge file.'}
+    )
+    edge_dst_col: str = field(
+        default='dst',
+        metadata={'help': 'The destination column name in the edge file.'},
+    )
+    index_col: int = field(
+        default=1,
+        metadata={
+            'help': 'The integer corresponding to the column denoting node ids in the feature csv file.'
+        },
+    )
     encoder_dict: Dict[str, str] = field(
         default_factory=lambda: {
             'random': 'RNI',
