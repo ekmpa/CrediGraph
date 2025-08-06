@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
-from tgrag.experiments.gnn_experiment.baseline import (
+from tgrag.experiments.gnn_experiments.baseline import (
     evaluate_fb_mean,
     evaluate_fb_rand,
 )
