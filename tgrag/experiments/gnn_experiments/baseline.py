@@ -23,7 +23,7 @@ def evaluate_mean(
         total_loss += loss.item() * mask.sum().item()
         total_nodes += mask.sum().item()
 
-    return torch.tensor(total_loss / total_nodes).item()
+    return total_loss / total_nodes
 
 
 @torch.no_grad()
@@ -46,4 +46,4 @@ def evaluate_rand(
         total_loss += loss.item() * mask.sum().item()
         total_nodes += mask.sum().item()
 
-    return torch.tensor(total_loss / total_nodes).item()
+    return total_loss / total_nodes
