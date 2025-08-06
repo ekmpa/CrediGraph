@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple, Type
 import torch
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
+from torcheval.metrics.functional import r2_score
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
@@ -39,24 +40,24 @@ def train(
     device = next(model.parameters()).device
     total_loss = 0
     optimizer.zero_grad()
-    total_nodes = 0
+    all_preds = []
+    all_targets = []
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         batch = batch.to(device)
-        out = model(batch.x, batch.edge_index)
-        # TODO: How many are negative in the output per batch?
+        preds = model(batch.x, batch.edge_index).squeeze()
+        targets = batch.y
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
             continue
 
-        loss = F.binary_cross_entropy_with_logits(
-            out.squeeze()[train_mask], batch.y[train_mask]
-        )
+        loss = F.mse_loss(preds[train_mask], targets[train_mask])
         loss.backward()
         optimizer.step()
         total_loss += loss.item() * train_mask.sum().item()
-        total_nodes += train_mask.sum().item()
+        all_preds.append(preds[train_mask])
+        all_targets.append(targets[train_mask])
 
-    return total_loss / total_nodes
+    return r2_score(torch.cat(all_preds), torch.cat(all_targets))
 
 
 @torch.no_grad()
@@ -69,17 +70,22 @@ def evaluate(
     device = next(model.parameters()).device
     total_loss = 0
     total_nodes = 0
+    all_preds = []
+    all_targets = []
     for batch in loader:
         batch = batch.to(device)
-        out = model(batch.x, batch.edge_index)
+        preds = model(batch.x, batch.edge_index).squeeze()
+        targets = batch.y
         mask = getattr(batch, mask_name)
         if mask.sum() == 0:
             continue
-        loss = F.binary_cross_entropy_with_logits(out.squeeze()[mask], batch.y[mask])
+        loss = F.mse_loss(preds[mask], targets[mask])
         total_loss += loss.item() * mask.sum().item()
         total_nodes += mask.sum().item()
+        all_preds.append(preds[mask])
+        all_targets.append(targets[mask])
 
-    return total_loss / total_nodes
+    return r2_score(torch.cat(all_preds), torch.cat(all_targets))
 
 
 def run_gnn_baseline(
@@ -148,7 +154,9 @@ def run_gnn_baseline(
         model_arguments.dropout,
         cached=False,
     ).to(device)
-    node_predictor = NodePredictor(model_arguments.embedding_dimension, 5, 1).to(device)
+    node_predictor = NodePredictor(model_arguments.embedding_dimension, 128, 1).to(
+        device
+    )
     model = GNNWrapper(gnn, node_predictor)
     logger = Logger(model_arguments.runs)
 
