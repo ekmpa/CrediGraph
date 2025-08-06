@@ -1,5 +1,4 @@
 import logging
-import pickle
 from typing import Dict, List, Tuple, Type
 
 import torch
@@ -7,13 +6,19 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
+from tgrag.experiments.gnn_experiment.baseline import (
+    evaluate_fb_mean,
+    evaluate_fb_rand,
+)
 from tgrag.gnn.GAT import GAT
 from tgrag.gnn.gCon import GCN
+from tgrag.gnn.GNNWrapper import GNNWrapper
 from tgrag.gnn.SAGE import SAGE
+from tgrag.head.decoder import NodePredictor
 from tgrag.utils.args import DataArguments, ModelArguments
 from tgrag.utils.logger import Logger
-from tgrag.utils.path import get_root_dir
 from tgrag.utils.plot import plot_avg_rmse_loss
+from tgrag.utils.save import save_loss_results
 
 MODEL_CLASSES: Dict[str, Type[torch.nn.Module]] = {
     'GCN': GCN,
@@ -26,19 +31,6 @@ ENCODER_MAPPING: Dict[str, int] = {
     'pr_val': 1,
     'hc_val': 2,
 }
-
-
-def save_loss_results(
-    loss_tuple_run: List[List[Tuple[float, float, float]]],
-    model_name: str,
-    encoder_name: str,
-) -> None:
-    root = get_root_dir()
-    save_dir = root / 'results' / 'logs' / model_name / encoder_name
-    save_dir.mkdir(parents=True, exist_ok=True)
-    save_path = save_dir / 'loss_tuple_run.pkl'
-    with open(save_path, 'wb') as f:
-        pickle.dump(loss_tuple_run, f)
 
 
 def train(
@@ -85,6 +77,8 @@ def run_gnn_baseline_full_batch(
     model_arguments: ModelArguments,
     dataset: TemporalDataset,
 ) -> None:
+    is_random = model_arguments.model.upper() == 'RANDOM'
+    is_mean = model_arguments.model.upper() == 'MEAN'
     logging.info('Running Full-Batch')
     logging.info(
         'Setting up training for task of: %s on model: %s',
@@ -99,9 +93,6 @@ def run_gnn_baseline_full_batch(
 
     data = dataset[0]
     data.y = data.y.squeeze(1)
-    data.x = data.x[:, ENCODER_MAPPING[data_arguments.initial_encoding_col]].unsqueeze(
-        -1
-    )
     data = data.to(device)
     split_idx = dataset.get_idx_split()
     train_idx = split_idx['train'].to(device)
@@ -110,7 +101,7 @@ def run_gnn_baseline_full_batch(
     logging.info(f'Validation set size: {split_idx["valid"].size()}')
     logging.info(f'Testing set size: {split_idx["test"].size()}')
 
-    model = model_class(
+    gnn = model_class(
         data.num_features,
         model_arguments.hidden_channels,
         1,
@@ -118,6 +109,10 @@ def run_gnn_baseline_full_batch(
         model_arguments.dropout,
         cached=False,
     ).to(device)
+    node_predictor = NodePredictor(model_arguments.embedding_dimension, 128, 1).to(
+        device
+    )
+    model = GNNWrapper(gnn, node_predictor)
 
     logger = Logger(model_arguments.runs)
 
@@ -128,10 +123,19 @@ def run_gnn_baseline_full_batch(
         optimizer = torch.optim.Adam(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
-            train(model, data, train_idx, optimizer)
-            result = evaluate(model, data, split_idx)
-            loss_tuple_epoch.append(result)
-            logger.add_result(run, result)
+            if not is_random and not is_mean:
+                train(model, data, train_idx, optimizer)
+                result = evaluate(model, data, split_idx)
+                loss_tuple_epoch.append(result)
+                logger.add_result(run, result)
+            elif is_random:
+                result = evaluate_fb_rand(model, data, split_idx)
+                loss_tuple_epoch.append(result)
+                logger.add_result(run, result)
+            else:
+                result = evaluate_fb_mean(model, data, split_idx)
+                loss_tuple_epoch.append(result)
+                logger.add_result(run, result)
 
         loss_tuple_run.append(loss_tuple_epoch)
 
