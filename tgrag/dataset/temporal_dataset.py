@@ -15,8 +15,14 @@ class TemporalDataset(InMemoryDataset):
     def __init__(
         self,
         root: str,
-        node_file: str = 'temporal_nodes.csv',
-        edge_file: str = 'temporal_edges.csv',
+        node_file: str = 'features.csv',
+        edge_file: str = 'edges.csv',
+        target_file: str = 'target.csv',
+        target_col: str = 'cr_score',
+        edge_src_col: str = 'src',
+        edge_dst_col: str = 'dst',
+        index_col: int = 1,
+        index_name: str = 'node_id',
         encoding: Optional[Dict[str, Encoder]] = None,
         transform: Optional[Callable] = None,
         pre_transform: Optional[Callable] = None,
@@ -24,6 +30,12 @@ class TemporalDataset(InMemoryDataset):
     ):
         self.node_file = node_file
         self.edge_file = edge_file
+        self.target_file = target_file
+        self.target_col = target_col
+        self.edge_src_col = edge_src_col
+        self.edge_dst_col = edge_dst_col
+        self.index_col = index_col
+        self.index_name = index_name
         self.encoding = encoding
         self.seed = seed
         super().__init__(root, transform, pre_transform)
@@ -47,9 +59,10 @@ class TemporalDataset(InMemoryDataset):
     def process(self) -> None:
         node_path = os.path.join(self.raw_dir, self.node_file)
         edge_path = os.path.join(self.raw_dir, self.edge_file)
+        target_path = os.path.join(self.raw_dir, self.target_file)
         x_full, mapping = load_node_csv(
             path=node_path,
-            index_col=1,  # 'node_id'
+            index_col=self.index_col,  # 'node_id'
             encoders=self.encoding,
         )
 
@@ -57,15 +70,22 @@ class TemporalDataset(InMemoryDataset):
             raise TypeError('X is None type. Please use an encoding.')
 
         df = pd.read_csv(node_path)
-        df = df.set_index('node_id').loc[mapping.keys()]
+        if self.index_col != 0:
+            df = df.set_index(self.index_name).loc[mapping.keys()]
+
+        df_target = pd.read_csv(target_path)
 
         # Transductive nodes only:
-        labeled_mask = (df['cr_score'] != -1.0).values
-        cr_score = torch.tensor(df['cr_score'].values, dtype=torch.float).unsqueeze(
-            1
-        )  # CR_SCORE Shape? Does it include all the nodes
+        labeled_mask = (df_target[self.target_col] != -1.0).values
+        cr_score = torch.tensor(
+            df_target[self.target_col].values, dtype=torch.float
+        ).unsqueeze(1)
         edge_index, edge_attr = load_edge_csv(
-            path=edge_path, src_index_col='src', dst_index_col='dst', encoders=None
+            path=edge_path,
+            src_index_col=self.edge_src_col,
+            dst_index_col=self.edge_dst_col,
+            mapping=mapping,
+            encoders=None,
         )
 
         # adj_t = to_torch_csr_tensor(edge_index, size=(x_full.size(0), x_full.size(0)))

@@ -41,6 +41,7 @@ def load_edge_csv(
     path: str,
     src_index_col: str,
     dst_index_col: str,
+    mapping: Dict,
     encoders: Dict | None = None,
 ) -> Tuple[torch.Tensor, torch.Tensor | None]:
     usecols = [src_index_col, dst_index_col]
@@ -49,8 +50,8 @@ def load_edge_csv(
 
     df = pd.read_csv(path, usecols=usecols)
 
-    src = torch.tensor(df[src_index_col].to_numpy(), dtype=torch.long)
-    dst = torch.tensor(df[dst_index_col].to_numpy(), dtype=torch.long)
+    src = torch.tensor([mapping[s] for s in df[src_index_col]], dtype=torch.long)
+    dst = torch.tensor([mapping[d] for d in df[dst_index_col]], dtype=torch.long)
     edge_index = torch.stack([src, dst], dim=0)  # Shape: [2, num_edges]
 
     edge_attr = None
