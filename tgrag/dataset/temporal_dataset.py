@@ -22,6 +22,7 @@ class TemporalDataset(InMemoryDataset):
         edge_src_col: str = 'src',
         edge_dst_col: str = 'dst',
         index_col: int = 1,
+        index_name: str = 'node_id',
         encoding: Optional[Dict[str, Encoder]] = None,
         transform: Optional[Callable] = None,
         pre_transform: Optional[Callable] = None,
@@ -34,6 +35,7 @@ class TemporalDataset(InMemoryDataset):
         self.edge_src_col = edge_src_col
         self.edge_dst_col = edge_dst_col
         self.index_col = index_col
+        self.index_name = index_name
         self.encoding = encoding
         self.seed = seed
         super().__init__(root, transform, pre_transform)
@@ -68,19 +70,21 @@ class TemporalDataset(InMemoryDataset):
             raise TypeError('X is None type. Please use an encoding.')
 
         df = pd.read_csv(node_path)
-        df = df.set_index('node_id').loc[mapping.keys()]
+        if self.index_col != 0:
+            df = df.set_index(self.index_name).loc[mapping.keys()]
 
         df_target = pd.read_csv(target_path)
 
         # Transductive nodes only:
         labeled_mask = (df_target[self.target_col] != -1.0).values
         cr_score = torch.tensor(
-            df[self.target_col].values, dtype=torch.float
-        ).unsqueeze(1)  # CR_SCORE Shape? Does it include all the nodes
+            df_target[self.target_col].values, dtype=torch.float
+        ).unsqueeze(1)
         edge_index, edge_attr = load_edge_csv(
             path=edge_path,
             src_index_col=self.edge_src_col,
             dst_index_col=self.edge_dst_col,
+            mapping=mapping,
             encoders=None,
         )
 
