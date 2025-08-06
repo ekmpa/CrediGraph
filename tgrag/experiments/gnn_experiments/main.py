@@ -3,6 +3,7 @@ import logging
 from typing import Dict, cast
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
+from tgrag.encoders.categorical_encoder import CategoricalEncoder
 from tgrag.encoders.encoder import Encoder
 from tgrag.encoders.norm_encoding import NormEncoder
 from tgrag.encoders.rni_encoding import RNIEncoder
@@ -26,6 +27,7 @@ ENCODER_CLASSES: Dict[str, Encoder] = {
     'RNI': RNIEncoder(),
     'NORM': NormEncoder(),
     'TEXT': TextEncoder(),
+    'CAT': CategoricalEncoder(),
 }
 
 parser = argparse.ArgumentParser(
