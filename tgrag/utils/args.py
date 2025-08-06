@@ -43,6 +43,12 @@ class MetaArguments:
             'help': 'The integer corresponding to the column denoting node ids in the feature csv file.'
         },
     )
+    index_name: str = field(
+        default='node_id',
+        metadata={
+            'help': 'The name of the index column. If index_col = 0, then this need not given.'
+        },
+    )
     encoder_dict: Dict[str, str] = field(
         default_factory=lambda: {
             'random': 'RNI',
@@ -79,6 +85,7 @@ class MetaArguments:
 
         self.node_file = resolve_paths(self.node_file)
         self.edge_file = resolve_paths(self.edge_file)
+        self.target_file = resolve_paths(self.target_file)
 
         if self.log_file_path is not None:
             self.log_file_path = str(get_root_dir() / self.log_file_path)
