@@ -145,7 +145,7 @@ class ModelArguments:
         default=128, metadata={'help': 'Batch size in Neighbor loader.'}
     )
     embedding_dimension: int = field(
-        default=256, metadata={'help': 'The output dimension of the GNN.'}
+        default=128, metadata={'help': 'The output dimension of the GNN.'}
     )
     dropout: float = field(default=0.1, metadata={'help': 'Dropout value.'})
     lr: float = field(default=0.001, metadata={'help': 'Learning Rate.'})
