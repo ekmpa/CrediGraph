@@ -1,11 +1,18 @@
 import pathlib
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Dict, List, Optional, Tuple, Union
 
 import yaml
 from hf_argparser import HfArgumentParser
 
 from tgrag.utils.path import get_no_backup, get_root_dir
+
+
+class Normalization(str, Enum):
+    NONE = 'none'
+    LAYER_NORM = 'LayerNorm'
+    BATCH_NORM = 'BatchNorm'
 
 
 @dataclass
@@ -121,6 +128,12 @@ class ModelArguments:
     )
     hidden_channels: int = field(
         default=256, metadata={'help': 'Inner dimension of update weight matrix.'}
+    )
+    normalization: str = field(
+        default=Normalization.BATCH_NORM,
+        metadata={
+            'help': 'The normalization method. Choices: none, LayerNorm or BatchNorm.'
+        },
     )
     num_neighbors: list[int] = field(
         default_factory=lambda: [
