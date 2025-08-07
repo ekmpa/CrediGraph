@@ -55,12 +55,6 @@ class Model(torch.nn.Module):
             in_features=hidden_channels, out_features=out_channels
         )
 
-    def reset_parameters(self) -> None:
-        for conv in self.convs:
-            conv.reset_parameters()
-        for bn in self.bns:
-            bn.reset_parameters()
-
     def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
         x = self.input_linear(x)
         x = self.dropout(x)
