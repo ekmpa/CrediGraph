@@ -69,7 +69,11 @@ def run_gnn_baseline_full_batch(
         data_arguments.task_name,
         model_arguments.model,
     )
-    device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
+    device = (
+        f'cuda:{model_arguments.device}'
+        if model_arguments.use_cuda and torch.cuda.is_available()
+        else 'cpu'
+    )
     logging.info(f'Using device: {device}')
     device = torch.device(device)
 

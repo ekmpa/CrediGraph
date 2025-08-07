@@ -159,6 +159,7 @@ class ModelArguments:
     lr: float = field(default=0.001, metadata={'help': 'Learning Rate.'})
     epochs: int = field(default=500, metadata={'help': 'Number of epochs.'})
     runs: int = field(default=100, metadata={'help': 'Number of trials.'})
+    use_cuda: bool = field(default=True, metadata={'help': 'Whether to use cuda.'})
     device: int = field(default=0, metadata={'help': 'Device to be used.'})
     log_steps: int = field(
         default=50, metadata={'help': 'Step mod epoch to print logger.'}
