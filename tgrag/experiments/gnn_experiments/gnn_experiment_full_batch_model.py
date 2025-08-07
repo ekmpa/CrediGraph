@@ -25,8 +25,10 @@ def train(
 ) -> float:
     model.train()
     optimizer.zero_grad()
-    out = model(data.x, data.edge_index)[train_idx]
-    loss = F.mse_loss(out.squeeze(), data.y.squeeze(1)[train_idx])
+    out = model(data.x, data.edge_index)
+    preds = out.squeeze(-1)[train_idx]
+    targets = data.y[train_idx]
+    loss = F.mse_loss(preds, targets)
     loss.backward()
     optimizer.step()
 
@@ -121,7 +123,7 @@ def run_gnn_baseline_full_batch(
         loss_tuple_run.append(loss_tuple_epoch)
 
     logging.info(logger.get_statistics())
-    logging.info('Constructing RMSE plots')
+    logging.info('Constructing MSE plots')
     plot_avg_rmse_loss(loss_tuple_run, model_arguments.model, 'todo')
     logging.info('Saving pkl of results')
     save_loss_results(loss_tuple_run, model_arguments.model, 'todo')
