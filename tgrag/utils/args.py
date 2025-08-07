@@ -76,7 +76,7 @@ class MetaArguments:
         metadata={'help': 'Whether to use the /NOBACKUP/ or /SCRATCH/ disk on server.'},
     )
     data_dir_name: str = field(
-        default='scratch/',
+        default='scratch',
         metadata={'help': 'The persistent storage location for large datasets.'},
     )
 

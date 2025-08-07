@@ -12,7 +12,11 @@ def get_no_backup() -> Path:
 
 
 def get_scatch(dir_name: str) -> Path:
-    return Path(dir_name)
+    home = Path.home()
+
+    scratch_dir = home.parent / home.name / dir_name
+
+    return scratch_dir
 
 
 def get_cwd() -> Path:
