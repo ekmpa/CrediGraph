@@ -45,7 +45,7 @@ def evaluate(
     out = model(data.x, data.edge_index)
 
     y_true = data.y
-    y_pred = out
+    y_pred = out.unsqueeze(-1)
 
     train_rmse = F.mse_loss(
         y_pred[split_idx['train']], y_true[split_idx['train']]
