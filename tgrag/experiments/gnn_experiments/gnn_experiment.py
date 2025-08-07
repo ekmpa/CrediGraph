@@ -34,11 +34,10 @@ MODEL_CLASSES: Dict[str, Type[torch.nn.Module]] = {
 def train(
     model: torch.nn.Module,
     train_loader: NeighborLoader,
-    optimizer: torch.optim.Adam,
+    optimizer: torch.optim.AdamW,
 ) -> float:
     model.train()
     device = next(model.parameters()).device
-    total_loss = 0
     optimizer.zero_grad()
     all_preds = []
     all_targets = []
@@ -46,18 +45,18 @@ def train(
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
-        train_mask = batch.train_mask
-        if train_mask.sum() == 0:
-            continue
+        # train_mask = batch.train_mask
+        # if train_mask.sum() == 0:
+        #     continue
 
-        loss = F.mse_loss(preds[train_mask], targets[train_mask])
+        loss = F.mse_loss(preds, targets)
         loss.backward()
         optimizer.step()
-        total_loss += loss.item() * train_mask.sum().item()
-        all_preds.append(preds[train_mask])
-        all_targets.append(targets[train_mask])
+        # total_loss += loss.item() * train_mask.sum().item()
+        all_preds.append(preds)
+        all_targets.append(targets)
 
-    return r2_score(torch.cat(all_preds), torch.cat(all_targets))
+    return r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
 
 
 @torch.no_grad()
@@ -68,24 +67,22 @@ def evaluate(
 ) -> float:
     model.eval()
     device = next(model.parameters()).device
-    total_loss = 0
-    total_nodes = 0
     all_preds = []
     all_targets = []
     for batch in loader:
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
-        mask = getattr(batch, mask_name)
-        if mask.sum() == 0:
-            continue
-        loss = F.mse_loss(preds[mask], targets[mask])
-        total_loss += loss.item() * mask.sum().item()
-        total_nodes += mask.sum().item()
-        all_preds.append(preds[mask])
-        all_targets.append(targets[mask])
+        # mask = getattr(batch, mask_name)
+        # if mask.sum() == 0:
+        #     continue
+        F.mse_loss(preds, targets)
+        # total_loss += loss.item() * mask.sum().item()
+        # total_nodes += mask.sum().item()
+        all_preds.append(preds)
+        all_targets.append(targets)
 
-    return r2_score(torch.cat(all_preds), torch.cat(all_targets))
+    return r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
 
 
 def run_gnn_baseline(
@@ -164,7 +161,7 @@ def run_gnn_baseline(
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
         model.reset_parameters()
-        optimizer = torch.optim.Adam(model.parameters(), lr=model_arguments.lr)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             if not is_random and not is_mean:
