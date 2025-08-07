@@ -6,6 +6,7 @@ from torch import Tensor, nn
 from tgrag.gnn.modules import (
     GATModule,
     GCNModule,
+    NodePredictor,
     ResidualModuleWrapper,
     SAGEModule,
 )
@@ -37,7 +38,6 @@ class Model(torch.nn.Module):
     ):
         super().__init__()
         normalization_cls = self.normalization_map[normalization]
-        # TODO: Here exists the matmul dimension mismatch, the features dim is changed:
         self.input_linear = nn.Linear(
             in_features=in_channels, out_features=hidden_channels
         )
@@ -50,9 +50,7 @@ class Model(torch.nn.Module):
             residual_module = ResidualModuleWrapper(
                 module=self.modules[model_name],
                 normalization=normalization_cls,
-                in_channels=in_channels,
-                hidden_channels=hidden_channels,
-                out_channels=out_channels,
+                dim=hidden_channels,
                 dropout=dropout,
             )
             self.re_modules.append(residual_module)
@@ -61,6 +59,7 @@ class Model(torch.nn.Module):
         self.output_linear = nn.Linear(
             in_features=hidden_channels, out_features=out_channels
         )
+        self.node_predictor = NodePredictor(in_dim=out_channels, out_dim=1)
 
     def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
         x = self.input_linear(x)
@@ -68,10 +67,9 @@ class Model(torch.nn.Module):
         x = self.act(x)
 
         for re_module in self.re_modules:
-            # TODO: The next module will not match dimensions
             x = re_module(x, edge_index)
 
         x = self.output_normalization(x)
         x = self.output_linear(x)
-        x = x.sigmoid()
+        x = self.node_predictor(x)
         return x

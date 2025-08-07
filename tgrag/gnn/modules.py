@@ -6,22 +6,35 @@ from torch_geometric.nn import GATConv, GCNConv, SAGEConv
 NormalizationType = Union[Type[nn.Identity], Type[nn.LayerNorm], Type[nn.BatchNorm1d]]
 
 
+class NodePredictor(nn.Module):
+    def __init__(
+        self, in_dim: int, hidden_dim_multiplier: float = 0.5, out_dim: int = 1
+    ):
+        super().__init__()
+        hidden_dim = int(hidden_dim_multiplier * in_dim)
+        self.lin_node = nn.Linear(in_dim, hidden_dim)
+        self.out = nn.Linear(hidden_dim, out_dim)
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.lin_node(x)
+        x = x.relu()
+        x = self.out(x)
+        x = x.sigmoid()
+        return x
+
+
 class ResidualModuleWrapper(nn.Module):
     def __init__(
         self,
         module: nn.Module,
         normalization: NormalizationType,
-        in_channels: int,
-        hidden_channels: int,
-        out_channels: int,
+        dim: int,
         dropout: float,
     ):
         super().__init__()
-        self.normalization = normalization(hidden_channels)
+        self.normalization = normalization(dim)
         self.module = module(
-            in_channels=in_channels,
-            hidden_channels=hidden_channels,
-            out_channels=out_channels,
+            dim=dim,
             dropout=dropout,
         )
 
@@ -35,21 +48,20 @@ class ResidualModuleWrapper(nn.Module):
 class FeedForwardModule(nn.Module):
     def __init__(
         self,
-        in_channels: int,
-        hidden_channels: int,
-        out_channels: int,
+        dim: int,
         dropout: float,
         hidden_channel_multipler: float = 0.5,
     ):
         super().__init__()
         self.linear_1 = nn.Linear(
-            in_features=in_channels,
-            out_features=int(hidden_channel_multipler * hidden_channels),
+            in_features=dim,
+            out_features=int(hidden_channel_multipler * dim),
         )
         self.dropout_1 = nn.Dropout(p=dropout)
         self.act = nn.GELU()
         self.linear_2 = nn.Linear(
-            in_features=hidden_channels, out_features=out_channels
+            in_features=int(hidden_channel_multipler * dim),
+            out_features=dim,
         )
         self.dropout_2 = nn.Dropout(p=dropout)
 
@@ -64,57 +76,45 @@ class FeedForwardModule(nn.Module):
 
 
 class GCNModule(nn.Module):
-    def __init__(
-        self, in_channels: int, hidden_channels: int, out_channels: int, dropout: float
-    ):
+    def __init__(self, dim: int, dropout: float):
         super().__init__()
-        self.convs = GCNConv(in_channels, hidden_channels)
+        self.conv = GCNConv(dim, dim)
         self.feed_forward_module = FeedForwardModule(
-            in_channels=hidden_channels,
-            hidden_channels=hidden_channels,
-            out_channels=out_channels,
+            dim=dim,
             dropout=dropout,
         )
 
     def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
-        x = self.convs(x, edge_index)
+        x = self.conv(x, edge_index)
         x = self.feed_forward_module(x, edge_index)
         return x
 
 
 class SAGEModule(nn.Module):
-    def __init__(
-        self, in_channels: int, hidden_channels: int, out_channels: int, dropout: float
-    ):
+    def __init__(self, dim: int, dropout: float):
         super().__init__()
-        self.convs = SAGEConv(in_channels, hidden_channels)
+        self.conv = SAGEConv(dim, dim)
         self.feed_forward_module = FeedForwardModule(
-            in_channels=hidden_channels,
-            hidden_channels=hidden_channels,
-            out_channels=out_channels,
+            dim=dim,
             dropout=dropout,
         )
 
     def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
-        x = self.convs(x, edge_index)
+        x = self.conv(x, edge_index)
         x = self.feed_forward_module(x, edge_index)
         return x
 
 
 class GATModule(nn.Module):
-    def __init__(
-        self, in_channels: int, hidden_channels: int, out_channels: int, dropout: float
-    ):
+    def __init__(self, dim: int, dropout: float):
         super().__init__()
-        self.convs = GATConv(in_channels, hidden_channels)
+        self.conv = GATConv(dim, dim)
         self.feed_forward_module = FeedForwardModule(
-            in_channels=hidden_channels,
-            hidden_channels=hidden_channels,
-            out_channels=out_channels,
+            dim=dim,
             dropout=dropout,
         )
 
     def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
-        x = self.convs(x, edge_index)
+        x = self.conv(x, edge_index)
         x = self.feed_forward_module(x, edge_index)
         return x
