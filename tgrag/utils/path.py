@@ -11,8 +11,8 @@ def get_no_backup() -> Path:
     return Path('/NOBACKUP')
 
 
-def get_scatch() -> Path:
-    return Path('scratch/')
+def get_scatch(dir_name: str) -> Path:
+    return Path(dir_name)
 
 
 def get_cwd() -> Path:
