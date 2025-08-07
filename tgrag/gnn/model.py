@@ -1,8 +1,14 @@
 from typing import Type, Union
 
 import torch
-from modules import GATModule, GCNModule, ResidualModuleWrapper, SAGEModule
 from torch import Tensor, nn
+
+from tgrag.gnn.modules import (
+    GATModule,
+    GCNModule,
+    ResidualModuleWrapper,
+    SAGEModule,
+)
 
 NormalizationType = Union[Type[nn.Identity], Type[nn.LayerNorm], Type[nn.BatchNorm1d]]
 
@@ -31,6 +37,7 @@ class Model(torch.nn.Module):
     ):
         super().__init__()
         normalization_cls = self.normalization_map[normalization]
+        # TODO: Here exists the matmul dimension mismatch, the features dim is changed:
         self.input_linear = nn.Linear(
             in_features=in_channels, out_features=hidden_channels
         )
@@ -61,6 +68,7 @@ class Model(torch.nn.Module):
         x = self.act(x)
 
         for re_module in self.re_modules:
+            # TODO: The next module will not match dimensions
             x = re_module(x, edge_index)
 
         x = self.output_normalization(x)
