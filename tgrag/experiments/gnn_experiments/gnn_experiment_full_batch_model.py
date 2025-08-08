@@ -113,11 +113,11 @@ def run_gnn_baseline_full_batch(
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
             elif is_random:
-                result = evaluate_fb_rand(data, split_idx)
+                result = evaluate_fb_rand(data, split_idx, device)
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
             else:
-                result = evaluate_fb_mean(data, split_idx)
+                result = evaluate_fb_mean(data, split_idx, device)
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
 
