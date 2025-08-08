@@ -104,7 +104,7 @@ def run_gnn_baseline_full_batch(
                 num_layers=model_arguments.num_layers,
                 dropout=model_arguments.dropout,
             ).to(device)
-        optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
+            optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             if not is_random and not is_mean:
