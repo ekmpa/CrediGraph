@@ -94,15 +94,16 @@ def run_gnn_baseline_full_batch(
     loss_tuple_run: List[List[Tuple[float, float, float]]] = []
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
-        model = Model(
-            model_name=model_arguments.model,
-            normalization=model_arguments.normalization,
-            in_channels=data.num_features,
-            hidden_channels=model_arguments.hidden_channels,
-            out_channels=model_arguments.embedding_dimension,
-            num_layers=model_arguments.num_layers,
-            dropout=model_arguments.dropout,
-        ).to(device)
+        if not is_random and not is_mean:
+            model = Model(
+                model_name=model_arguments.model,
+                normalization=model_arguments.normalization,
+                in_channels=data.num_features,
+                hidden_channels=model_arguments.hidden_channels,
+                out_channels=model_arguments.embedding_dimension,
+                num_layers=model_arguments.num_layers,
+                dropout=model_arguments.dropout,
+            ).to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
@@ -112,11 +113,11 @@ def run_gnn_baseline_full_batch(
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
             elif is_random:
-                result = evaluate_fb_rand(model, data, split_idx)
+                result = evaluate_fb_rand(data, split_idx)
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
             else:
-                result = evaluate_fb_mean(model, data, split_idx)
+                result = evaluate_fb_mean(data, split_idx)
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
 
