@@ -4,7 +4,6 @@ from typing import List, Tuple
 import torch
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
-from torcheval.metrics.functional import r2_score
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
@@ -27,8 +26,10 @@ def train(
     model.train()
     device = next(model.parameters()).device
     optimizer.zero_grad()
-    all_preds = []
-    all_targets = []
+    total_loss = 0
+    total_nodes = 0
+    # all_preds = []
+    # all_targets = []
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
@@ -40,11 +41,13 @@ def train(
         loss = F.mse_loss(preds, targets)
         loss.backward()
         optimizer.step()
-        # total_loss += loss.item() * train_mask.sum().item()
-        all_preds.append(preds)
-        all_targets.append(targets)
+        total_loss += loss.item()
+        total_nodes += 1
+        # all_preds.append(preds)
+        # all_targets.append(targets)
 
-    return r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
+    # return r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
+    return total_loss / total_nodes
 
 
 @torch.no_grad()
@@ -55,8 +58,10 @@ def evaluate(
 ) -> float:
     model.eval()
     device = next(model.parameters()).device
-    all_preds = []
-    all_targets = []
+    total_loss = 0
+    total_nodes = 0
+    # all_preds = []
+    # all_targets = []
     for batch in loader:
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
@@ -64,13 +69,16 @@ def evaluate(
         # mask = getattr(batch, mask_name)
         # if mask.sum() == 0:
         #     continue
-        F.mse_loss(preds, targets)
+        loss = F.mse_loss(preds, targets)
+        total_loss += loss.item()
+        total_nodes += 1
         # total_loss += loss.item() * mask.sum().item()
         # total_nodes += mask.sum().item()
-        all_preds.append(preds)
-        all_targets.append(targets)
+        # all_preds.append(preds)
+        # all_targets.append(targets)
 
-    return r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
+    # return r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
+    return total_loss / total_nodes
 
 
 def run_gnn_baseline(
