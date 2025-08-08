@@ -55,12 +55,9 @@ def evaluate_rand(
 
 @torch.no_grad()
 def evaluate_fb_rand(
-    model: torch.nn.Module,
     data: TemporalDataset,
     split_idx: Dict,
 ) -> Tuple[float, float, float]:
-    model.eval()
-
     y_true = data.y
 
     pred_rand_train = torch.rand(split_idx['train'].size(0))
@@ -76,12 +73,9 @@ def evaluate_fb_rand(
 
 @torch.no_grad()
 def evaluate_fb_mean(
-    model: torch.nn.Module,
     data: TemporalDataset,
     split_idx: Dict,
 ) -> Tuple[float, float, float]:
-    model.eval()
-
     y_true = data.y
 
     pred_mean_train = torch.full(split_idx['train'].size(0), 0.5)
