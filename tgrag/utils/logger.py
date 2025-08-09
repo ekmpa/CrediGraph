@@ -35,6 +35,9 @@ def setup_logging(
         handlers=handlers,
     )
 
+    # Suppress matplotlib.font_manager debug output
+    logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
+
 
 class Logger(object):
     def __init__(self, runs: int):

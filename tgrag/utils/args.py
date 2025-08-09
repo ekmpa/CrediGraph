@@ -1,11 +1,18 @@
 import pathlib
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Dict, List, Optional, Tuple, Union
 
 import yaml
 from hf_argparser import HfArgumentParser
 
-from tgrag.utils.path import get_no_backup, get_root_dir
+from tgrag.utils.path import get_root_dir, get_scatch
+
+
+class Normalization(str, Enum):
+    NONE = 'none'
+    LAYER_NORM = 'LayerNorm'
+    BATCH_NORM = 'BatchNorm'
 
 
 @dataclass
@@ -68,10 +75,18 @@ class MetaArguments:
         default=False,
         metadata={'help': 'Whether to use the /NOBACKUP/ or /SCRATCH/ disk on server.'},
     )
+    data_dir_name: str = field(
+        default='scratch',
+        metadata={'help': 'The persistent storage location for large datasets.'},
+    )
 
     def __post_init__(self) -> None:
         # Select root directory
-        root_dir = get_no_backup() if self.is_scratch_location else get_root_dir()
+        root_dir = (
+            get_scatch(self.data_dir_name)
+            if self.is_scratch_location
+            else get_root_dir()
+        )
         print(f'root_dir: {root_dir}')
 
         def resolve_paths(files: Union[str, List[str]]) -> Union[str, List[str]]:
@@ -122,6 +137,12 @@ class ModelArguments:
     hidden_channels: int = field(
         default=256, metadata={'help': 'Inner dimension of update weight matrix.'}
     )
+    normalization: str = field(
+        default=Normalization.BATCH_NORM,
+        metadata={
+            'help': 'The normalization method. Choices: none, LayerNorm or BatchNorm.'
+        },
+    )
     num_neighbors: list[int] = field(
         default_factory=lambda: [
             -1
@@ -132,12 +153,13 @@ class ModelArguments:
         default=128, metadata={'help': 'Batch size in Neighbor loader.'}
     )
     embedding_dimension: int = field(
-        default=256, metadata={'help': 'The output dimension of the GNN.'}
+        default=128, metadata={'help': 'The output dimension of the GNN.'}
     )
     dropout: float = field(default=0.1, metadata={'help': 'Dropout value.'})
     lr: float = field(default=0.001, metadata={'help': 'Learning Rate.'})
     epochs: int = field(default=500, metadata={'help': 'Number of epochs.'})
     runs: int = field(default=100, metadata={'help': 'Number of trials.'})
+    use_cuda: bool = field(default=True, metadata={'help': 'Whether to use cuda.'})
     device: int = field(default=0, metadata={'help': 'Device to be used.'})
     log_steps: int = field(
         default=50, metadata={'help': 'Step mod epoch to print logger.'}
