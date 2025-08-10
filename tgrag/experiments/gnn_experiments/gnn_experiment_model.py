@@ -1,10 +1,9 @@
 import logging
-from typing import Dict, List, Tuple, Type
+from typing import List, Tuple
 
 import torch
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
-from torcheval.metrics.functional import r2_score
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
@@ -12,23 +11,11 @@ from tgrag.experiments.gnn_experiments.baseline import (
     evaluate_mean,
     evaluate_rand,
 )
-from tgrag.gnn.GAT import GAT
-from tgrag.gnn.gCon import GCN
-from tgrag.gnn.GNNWrapper import GNNWrapper
-from tgrag.gnn.SAGE import SAGE
-from tgrag.head.decoder import NodePredictor
+from tgrag.gnn.model import Model
 from tgrag.utils.args import DataArguments, ModelArguments
 from tgrag.utils.logger import Logger
 from tgrag.utils.plot import plot_avg_rmse_loss
 from tgrag.utils.save import save_loss_results
-
-MODEL_CLASSES: Dict[str, Type[torch.nn.Module]] = {
-    'GCN': GCN,
-    'GAT': GAT,
-    'SAGE': SAGE,
-    'RANDOM': GCN,
-    'MEAN': GCN,
-}
 
 
 def train(
@@ -39,8 +26,10 @@ def train(
     model.train()
     device = next(model.parameters()).device
     optimizer.zero_grad()
-    all_preds = []
-    all_targets = []
+    total_loss = 0
+    total_nodes = 0
+    # all_preds = []
+    # all_targets = []
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
@@ -52,11 +41,13 @@ def train(
         loss = F.mse_loss(preds, targets)
         loss.backward()
         optimizer.step()
-        # total_loss += loss.item() * train_mask.sum().item()
-        all_preds.append(preds)
-        all_targets.append(targets)
+        total_loss += loss.item()
+        total_nodes += 1
+        # all_preds.append(preds)
+        # all_targets.append(targets)
 
-    return r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
+    # return r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
+    return total_loss / total_nodes
 
 
 @torch.no_grad()
@@ -67,8 +58,10 @@ def evaluate(
 ) -> float:
     model.eval()
     device = next(model.parameters()).device
-    all_preds = []
-    all_targets = []
+    total_loss = 0
+    total_nodes = 0
+    # all_preds = []
+    # all_targets = []
     for batch in loader:
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
@@ -76,13 +69,16 @@ def evaluate(
         # mask = getattr(batch, mask_name)
         # if mask.sum() == 0:
         #     continue
-        F.mse_loss(preds, targets)
+        loss = F.mse_loss(preds, targets)
+        total_loss += loss.item()
+        total_nodes += 1
         # total_loss += loss.item() * mask.sum().item()
         # total_nodes += mask.sum().item()
-        all_preds.append(preds)
-        all_targets.append(targets)
+        # all_preds.append(preds)
+        # all_targets.append(targets)
 
-    return r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
+    # return r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
+    return total_loss / total_nodes
 
 
 def run_gnn_baseline(
@@ -103,7 +99,6 @@ def run_gnn_baseline(
     device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
     device = torch.device(device)
 
-    model_class = MODEL_CLASSES[model_arguments.model]
     logging.info(f'Training set size: {split_idx["train"].size()}')
     logging.info(f'Validation set size: {split_idx["valid"].size()}')
     logging.info(f'Testing set size: {split_idx["test"].size()}')
@@ -143,24 +138,20 @@ def run_gnn_baseline(
         persistent_workers=True,
     )
     logging.info('Test loader created')
-    gnn = model_class(
-        data.num_features,
-        model_arguments.hidden_channels,
-        model_arguments.embedding_dimension,
-        model_arguments.num_layers,
-        model_arguments.dropout,
-        cached=False,
-    ).to(device)
-    node_predictor = NodePredictor(model_arguments.embedding_dimension, 128, 1).to(
-        device
-    )
-    model = GNNWrapper(gnn, node_predictor)
-    logger = Logger(model_arguments.runs)
 
+    logger = Logger(model_arguments.runs)
     loss_tuple_run: List[List[Tuple[float, float, float]]] = []
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
-        model.reset_parameters()
+        model = Model(
+            model_name=model_arguments.model,
+            normalization=model_arguments.normalization,
+            in_channels=data.num_features,
+            hidden_channels=model_arguments.hidden_channels,
+            out_channels=model_arguments.embedding_dimension,
+            num_layers=model_arguments.num_layers,
+            dropout=model_arguments.dropout,
+        )
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):

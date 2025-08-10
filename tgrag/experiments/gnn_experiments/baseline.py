@@ -55,17 +55,15 @@ def evaluate_rand(
 
 @torch.no_grad()
 def evaluate_fb_rand(
-    model: torch.nn.Module,
     data: TemporalDataset,
     split_idx: Dict,
+    device: torch.device,
 ) -> Tuple[float, float, float]:
-    model.eval()
-
     y_true = data.y
 
-    pred_rand_train = torch.rand(split_idx['train'].size(0))
-    pred_rand_valid = torch.rand(split_idx['valid'].size(0))
-    pred_rand_test = torch.rand(split_idx['test'].size(0))
+    pred_rand_train = torch.rand(split_idx['train'].size(0)).to(device)
+    pred_rand_valid = torch.rand(split_idx['valid'].size(0)).to(device)
+    pred_rand_test = torch.rand(split_idx['test'].size(0)).to(device)
 
     train_rmse = F.mse_loss(pred_rand_train, y_true[split_idx['train']]).item()
     valid_rmse = F.mse_loss(pred_rand_valid, y_true[split_idx['valid']]).item()
@@ -76,17 +74,15 @@ def evaluate_fb_rand(
 
 @torch.no_grad()
 def evaluate_fb_mean(
-    model: torch.nn.Module,
     data: TemporalDataset,
     split_idx: Dict,
+    device: torch.device,
 ) -> Tuple[float, float, float]:
-    model.eval()
-
     y_true = data.y
 
-    pred_mean_train = torch.full(split_idx['train'].size(0), 0.5)
-    pred_mean_valid = torch.full(split_idx['valid'].size(0), 0.5)
-    pred_mean_test = torch.full(split_idx['test'].size(0), 0.5)
+    pred_mean_train = torch.full(split_idx['train'].size(), 0.5).to(device)
+    pred_mean_valid = torch.full(split_idx['valid'].size(), 0.5).to(device)
+    pred_mean_test = torch.full(split_idx['test'].size(), 0.5).to(device)
 
     train_rmse = F.mse_loss(pred_mean_train, y_true[split_idx['train']]).item()
     valid_rmse = F.mse_loss(pred_mean_valid, y_true[split_idx['valid']]).item()
