@@ -35,17 +35,17 @@ def train(
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
-        # train_mask = batch.train_mask
-        # if train_mask.sum() == 0:
-        #     continue
+        train_mask = batch.train_mask
+        if train_mask.sum() == 0:
+            continue
 
-        loss = F.mse_loss(preds, targets)
+        loss = F.mse_loss(preds[train_mask], targets[train_mask])
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
         total_nodes += 1
-        all_preds.append(preds)
-        all_targets.append(targets)
+        all_preds.append(preds[train_mask])
+        all_targets.append(targets[train_mask])
 
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
     mse = total_loss / total_nodes
@@ -68,16 +68,16 @@ def evaluate(
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
-        # mask = getattr(batch, mask_name)
-        # if mask.sum() == 0:
-        #     continue
-        loss = F.mse_loss(preds, targets)
+        mask = getattr(batch, mask_name)
+        if mask.sum() == 0:
+            continue
+        loss = F.mse_loss(preds[mask], targets[mask])
         total_loss += loss.item()
         total_nodes += 1
         # total_loss += loss.item() * mask.sum().item()
         # total_nodes += mask.sum().item()
-        all_preds.append(preds)
-        all_targets.append(targets)
+        all_preds.append(preds[mask])
+        all_targets.append(targets[mask])
 
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
     mse = total_loss / total_nodes
