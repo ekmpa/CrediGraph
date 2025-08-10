@@ -3,6 +3,7 @@ import logging
 from typing import Dict, cast
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
+from tgrag.encoders.categorical_encoder import CategoricalEncoder
 from tgrag.encoders.encoder import Encoder
 from tgrag.encoders.norm_encoding import NormEncoder
 from tgrag.encoders.rni_encoding import RNIEncoder
@@ -26,6 +27,7 @@ ENCODER_CLASSES: Dict[str, Encoder] = {
     'RNI': RNIEncoder(),
     'NORM': NormEncoder(),
     'TEXT': TextEncoder(),
+    'CAT': CategoricalEncoder(),
 }
 
 parser = argparse.ArgumentParser(
@@ -62,6 +64,11 @@ def main() -> None:
         root=f'{root}/data/',
         node_file=cast(str, meta_args.node_file),
         edge_file=cast(str, meta_args.edge_file),
+        target_file=cast(str, meta_args.target_file),
+        target_col=meta_args.target_col,
+        edge_src_col=meta_args.edge_src_col,
+        edge_dst_col=meta_args.edge_dst_col,
+        index_col=meta_args.index_col,
         encoding=encoding_dict,
         seed=meta_args.global_seed,
     )

@@ -17,5 +17,5 @@ class NodePredictor(torch.nn.Module):
         h = self.lin_node(node_embedding)
         h = h.relu()
         h = self.out(h)
-        h = h.relu()
+        h = h.sigmoid()
         return h

@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Tuple, Type
+from typing import Dict, List, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -10,39 +10,25 @@ from tgrag.experiments.gnn_experiments.baseline import (
     evaluate_fb_mean,
     evaluate_fb_rand,
 )
-from tgrag.gnn.GAT import GAT
-from tgrag.gnn.gCon import GCN
-from tgrag.gnn.GNNWrapper import GNNWrapper
-from tgrag.gnn.SAGE import SAGE
-from tgrag.head.decoder import NodePredictor
+from tgrag.gnn.model import Model
 from tgrag.utils.args import DataArguments, ModelArguments
 from tgrag.utils.logger import Logger
 from tgrag.utils.plot import plot_avg_rmse_loss
 from tgrag.utils.save import save_loss_results
-
-MODEL_CLASSES: Dict[str, Type[torch.nn.Module]] = {
-    'GCN': GCN,
-    'GAT': GAT,
-    'SAGE': SAGE,
-}
-
-ENCODER_MAPPING: Dict[str, int] = {
-    'random': 0,
-    'pr_val': 1,
-    'hc_val': 2,
-}
 
 
 def train(
     model: torch.nn.Module,
     data: TemporalDataset,
     train_idx: torch.Tensor,
-    optimizer: torch.optim.Adam,
+    optimizer: torch.optim.AdamW,
 ) -> float:
     model.train()
     optimizer.zero_grad()
-    out = model(data.x, data.edge_index)[train_idx]
-    loss = F.mse_loss(out.squeeze(), data.y.squeeze(1)[train_idx])
+    out = model(data.x, data.edge_index)
+    preds = out.squeeze(-1)[train_idx]
+    targets = data.y[train_idx]
+    loss = F.mse_loss(preds, targets)
     loss.backward()
     optimizer.step()
 
@@ -59,7 +45,7 @@ def evaluate(
     out = model(data.x, data.edge_index)
 
     y_true = data.y
-    y_pred = out
+    y_pred = out.squeeze()
 
     train_rmse = F.mse_loss(
         y_pred[split_idx['train']], y_true[split_idx['train']]
@@ -85,11 +71,13 @@ def run_gnn_baseline_full_batch(
         data_arguments.task_name,
         model_arguments.model,
     )
-    device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
+    device = (
+        f'cuda:{model_arguments.device}'
+        if model_arguments.use_cuda and torch.cuda.is_available()
+        else 'cpu'
+    )
     logging.info(f'Using device: {device}')
     device = torch.device(device)
-
-    model_class = MODEL_CLASSES[model_arguments.model]
 
     data = dataset[0]
     data.y = data.y.squeeze(1)
@@ -101,26 +89,22 @@ def run_gnn_baseline_full_batch(
     logging.info(f'Validation set size: {split_idx["valid"].size()}')
     logging.info(f'Testing set size: {split_idx["test"].size()}')
 
-    gnn = model_class(
-        data.num_features,
-        model_arguments.hidden_channels,
-        1,
-        model_arguments.num_layers,
-        model_arguments.dropout,
-        cached=False,
-    ).to(device)
-    node_predictor = NodePredictor(model_arguments.embedding_dimension, 128, 1).to(
-        device
-    )
-    model = GNNWrapper(gnn, node_predictor)
-
     logger = Logger(model_arguments.runs)
 
     loss_tuple_run: List[List[Tuple[float, float, float]]] = []
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
-        model.reset_parameters()
-        optimizer = torch.optim.Adam(model.parameters(), lr=model_arguments.lr)
+        if not is_random and not is_mean:
+            model = Model(
+                model_name=model_arguments.model,
+                normalization=model_arguments.normalization,
+                in_channels=data.num_features,
+                hidden_channels=model_arguments.hidden_channels,
+                out_channels=model_arguments.embedding_dimension,
+                num_layers=model_arguments.num_layers,
+                dropout=model_arguments.dropout,
+            ).to(device)
+            optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             if not is_random and not is_mean:
@@ -129,18 +113,18 @@ def run_gnn_baseline_full_batch(
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
             elif is_random:
-                result = evaluate_fb_rand(model, data, split_idx)
+                result = evaluate_fb_rand(data, split_idx, device)
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
             else:
-                result = evaluate_fb_mean(model, data, split_idx)
+                result = evaluate_fb_mean(data, split_idx, device)
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
 
         loss_tuple_run.append(loss_tuple_epoch)
 
     logging.info(logger.get_statistics())
-    logging.info('Constructing RMSE plots')
+    logging.info('Constructing MSE plots')
     plot_avg_rmse_loss(loss_tuple_run, model_arguments.model, 'todo')
     logging.info('Saving pkl of results')
     save_loss_results(loss_tuple_run, model_arguments.model, 'todo')

@@ -1,11 +1,18 @@
 import pathlib
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Dict, List, Optional, Tuple, Union
 
 import yaml
 from hf_argparser import HfArgumentParser
 
-from tgrag.utils.path import get_no_backup, get_root_dir
+from tgrag.utils.path import get_root_dir, get_scatch
+
+
+class Normalization(str, Enum):
+    NONE = 'none'
+    LAYER_NORM = 'LayerNorm'
+    BATCH_NORM = 'BatchNorm'
 
 
 @dataclass
@@ -21,6 +28,32 @@ class MetaArguments:
     edge_file: Union[str, List[str]] = field(
         metadata={
             'help': 'A csv or list of csv files containing the nodes of the graph.'
+        },
+    )
+    target_file: Union[str, List[str]] = field(
+        metadata={'help': 'A csv or list of csv files containing the targets.'},
+    )
+    target_col: str = field(
+        default='cr_score',
+        metadata={'help': 'The target column name in the target csv file.'},
+    )
+    edge_src_col: str = field(
+        default='src', metadata={'help': 'The source column name in the edge file.'}
+    )
+    edge_dst_col: str = field(
+        default='dst',
+        metadata={'help': 'The destination column name in the edge file.'},
+    )
+    index_col: int = field(
+        default=1,
+        metadata={
+            'help': 'The integer corresponding to the column denoting node ids in the feature csv file.'
+        },
+    )
+    index_name: str = field(
+        default='node_id',
+        metadata={
+            'help': 'The name of the index column. If index_col = 0, then this need not given.'
         },
     )
     encoder_dict: Dict[str, str] = field(
@@ -42,10 +75,18 @@ class MetaArguments:
         default=False,
         metadata={'help': 'Whether to use the /NOBACKUP/ or /SCRATCH/ disk on server.'},
     )
+    data_dir_name: str = field(
+        default='scratch',
+        metadata={'help': 'The persistent storage location for large datasets.'},
+    )
 
     def __post_init__(self) -> None:
         # Select root directory
-        root_dir = get_no_backup() if self.is_scratch_location else get_root_dir()
+        root_dir = (
+            get_scatch(self.data_dir_name)
+            if self.is_scratch_location
+            else get_root_dir()
+        )
         print(f'root_dir: {root_dir}')
 
         def resolve_paths(files: Union[str, List[str]]) -> Union[str, List[str]]:
@@ -59,6 +100,7 @@ class MetaArguments:
 
         self.node_file = resolve_paths(self.node_file)
         self.edge_file = resolve_paths(self.edge_file)
+        self.target_file = resolve_paths(self.target_file)
 
         if self.log_file_path is not None:
             self.log_file_path = str(get_root_dir() / self.log_file_path)
@@ -95,6 +137,12 @@ class ModelArguments:
     hidden_channels: int = field(
         default=256, metadata={'help': 'Inner dimension of update weight matrix.'}
     )
+    normalization: str = field(
+        default=Normalization.BATCH_NORM,
+        metadata={
+            'help': 'The normalization method. Choices: none, LayerNorm or BatchNorm.'
+        },
+    )
     num_neighbors: list[int] = field(
         default_factory=lambda: [
             -1
@@ -105,12 +153,13 @@ class ModelArguments:
         default=128, metadata={'help': 'Batch size in Neighbor loader.'}
     )
     embedding_dimension: int = field(
-        default=256, metadata={'help': 'The output dimension of the GNN.'}
+        default=128, metadata={'help': 'The output dimension of the GNN.'}
     )
     dropout: float = field(default=0.1, metadata={'help': 'Dropout value.'})
     lr: float = field(default=0.001, metadata={'help': 'Learning Rate.'})
     epochs: int = field(default=500, metadata={'help': 'Number of epochs.'})
     runs: int = field(default=100, metadata={'help': 'Number of trials.'})
+    use_cuda: bool = field(default=True, metadata={'help': 'Whether to use cuda.'})
     device: int = field(default=0, metadata={'help': 'Device to be used.'})
     log_steps: int = field(
         default=50, metadata={'help': 'Step mod epoch to print logger.'}

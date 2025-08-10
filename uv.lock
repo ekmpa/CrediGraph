@@ -2780,6 +2780,7 @@ dependencies = [
     { name = "tldextract" },
     { name = "torch" },
     { name = "torch-geometric" },
+    { name = "torcheval" },
     { name = "ujson" },
     { name = "warcio" },
 ]
@@ -2816,6 +2817,7 @@ requires-dist = [
     { name = "tldextract", specifier = ">=5.3.0" },
     { name = "torch", specifier = ">=2.7.1" },
     { name = "torch-geometric", specifier = ">=2.6.1" },
+    { name = "torcheval", specifier = ">=0.0.7" },
     { name = "ujson", specifier = ">=5.10.0" },
     { name = "warcio", specifier = ">=1.7.5" },
 ]
@@ -2997,6 +2999,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e8/81/e1b015494cb9e0bf4c47cc8426e49736120248733be0e22072a5628ae9ed/torch_geometric-2.6.1.tar.gz", hash = "sha256:1f18f9d0fc4d2239d526221e4f22606a4a3895b5d965a9856d27610a3df662c6", size = 771490 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/03/9f/157e913626c1acfb3b19ce000b1a6e4e4fb177c0bc0ea0c67ca5bd714b5a/torch_geometric-2.6.1-py3-none-any.whl", hash = "sha256:8faeb353f9655f7dbec44c5e0b44c721773bdfb279994da96b9b8b12fd30f427", size = 1135632 },
+]
+
+[[package]]
+name = "torcheval"
+version = "0.0.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f2/65/8f895a132d385c3bc60023a45501637aff63b98629cf45ce47a2035c0cc3/torcheval-0.0.7.tar.gz", hash = "sha256:a498dec34137bc66c9cf1adc7353a46c604dd62255884c72dcb4e2e4fc2cd7e9", size = 100912 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e4/de/e7abc784b00de9d05999657d29187f1f7a3406ed10ecaf164de06482608f/torcheval-0.0.7-py3-none-any.whl", hash = "sha256:20cc34dac7aa9b32f942c8a9f014d1d02098631b6cd0b102c078600577017956", size = 179200 },
 ]
 
 [[package]]
