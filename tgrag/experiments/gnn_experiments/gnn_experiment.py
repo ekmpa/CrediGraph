@@ -146,16 +146,17 @@ def run_gnn_baseline(
     loss_tuple_run: List[List[Tuple[float, float, float]]] = []
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
-        model = Model(
-            model_name=model_arguments.model,
-            normalization=model_arguments.normalization,
-            in_channels=data.num_features,
-            hidden_channels=model_arguments.hidden_channels,
-            out_channels=model_arguments.embedding_dimension,
-            num_layers=model_arguments.num_layers,
-            dropout=model_arguments.dropout,
-        )
-        optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
+        if not is_random and not is_mean:
+            model = Model(
+                model_name=model_arguments.model,
+                normalization=model_arguments.normalization,
+                in_channels=data.num_features,
+                hidden_channels=model_arguments.hidden_channels,
+                out_channels=model_arguments.embedding_dimension,
+                num_layers=model_arguments.num_layers,
+                dropout=model_arguments.dropout,
+            ).to(device)
+            optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             if not is_random and not is_mean:
@@ -167,16 +168,16 @@ def run_gnn_baseline(
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
             elif is_random:
-                train_mse = evaluate_rand(model, train_loader, 'train_mask')
-                valid_mse = evaluate_rand(model, val_loader, 'valid_mask')
-                test_mse = evaluate_rand(model, test_loader, 'test_mask')
+                train_mse = evaluate_rand(train_loader, 'train_mask', device)
+                valid_mse = evaluate_rand(val_loader, 'valid_mask', device)
+                test_mse = evaluate_rand(test_loader, 'test_mask', device)
                 result = (train_mse, valid_mse, test_mse)
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
             else:
-                train_mse = evaluate_mean(model, train_loader, 'train_mask')
-                valid_mse = evaluate_mean(model, val_loader, 'valid_mask')
-                test_mse = evaluate_mean(model, test_loader, 'test_mask')
+                train_mse = evaluate_mean(train_loader, 'train_mask', device)
+                valid_mse = evaluate_mean(val_loader, 'valid_mask', device)
+                test_mse = evaluate_mean(test_loader, 'test_mask', device)
                 result = (train_mse, valid_mse, test_mse)
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
