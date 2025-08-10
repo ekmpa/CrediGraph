@@ -4,6 +4,7 @@ from typing import List, Tuple
 import torch
 import torch.nn.functional as F
 from torch_geometric.loader import NeighborLoader
+from torcheval.metrics.functional import r2_score
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
@@ -22,14 +23,14 @@ def train(
     model: torch.nn.Module,
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
-) -> float:
+) -> Tuple[float, float]:
     model.train()
     device = next(model.parameters()).device
     optimizer.zero_grad()
     total_loss = 0
     total_nodes = 0
-    # all_preds = []
-    # all_targets = []
+    all_preds = []
+    all_targets = []
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
@@ -43,11 +44,12 @@ def train(
         optimizer.step()
         total_loss += loss.item()
         total_nodes += 1
-        # all_preds.append(preds)
-        # all_targets.append(targets)
+        all_preds.append(preds)
+        all_targets.append(targets)
 
-    # return r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
-    return total_loss / total_nodes
+    r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
+    mse = total_loss / total_nodes
+    return (mse, r2)
 
 
 @torch.no_grad()
@@ -55,13 +57,13 @@ def evaluate(
     model: torch.nn.Module,
     loader: NeighborLoader,
     mask_name: str,
-) -> float:
+) -> Tuple[float, float]:
     model.eval()
     device = next(model.parameters()).device
     total_loss = 0
     total_nodes = 0
-    # all_preds = []
-    # all_targets = []
+    all_preds = []
+    all_targets = []
     for batch in loader:
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
@@ -74,11 +76,12 @@ def evaluate(
         total_nodes += 1
         # total_loss += loss.item() * mask.sum().item()
         # total_nodes += mask.sum().item()
-        # all_preds.append(preds)
-        # all_targets.append(targets)
+        all_preds.append(preds)
+        all_targets.append(targets)
 
-    # return r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
-    return total_loss / total_nodes
+    r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
+    mse = total_loss / total_nodes
+    return (mse, r2)
 
 
 def run_gnn_baseline(
@@ -157,9 +160,9 @@ def run_gnn_baseline(
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             if not is_random and not is_mean:
                 train(model, train_loader, optimizer)
-                train_mse = evaluate(model, train_loader, 'train_mask')
-                valid_mse = evaluate(model, val_loader, 'valid_mask')
-                test_mse = evaluate(model, test_loader, 'test_mask')
+                train_mse = evaluate(model, train_loader, 'train_mask')[0]
+                valid_mse = evaluate(model, val_loader, 'valid_mask')[0]
+                test_mse = evaluate(model, test_loader, 'test_mask')[0]
                 result = (train_mse, valid_mse, test_mse)
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
