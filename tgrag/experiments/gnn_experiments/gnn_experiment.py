@@ -146,7 +146,8 @@ def run_gnn_baseline(
 
     logger = Logger(model_arguments.runs)
     loss_tuple_run_mse: List[List[Tuple[float, float, float]]] = []
-    loss_tuple_run_r2: List[List[Tuple[float, float, float]]] = []
+    if not is_random and not is_mean:
+        loss_tuple_run_r2: List[List[Tuple[float, float, float]]] = []
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
         if not is_random and not is_mean:
@@ -161,7 +162,8 @@ def run_gnn_baseline(
             ).to(device)
             optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float]] = []
-        loss_tuple_epoch_r2: List[Tuple[float, float, float]] = []
+        if not is_random and not is_mean:
+            loss_tuple_epoch_r2: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             if not is_random and not is_mean:
                 train(model, train_loader, optimizer)
@@ -189,15 +191,19 @@ def run_gnn_baseline(
                 logger.add_result(run, result)
 
         loss_tuple_run_mse.append(loss_tuple_epoch_mse)
-        loss_tuple_run_r2.append(loss_tuple_epoch_r2)
+        if not is_random and not is_mean:
+            loss_tuple_run_r2.append(loss_tuple_epoch_r2)
 
     logging.info('*** Statistics ***')
     logging.info(logger.get_statistics())
     logging.info(logger.get_avg_statistics())
-    logging.info('Constructing RMSE plots')
+    logging.info('Constructing plots')
     plot_avg_loss(
         loss_tuple_run_mse, model_arguments.model, Scoring.mse, 'mse_loss_plot.png'
     )
-    plot_avg_loss(loss_tuple_run_r2, model_arguments.model, Scoring.r2, 'r2_plot.png')
+    if not is_random and not is_mean:
+        plot_avg_loss(
+            loss_tuple_run_r2, model_arguments.model, Scoring.r2, 'r2_plot.png'
+        )
     logging.info('Saving pkl of results')
     save_loss_results(loss_tuple_run_mse, model_arguments.model, 'TODO')
