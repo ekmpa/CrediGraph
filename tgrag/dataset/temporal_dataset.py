@@ -69,9 +69,14 @@ class TemporalDataset(InMemoryDataset):
             index_col=self.index_col,  # 'node_id'
             encoders=self.encoding,
         )
+        print('Feature matrix construced.')
 
         if x_full is None:
             raise TypeError('X is None type. Please use an encoding.')
+
+        df = pd.read_csv(node_path)
+        if self.index_col != 0:
+            df = df.set_index(self.index_name).loc[mapping.keys()]
 
         df_target = pd.read_csv(target_path)
         if self.target_index_col != 0:
@@ -89,6 +94,7 @@ class TemporalDataset(InMemoryDataset):
             mapping=mapping,
             encoders=None,
         )
+        print('Edge index constructed.')
 
         # adj_t = to_torch_csr_tensor(edge_index, size=(x_full.size(0), x_full.size(0)))
 
@@ -137,6 +143,8 @@ class TemporalDataset(InMemoryDataset):
             'valid': valid_idx,
             'test': test_idx,
         }
+
+        print('Masks constructed.')
 
         assert data.edge_index.max() < data.x.size(0), 'edge_index out of bounds'
 
