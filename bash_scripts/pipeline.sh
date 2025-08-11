@@ -32,7 +32,6 @@ write_summary() {
         echo "Edges: $TOTAL_EDGES"
         echo "Steps: $TOTAL_STEPS"
         echo "Files decompressed: $TOTAL_FILES_DECOMPRESSED"
-        # TO DO: add stats from topological experiments in summary file
     } > "$SUMMARY_FILE"
     echo "Summary written to $SUMMARY_FILE"
 }
