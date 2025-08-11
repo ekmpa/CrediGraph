@@ -1,6 +1,7 @@
 import logging
 import pickle
 from collections import defaultdict
+from enum import Enum
 from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
@@ -13,10 +14,15 @@ from scipy.ndimage import gaussian_filter
 from tgrag.utils.path import get_root_dir
 
 
-def plot_avg_rmse_loss(
+class Scoring(str, Enum):
+    mse = 'MSE'
+    r2 = 'R2'
+
+
+def plot_avg_loss(
     loss_tuple_run: List[List[Tuple[float, float, float]]],
     model_name: str,
-    encoder_used: str,
+    score: Scoring,
     save_filename: str = 'rmse_loss_plot.png',
 ) -> None:
     """Plots the averaged MSE loss over trials for train, validation, and test sets with std dev bands."""
@@ -24,32 +30,33 @@ def plot_avg_rmse_loss(
 
     data = np.array(loss_tuple_run)  # shape: (num_trials, num_epochs, 3)
 
-    avg_rmse = data.mean(axis=0)  # shape: (num_epochs, 3)
-    std_rmse = data.std(axis=0)  # shape: (num_epochs, 3)
+    avg = data.mean(axis=0)  # shape: (num_epochs, 3)
+    std = data.std(axis=0)  # shape: (num_epochs, 3)
 
-    avg_train, avg_val, avg_test = avg_rmse[:, 0], avg_rmse[:, 1], avg_rmse[:, 2]
-    std_train, std_val, std_test = std_rmse[:, 0], std_rmse[:, 1], std_rmse[:, 2]
+    avg_train, avg_val, avg_test = avg[:, 0], avg[:, 1], avg[:, 2]
+    std_train, std_val, std_test = std[:, 0], std[:, 1], std[:, 2]
 
     root = get_root_dir()
-    save_dir = root / 'results' / 'plots' / encoder_used / model_name
+    save_dir = root / 'results' / 'plots' / model_name
     save_dir.mkdir(parents=True, exist_ok=True)
     save_path = save_dir / save_filename
 
     plt.figure(figsize=(10, 6))
     epochs = np.arange(1, num_epochs + 1)
 
-    plt.plot(epochs, avg_train, label='Train MSE', linewidth=2)
+    plt.plot(epochs, avg_train, label=f'Train {score.value}', linewidth=2)
     plt.fill_between(epochs, avg_train - std_train, avg_train + std_train, alpha=0.2)
 
-    plt.plot(epochs, avg_val, label='Validation MSE', linewidth=2)
+    plt.plot(epochs, avg_val, label=f'Validation {score.value}', linewidth=2)
     plt.fill_between(epochs, avg_val - std_val, avg_val + std_val, alpha=0.2)
 
-    plt.plot(epochs, avg_test, label='Test MSE', linewidth=2)
+    plt.plot(epochs, avg_test, label=f'Test {score.value}', linewidth=2)
     plt.fill_between(epochs, avg_test - std_test, avg_test + std_test, alpha=0.2)
     plt.xlabel('Epoch')
-    plt.ylabel('MSE Loss')
-    plt.yscale('log')
-    plt.title(f'{model_name} : Average MSE Loss over Trials')
+    plt.ylabel(f'{score.value}')
+    if score == Scoring.mse:
+        plt.yscale('log')
+    plt.title(f'{model_name} : Average {score.value} Loss over Trials')
     plt.legend()
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.tight_layout()
