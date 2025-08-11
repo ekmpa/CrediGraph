@@ -61,6 +61,7 @@ class TemporalDataset(InMemoryDataset):
         pass
 
     def process(self) -> None:
+        print('Process called.')
         node_path = os.path.join(self.raw_dir, self.node_file)
         edge_path = os.path.join(self.raw_dir, self.edge_file)
         target_path = os.path.join(self.raw_dir, self.target_file)
