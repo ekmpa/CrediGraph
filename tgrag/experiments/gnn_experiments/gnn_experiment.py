@@ -26,12 +26,12 @@ def train(
 ) -> Tuple[float, float]:
     model.train()
     device = next(model.parameters()).device
-    optimizer.zero_grad()
     total_loss = 0
     total_nodes = 0
     all_preds = []
     all_targets = []
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
+        optimizer.zero_grad()
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
@@ -101,6 +101,8 @@ def run_gnn_baseline(
     )
     device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
     device = torch.device(device)
+
+    logging.info(f'Device found: {device}')
 
     logging.info(f'Training set size: {split_idx["train"].size()}')
     logging.info(f'Validation set size: {split_idx["valid"].size()}')
