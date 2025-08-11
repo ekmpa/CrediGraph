@@ -79,7 +79,9 @@ class TemporalDataset(InMemoryDataset):
 
         df_target = pd.read_csv(target_path)
         if self.target_index_col != 0:
-            df_target = df_target.set_index(self.target_index_name).loc[mapping.keys()]
+            mapping_index = pd.Index(mapping.keys(), name=self.target_index_name)
+            df_target = df_target.set_index(self.target_index_name)
+            df_target = df_target.reindex(mapping_index)
 
         # Transductive nodes only:
         labeled_mask = (df_target[self.target_col] != -1.0).values
@@ -114,8 +116,6 @@ class TemporalDataset(InMemoryDataset):
             stratify=quartile_labels,
             random_state=self.seed,
         )
-
-        quartile_labels_temp = quartile_labels_temp.sort()
 
         valid_idx, test_idx = train_test_split(
             temp_idx,
