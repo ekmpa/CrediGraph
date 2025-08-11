@@ -1,11 +1,35 @@
 #!/bin/bash
 set -e
 
-# Check if CRAWL argument is provided
+fetch_with_retries() {
+  local url="$1" out="$2" tries="${3:-10}"
+  local tmp="${out}.part" i status sleep_time
+  mkdir -p "$(dirname "$out")"
+  for ((i=1; i<=tries; i++)); do
+    wget -c --tries=1 \
+         --retry-connrefused \
+         --retry-on-http-error=429,500,502,503,504 \
+         --timeout=60 --read-timeout=60 \
+         -O "$tmp" "$url" && status=0 || status=$?
+    if [[ $status -eq 0 ]] && gzip -t "$tmp" 2>/dev/null; then
+      mv -f "$tmp" "$out"
+      return 0
+    fi
+    rm -f "$tmp" 2>/dev/null || true
+    (( i == tries )) && break
+    sleep_time=2 #$(( (2**i) < 60 ? (2**i) : 60 ))
+    echo "[WARN] attempt $i failed for $url; retrying in ${sleep_time}s..."
+    sleep "$sleep_time"
+  done
+  echo "[ERR] giving up on $url after $tries tries"
+  return 8
+}
+
+# args
 if [ -z "$1" ]; then
-    echo "Usage: $0 <CRAWL-ID>"
-    echo "Example: $0 CC-MAIN-2017-13"
-    exit 1
+  echo "Usage: $0 <CRAWL-ID>"
+  echo "Example: $0 CC-MAIN-2017-13"
+  exit 1
 fi
 
 CRAWL="$1"
@@ -42,7 +66,6 @@ BASE_URL=https://data.commoncrawl.org # Base URL used to download the path listi
 if [ -z "$SCRATCH" ]; then
     echo "[WARN] SCRATCH not set, using local data directory."
     DATA_DIR="$PROJECT_ROOT/data"
-
 else
     DATA_DIR="$SCRATCH"
     echo "Using SCRATCH directory: $DATA_DIR"
@@ -58,65 +81,94 @@ fi
 
 #for data_type in warc wat wet; do
 for data_type in  "${cc_file_types[@]}" ; do
-    echo "CC File Type= $data_type"
-    echo "Downloading Common Crawl paths listings (${data_type} files of $CRAWL)..."
+  echo "CC File Type= $data_type"
+  echo "Downloading Common Crawl paths listings (${data_type} files of $CRAWL)..."
 
-    mkdir -p "$DATA_DIR/crawl-data/$CRAWL/"
-    listing="$DATA_DIR/crawl-data/$CRAWL/$data_type.paths.gz"
-    cd "$DATA_DIR/crawl-data/$CRAWL/"
-    wget --timestamping "$BASE_URL/crawl-data/$CRAWL/$data_type.paths.gz"
-    sleep 2
-    cd -
+  mkdir -p "$DATA_DIR/crawl-data/$CRAWL/"
+  listing="$DATA_DIR/crawl-data/$CRAWL/$data_type.paths.gz"
+  cd "$DATA_DIR/crawl-data/$CRAWL/"
+  wget --timestamping "$BASE_URL/crawl-data/$CRAWL/$data_type.paths.gz"
+  sleep 2
+  cd -
 
-    echo "Downloading sample ${data_type} file..."
-
-    file=$(gzip -dc "$listing" | head -1)
+  echo "Downloading sample ${data_type} file..."
+  # make sample fetch non-fatal so we reach the main loop even if it 503s
+  file="$(gzip -dc "$listing" | head -1 || true)"
+  if [ -n "$file" ]; then
     full_path="$DATA_DIR/$file"
     mkdir -p "$(dirname "$full_path")"
-    cd "$(dirname "$full_path")"
-    wget --timestamping "$BASE_URL/$file"
-    cd -
-    input="$INPUT_DIR/all_${data_type}_${CRAWL}.txt"
-    echo "All ${data_type} files of ${CRAWL}: $input"
-    listing_content=$(gzip -dc "$listing")
-    all_listing_content_path="$INPUT_DIR/test_all_${data_type}.txt"
-    echo "file:$listing_content" >>"$all_listing_content_path"
-#    echo "listing_content=$listing_content"
-    listing_FilesCount=$(wc -l <<< "$listing_content")
-    echo "listing_FilesCount=$listing_FilesCount"
-    if [ "$listing_FilesCount" -lt "$end_idx" ] ; then
-      end_idx=listing_FilesCount
-    fi
-    FilesCount=$((end_idx - start_idx+1))
-    start_idx=$((start_idx+1))
-    echo "To Process FilesCount=$FilesCount"
-#    echo " tail -n +$start_idx | head -n $FilesCount"
-    wat_files=$(echo "$listing_content" | tail -n +$start_idx | head -n $FilesCount)
-    echo "Writing input file listings..."
-    input="$INPUT_DIR/test_${data_type}.txt"
-    echo "Test file: $input"
-    if [ -e "$input" ]; then
-        rm "$input"
-        echo "File $input already existed. deleted it."
-    fi
-    while IFS= read -r wat_file; do
-      echo "file:$DATA_DIR/$wat_file" >>"$input"
-     done <<< "$wat_files"
-    echo "############Downloading Files############"
-    while IFS= read -r wat_file; do
-      echo "$wat_file"
-      # split file name by
-      first=$(echo "$wat_file" | awk -F '$BASE_URL' '{print $1}')
-      first=$(echo "$first" | awk -F '/'$data_type'/' '{print $1}')
-#      echo "first=" "$first"
-      #file_path="../data/$wat_file"
-      file_path="$DATA_DIR/$wat_file"
-      if [ -f "$file_path" ]; then
-          echo "File '$file_path' exists."
+    ( cd "$(dirname "$full_path")" && wget --timestamping "$BASE_URL/$file" ) || \
+      echo "[WARN] sample $data_type fetch failed; continuing"
+  fi
+
+  input="$INPUT_DIR/all_${data_type}_${CRAWL}.txt"
+  echo "All ${data_type} files of ${CRAWL}: $input"
+  listing_content=$(gzip -dc "$listing")
+  all_listing_content_path="$INPUT_DIR/test_all_${data_type}.txt"
+  echo "file:$listing_content" >>"$all_listing_content_path"
+
+  listing_FilesCount=$(wc -l <<< "$listing_content")
+  echo "listing_FilesCount=$listing_FilesCount"
+  if [ "$listing_FilesCount" -lt "$end_idx" ] ; then
+    end_idx=$listing_FilesCount
+  fi
+  FilesCount=$((end_idx - start_idx + 1))
+  start_idx=$((start_idx + 1))
+  echo "To Process FilesCount=$FilesCount"
+
+  wat_files=$(echo "$listing_content" | tail -n +$start_idx | head -n $FilesCount)
+  echo "Writing input file listings..."
+  input="$INPUT_DIR/test_${data_type}.txt"
+  echo "Test file: $input"
+  if [ -e "$input" ]; then
+    rm "$input"
+    echo "File $input already existed. deleted it."
+  fi
+  while IFS= read -r wat_file; do
+    echo "file:$DATA_DIR/$wat_file" >>"$input"
+  done <<< "$wat_files"
+
+  echo "############Downloading Files############"
+
+  # counters + skip log
+  skipped=0
+  downloaded=0
+  fail_log="$DATA_DIR/crawl-data/$CRAWL/failed-${data_type}.txt"
+  : > "$fail_log"
+
+  while IFS= read -r wat_file; do
+    first=$(echo "$wat_file" | awk -F '/'$data_type'/' '{print $1}')
+    file_path="$DATA_DIR/$wat_file"
+    target_dir="$DATA_DIR/$first/$data_type/"
+    target_file="${target_dir}$(basename "$wat_file")"
+
+    if [ -f "$file_path" ] || [ -f "$target_file" ]; then
+      # verify gzip; re-download if corrupt
+      test -f "$file_path" && cand="$file_path" || cand="$target_file"
+      if gzip -t "$cand" 2>/dev/null; then
+        echo "File '$cand' exists."
+        downloaded=$((downloaded+1))
+        continue
       else
-          #wget --timestamping -P "../data/$first/$data_type/" "$BASE_URL/$wat_file"
-          wget --timestamping -P "$DATA_DIR/$first/$data_type/" "$BASE_URL/$wat_file"
+        echo "[WARN] corrupt '$cand' — re-downloading"
+        rm -f "$cand"
       fi
-    done <<< "$wat_files"
+    fi
+
+    # retry this one file; skip if it keeps failing
+    url="$BASE_URL/$wat_file"
+    if fetch_with_retries "$url" "$target_file" 5; then
+      #echo "[OK] $target_file"
+      downloaded=$((downloaded+1))
+    else
+      echo "[SKIP] $url"
+      echo "$url" >> "$fail_log"
+      skipped=$((skipped+1))
+      continue
+    fi
+
+  done <<< "$wat_files"
+
+  echo "[SUMMARY] $CRAWL type=$data_type downloaded=$downloaded skipped=$skipped fail_log=$fail_log"
 
 done

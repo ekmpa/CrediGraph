@@ -1,15 +1,32 @@
-import glob
 import gzip
-import os
-from typing import IO, Callable, Dict, List, Tuple
+from typing import IO, Callable, Dict, List, Set, Tuple
 
 import pandas as pd
 import torch
 from torch import Tensor
 from tqdm import tqdm
 
-from tgrag.utils.matching import reverse_domain
-from tgrag.utils.path import get_root_dir
+
+def read_vertex_file(path: str) -> Set[str]:
+    result: Set[str] = set()
+    with gzip.open(path, 'rt', encoding='utf-8') as f:
+        for line in f:
+            result.add(line.strip())
+    return result
+
+
+def read_edge_file(path: str, old_to_new: Dict[int, int]) -> Set[str]:
+    result: Set[str] = set()
+    with gzip.open(path, 'rt', encoding='utf-8') as f:
+        for line in f:
+            parts = line.strip().split('\t')
+            if len(parts) < 2:
+                continue
+            src, dst = int(parts[0]), int(parts[1])
+            src = old_to_new.get(src, src)
+            dst = old_to_new.get(dst, dst)
+            result.add(f'{src}\t{dst}')
+    return result
 
 
 def open_file(path: str) -> Callable[..., IO]:
@@ -76,61 +93,6 @@ def load_edges(edge_file: str) -> List[Tuple[str, str]]:
             if len(parts) == 2:
                 edges.append((parts[0], parts[1]))
     return edges
-
-
-def get_ids_from_set(wanted_domains: set[str], source_base: str) -> set[str]:
-    """Get the node ids in the graph of the nodes in the wanted_domains set."""
-    source_dir = os.path.join(source_base, 'vertices')
-    matches = glob.glob(os.path.join(source_dir, '*.txt.gz'))
-
-    if not matches:
-        print(f'[WARN] No .txt.gz files found in {source_dir}, skipping.')
-        return set()
-
-    matched_ids = set()
-    for source_file in matches:
-        with gzip.open(source_file, 'rt', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-
-                parts = line.split()
-                if len(parts) < 2:
-                    continue
-
-                vertex_id = parts[0].strip()
-                rev_domain = parts[1].strip()
-
-                normal_domain = reverse_domain(rev_domain).lower()
-
-                # Match exact or parent domains
-                domain_parts = normal_domain.split('.')
-                for i in range(len(domain_parts) - 1):
-                    candidate = '.'.join(
-                        domain_parts[i:]
-                    )  # e.g. sub.domain.com, domain.com, com
-                    if candidate in wanted_domains:
-                        matched_ids.add(vertex_id)
-                        break
-
-    # print(f'[INFO] Found {len(matched_ids)} matching vertex IDs.')
-    return matched_ids
-
-
-def get_baseline_domains() -> set[str]:
-    """Get a set of baseline domains from cc-baseline-domains.txt."""
-    path = os.path.join(get_root_dir(), 'data', 'cc-baseline-domains.txt')
-    baseline_domains = set()
-
-    with open(path, 'r', encoding='utf-8') as f:
-        for line in f:
-            domain = line.strip()
-            if domain:  # skip empty lines
-                baseline_domains.add(domain)
-
-    print(f'[INFO] Found {len(baseline_domains)} baseline domains')
-    return baseline_domains
 
 
 def load_node_domain_map(node_file: str) -> Tuple[dict, dict]:

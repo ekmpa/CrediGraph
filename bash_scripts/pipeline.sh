@@ -32,7 +32,6 @@ write_summary() {
         echo "Edges: $TOTAL_EDGES"
         echo "Steps: $TOTAL_STEPS"
         echo "Files decompressed: $TOTAL_FILES_DECOMPRESSED"
-        # TO DO: add stats from topological experiments in summary file
     } > "$SUMMARY_FILE"
     echo "Summary written to $SUMMARY_FILE"
 }
@@ -45,8 +44,13 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
 
     trap write_summary EXIT # on exit from error, write summary
 
+    START_IDX=0
     if [ "$2" != "--keep" ]; then
         rm -rf "$DATA_DIR/$CRAWL/output"
+    else
+        if [[ "$3" =~ ^[0-9]+$ ]]; then
+                START_IDX="$3"
+        fi
     fi
     mkdir -p "$DATA_DIR/$CRAWL/output"
 
@@ -56,7 +60,7 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
 
     STEP=300
 
-    for (( start_idx=0; start_idx<=TOTAL_FILES; start_idx+=STEP )); do
+    for (( start_idx=$START_IDX; start_idx<=TOTAL_FILES; start_idx+=STEP )); do
 
         end_idx=$((start_idx+STEP-1))
 
@@ -69,6 +73,9 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
         fi
 
         echo "Running on: $start_idx-$end_idx"
+
+        # clean the segments folder
+        rm -rf "$DATA_DIR/$CRAWL/segments/"*
 
         # Run end-to-end on the given subset + aggregate to partial graph
         bash end-to-end.sh "$CRAWL" $start_idx $end_idx
