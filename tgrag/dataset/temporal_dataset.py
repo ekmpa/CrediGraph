@@ -73,21 +73,26 @@ class TemporalDataset(InMemoryDataset):
         if x_full is None:
             raise TypeError('X is None type. Please use an encoding.')
 
-        df = pd.read_csv(node_path)
-        if self.index_col != 0:
-            df = df.set_index(self.index_name).loc[mapping.keys()]
-
         df_target = pd.read_csv(target_path)
         if self.target_index_col != 0:
-            mapping_index = pd.Index(mapping.keys(), name=self.target_index_name)
+            # df_target = df_target.set_index(self.target_index_name).loc[mapping.keys()]
             df_target = df_target.set_index(self.target_index_name)
+            mapping_index = pd.Index(list(mapping.keys()), name=self.target_index_name)
+            try:
+                df_target.index = df_target.index.astype(mapping_index.dtype)
+            except Exception:
+                mapping_index = mapping_index.astype(df_target.dtype)
+
             df_target = df_target.reindex(mapping_index)
 
+        cr_score = df_target[self.target_col].astype('float32').fillna(-1).to_numpy()
+        cr_score = torch.from_numpy(cr_score)
+        labeled_mask = cr_score != -1.0
         # Transductive nodes only:
-        labeled_mask = (df_target[self.target_col] != -1.0).values
-        cr_score = torch.tensor(
-            df_target[self.target_col].values, dtype=torch.float
-        ).unsqueeze(1)
+        # labeled_mask = (df_target[self.target_col] != -1.0).values
+        # cr_score = torch.tensor(
+        #     df_target[self.target_col].values, dtype=torch.float
+        # ).unsqueeze(1)
         edge_index, edge_attr = load_edge_csv(
             path=edge_path,
             src_index_col=self.edge_src_col,
@@ -116,6 +121,8 @@ class TemporalDataset(InMemoryDataset):
             stratify=quartile_labels,
             random_state=self.seed,
         )
+
+        quartile_labels_temp = quartile_labels_temp.sort()
 
         valid_idx, test_idx = train_test_split(
             temp_idx,
