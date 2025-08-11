@@ -17,9 +17,17 @@ def open_file(path: str) -> Callable[..., IO]:
 
 
 def load_node_csv(
-    path: str, index_col: int, encoders: Dict | None = None
+    path: str, index_col: int, encoders: Dict | None = None, chunk_size: int = 500_000
 ) -> Tuple[Tensor | None, Dict]:
-    df = pd.read_csv(path, index_col=index_col)
+    dfs = []
+    total_rows = sum(1 for _ in open(path)) - 1
+    with pd.read_csv(path, index_col=index_col, chunksize=chunk_size) as reader:
+        for chunk in tqdm(
+            reader, total=total_rows // chunk_size + 1, desc='Reading node CSV'
+        ):
+            dfs.append(chunk)
+
+    df = pd.concat(dfs, axis=0)
     mapping = {
         index: i for i, index in tqdm(enumerate(df.index.unique()), desc='Indexing')
     }

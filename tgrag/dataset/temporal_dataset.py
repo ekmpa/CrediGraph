@@ -61,7 +61,6 @@ class TemporalDataset(InMemoryDataset):
         pass
 
     def process(self) -> None:
-        print('Process called.')
         node_path = os.path.join(self.raw_dir, self.node_file)
         edge_path = os.path.join(self.raw_dir, self.edge_file)
         target_path = os.path.join(self.raw_dir, self.target_file)
@@ -70,24 +69,30 @@ class TemporalDataset(InMemoryDataset):
             index_col=self.index_col,  # 'node_id'
             encoders=self.encoding,
         )
-        print('Feature matrix construced.')
 
         if x_full is None:
             raise TypeError('X is None type. Please use an encoding.')
 
-        df = pd.read_csv(node_path)
-        if self.index_col != 0:
-            df = df.set_index(self.index_name).loc[mapping.keys()]
-
         df_target = pd.read_csv(target_path)
         if self.target_index_col != 0:
-            df_target = df_target.set_index(self.target_index_name).loc[mapping.keys()]
+            # df_target = df_target.set_index(self.target_index_name).loc[mapping.keys()]
+            df_target = df_target.set_index(self.target_index_name)
+            mapping_index = pd.Index(list(mapping.keys()), name=self.target_index_name)
+            try:
+                df_target.index = df_target.index.astype(mapping_index.dtype)
+            except Exception:
+                mapping_index = mapping_index.astype(df_target.dtype)
 
+            df_target = df_target.reindex(mapping_index)
+
+        cr_score = df_target[self.target_col].astype('float32').fillna(-1).to_numpy()
+        cr_score = torch.from_numpy(cr_score)
+        labeled_mask = cr_score != -1.0
         # Transductive nodes only:
-        labeled_mask = (df_target[self.target_col] != -1.0).values
-        cr_score = torch.tensor(
-            df_target[self.target_col].values, dtype=torch.float
-        ).unsqueeze(1)
+        # labeled_mask = (df_target[self.target_col] != -1.0).values
+        # cr_score = torch.tensor(
+        #     df_target[self.target_col].values, dtype=torch.float
+        # ).unsqueeze(1)
         edge_index, edge_attr = load_edge_csv(
             path=edge_path,
             src_index_col=self.edge_src_col,
@@ -95,14 +100,13 @@ class TemporalDataset(InMemoryDataset):
             mapping=mapping,
             encoders=None,
         )
-        print('Edge index constructed.')
 
         # adj_t = to_torch_csr_tensor(edge_index, size=(x_full.size(0), x_full.size(0)))
 
         data = Data(x=x_full, y=cr_score, edge_index=edge_index, edge_attr=edge_attr)
         # data.adj_t = adj_t
 
-        data.labeled_mask = torch.tensor(labeled_mask, dtype=torch.bool)
+        data.labeled_mask = labeled_mask.clone().detach().to(torch.bool)
 
         labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
         labeled_scores = cr_score[labeled_idx].squeeze().numpy()
@@ -144,8 +148,6 @@ class TemporalDataset(InMemoryDataset):
             'valid': valid_idx,
             'test': test_idx,
         }
-
-        print('Masks constructed.')
 
         assert data.edge_index.max() < data.x.size(0), 'edge_index out of bounds'
 
