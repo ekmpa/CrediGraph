@@ -13,7 +13,7 @@ from tgrag.experiments.gnn_experiments.baseline import (
 from tgrag.gnn.model import Model
 from tgrag.utils.args import DataArguments, ModelArguments
 from tgrag.utils.logger import Logger
-from tgrag.utils.plot import plot_avg_rmse_loss
+from tgrag.utils.plot import Scoring, plot_avg_loss
 from tgrag.utils.save import save_loss_results
 
 
@@ -91,7 +91,7 @@ def run_gnn_baseline_full_batch(
 
     logger = Logger(model_arguments.runs)
 
-    loss_tuple_run: List[List[Tuple[float, float, float]]] = []
+    loss_tuple_mse_run: List[List[Tuple[float, float, float]]] = []
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
         if not is_random and not is_mean:
@@ -121,10 +121,10 @@ def run_gnn_baseline_full_batch(
                 loss_tuple_epoch.append(result)
                 logger.add_result(run, result)
 
-        loss_tuple_run.append(loss_tuple_epoch)
+        loss_tuple_mse_run.append(loss_tuple_epoch)
 
     logging.info(logger.get_statistics())
     logging.info('Constructing MSE plots')
-    plot_avg_rmse_loss(loss_tuple_run, model_arguments.model, 'todo')
+    plot_avg_loss(loss_tuple_mse_run, model_arguments.model, Scoring.mse)
     logging.info('Saving pkl of results')
-    save_loss_results(loss_tuple_run, model_arguments.model, 'todo')
+    save_loss_results(loss_tuple_mse_run, model_arguments.model, 'todo')
