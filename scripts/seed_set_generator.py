@@ -18,6 +18,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--min_degree', type=int, default=3, help='Minimum total degree threshold'
     )
+    parser.add_argument(
+        '--flip',
+        action='store_true',
+        help="Force flip domains from CSV. \n Use --flip to get the list in the format of CC data (e.g 'com.name'). Otherwise, defaults to normal URL format (e.g 'name.com').",
+    )
+
     args = parser.parse_args()
 
     generate(
@@ -26,4 +32,5 @@ if __name__ == '__main__':
         csv_domain_file=args.csv,
         output_file=args.output,
         min_degree=args.min_degree,
+        flip_csv=args.flip,
     )
