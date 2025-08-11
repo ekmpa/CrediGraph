@@ -19,6 +19,8 @@ class TemporalDataset(InMemoryDataset):
         edge_file: str = 'edges.csv',
         target_file: str = 'target.csv',
         target_col: str = 'cr_score',
+        target_index_name: str = 'node_id',
+        target_index_col: int = 0,
         edge_src_col: str = 'src',
         edge_dst_col: str = 'dst',
         index_col: int = 1,
@@ -36,6 +38,8 @@ class TemporalDataset(InMemoryDataset):
         self.edge_dst_col = edge_dst_col
         self.index_col = index_col
         self.index_name = index_name
+        self.target_index_name = target_index_name
+        self.target_index_col = target_index_col
         self.encoding = encoding
         self.seed = seed
         super().__init__(root, transform, pre_transform)
@@ -74,6 +78,8 @@ class TemporalDataset(InMemoryDataset):
             df = df.set_index(self.index_name).loc[mapping.keys()]
 
         df_target = pd.read_csv(target_path)
+        if self.target_index_col != 0:
+            df_target = df_target.set_index(self.target_index_name).loc[mapping.keys()]
 
         # Transductive nodes only:
         labeled_mask = (df_target[self.target_col] != -1.0).values
