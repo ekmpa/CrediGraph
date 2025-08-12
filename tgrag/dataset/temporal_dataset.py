@@ -75,24 +75,20 @@ class TemporalDataset(InMemoryDataset):
 
         df_target = pd.read_csv(target_path)
         if self.target_index_col != 0:
-            # df_target = df_target.set_index(self.target_index_name).loc[mapping.keys()]
+            print('Reindexing the target')
             df_target = df_target.set_index(self.target_index_name)
-            mapping_index = pd.Index(list(mapping.keys()), name=self.target_index_name)
-            try:
-                df_target.index = df_target.index.astype(mapping_index.dtype)
-            except Exception:
-                mapping_index = mapping_index.astype(df_target.dtype)
 
-            df_target = df_target.reindex(mapping_index)
+        mapping_index = pd.Index(list(mapping.keys()), name=self.target_index_name)
+        df_target = df_target.reindex(mapping_index)
 
-        cr_score = df_target[self.target_col].astype('float32').fillna(-1).to_numpy()
-        cr_score = torch.from_numpy(cr_score)
+        cr_score = torch.tensor(
+            df_target[self.target_col].astype('float32').fillna(-1).values,
+            dtype=torch.float,
+        )
+
         labeled_mask = cr_score != -1.0
+
         # Transductive nodes only:
-        # labeled_mask = (df_target[self.target_col] != -1.0).values
-        # cr_score = torch.tensor(
-        #     df_target[self.target_col].values, dtype=torch.float
-        # ).unsqueeze(1)
         edge_index, edge_attr = load_edge_csv(
             path=edge_path,
             src_index_col=self.edge_src_col,
@@ -106,7 +102,7 @@ class TemporalDataset(InMemoryDataset):
         data = Data(x=x_full, y=cr_score, edge_index=edge_index, edge_attr=edge_attr)
         # data.adj_t = adj_t
 
-        data.labeled_mask = labeled_mask.clone().detach().to(torch.bool)
+        data.labeled_mask = torch.tensor(labeled_mask, dtype=torch.bool)
 
         labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
         labeled_scores = cr_score[labeled_idx].squeeze().numpy()
