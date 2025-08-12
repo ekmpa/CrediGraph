@@ -93,7 +93,6 @@ def run_gnn_baseline(
     is_random = model_arguments.model.upper() == 'RANDOM'
     is_mean = model_arguments.model.upper() == 'MEAN'
     data = dataset[0]
-    data.y = data.y.squeeze(1)
     split_idx = dataset.get_idx_split()
     logging.info(
         'Setting up training for task of: %s on model: %s',
