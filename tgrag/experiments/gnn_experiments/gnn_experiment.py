@@ -15,7 +15,7 @@ from tgrag.experiments.gnn_experiments.baseline import (
 from tgrag.gnn.model import Model
 from tgrag.utils.args import DataArguments, ModelArguments
 from tgrag.utils.logger import Logger
-from tgrag.utils.plot import Scoring, plot_avg_loss
+from tgrag.utils.plot import Scoring, plot_avg_distribution, plot_avg_loss
 from tgrag.utils.save import save_loss_results
 
 
@@ -49,6 +49,7 @@ def train(
 
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
     mse = total_loss / total_nodes
+    plot_avg_distribution(all_preds, all_targets, model.model_name)
     return (mse, r2)
 
 
