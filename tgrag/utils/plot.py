@@ -10,6 +10,7 @@ import pandas as pd
 import seaborn as sns
 from pandas import DataFrame
 from scipy.ndimage import gaussian_filter
+from torch import Tensor
 
 from tgrag.utils.path import get_root_dir
 
@@ -538,3 +539,34 @@ def plot_domain_scores(gov_scores: list[float], org_scores: list[float]) -> None
     plt.tight_layout()
     plt.savefig(save_dir / 'domain_pc1_hist.png')
     plt.close()
+
+
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+
+
+def plot_avg_distribution(
+    all_preds: List[Tensor], all_targets: List[Tensor], model_name: str, bins: int = 50
+) -> None:
+    """Plots the average distribution of predictions and targets."""
+    root = get_root_dir()
+    save_dir = root / 'results' / 'topology' / 'plots' / model_name
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    preds = torch.cat(all_preds).detach().cpu().numpy()
+    targets = torch.cat(all_targets).detach().cpu().numpy()
+
+    avg_preds = np.mean(preds)
+    avg_targets = np.mean(targets)
+
+    plt.figure(figsize=(8, 5))
+    plt.hist(preds, bins=bins, alpha=0.6, label=f'Predictions (avg={avg_preds:.4f})')
+    plt.hist(targets, bins=bins, alpha=0.6, label=f'Targets (avg={avg_targets:.4f})')
+
+    plt.xlabel('Value')
+    plt.ylabel('Frequency')
+    plt.title('Average Value Distributions: Predictions vs Targets')
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.savefig(save_dir / 'train_pred_target_distribution.png')
