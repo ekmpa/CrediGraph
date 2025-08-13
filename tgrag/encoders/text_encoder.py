@@ -10,7 +10,9 @@ from tgrag.encoders.encoder import Encoder
 
 
 class TextEncoder(Encoder):
-    def __init__(self, model_name: str = 'all-MiniLM-L6-v2', device: str | None = None):
+    def __init__(
+        self, model_name: str = 'Qwen/Qwen3-Embedding-0.6B', device: str | None = None
+    ):
         self.device = device
         self.model = SentenceTransformer(model_name, device=device)
 
