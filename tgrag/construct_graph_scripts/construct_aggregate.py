@@ -2,13 +2,13 @@ import argparse
 import glob
 import gzip
 import os
-from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, Set
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from typing import Dict, Set, Tuple
 
 from tgrag.utils.data_loading import read_edge_file, read_vertex_file
 
 
-def append_all_nodes(source_base: str, target_base_root: str) -> Dict[int, int]:
+def append_all_nodes(source_base: str, target_base_root: str) -> Dict[int, str]:
     source_dir: str = os.path.join(source_base, 'vertices')
     target_path: str = os.path.join(target_base_root, 'vertices.txt.gz')
     matches = glob.glob(os.path.join(source_dir, '*.txt.gz'))
@@ -18,41 +18,34 @@ def append_all_nodes(source_base: str, target_base_root: str) -> Dict[int, int]:
         return {}
 
     combined_vertices: Set[str] = set()
-    all_IDs: Set[int] = set()
+    id_to_domain: Dict[int, str] = {}
 
     if os.path.exists(target_path):
         with gzip.open(target_path, 'rt', encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
                 combined_vertices.add(line)
-                all_IDs.add(int(line.split('\t')[0]))
 
-    max_ID = max(all_IDs) if all_IDs else 0
-    old_to_new: Dict[int, int] = {}
-
-    with ThreadPoolExecutor() as executor:
-        results = list(executor.map(read_vertex_file, matches))
-        for result in results:
+    with ProcessPoolExecutor() as executor:
+        futures = [executor.submit(read_vertex_file, p) for p in matches]
+        for fut in as_completed(futures):
+            result = fut.result()
             for line in result:
-                node_id = int(line.split('\t')[0])
-                if node_id in all_IDs:
-                    new_ID = max_ID
-                    max_ID += 1
-                    old_to_new[node_id] = new_ID
-                    domain = line.split('\t')[1]
-                    line = f'{new_ID}\t{domain}'
-                combined_vertices.add(line)
+                parts = line.split('\t')
+                domain = parts[1]
+                combined_vertices.add(domain)
+                id_to_domain[int(parts[0])] = domain
 
     with gzip.open(target_path, 'wt', encoding='utf-8') as f:
         for vertex in combined_vertices:
             f.write(vertex + '\n')
 
-    print(f'[INFO] Aggregated {len(combined_vertices)} vertices → {target_path}')
-    return old_to_new
+    print(f'[INFO] Newly aggregated {len(combined_vertices)} vertices → {target_path}')
+    return id_to_domain
 
 
 def append_all_edges(
-    source_base: str, target_base_root: str, old_to_new: Dict[int, int]
+    source_base: str, target_base_root: str, id_to_domain: Dict[int, str]
 ) -> None:
     source_dir: str = os.path.join(source_base, 'edges')
     target_path: str = os.path.join(target_base_root, 'edges.txt.gz')
@@ -62,32 +55,31 @@ def append_all_edges(
         print(f'[WARN] No .txt.gz files found in {source_dir}, skipping.')
         return
 
-    combined_edges: Set[str] = set()
+    combined_edges: Set[Tuple[str, str]] = set()
 
-    with ThreadPoolExecutor() as executor:
-        results = list(
-            executor.map(lambda path: read_edge_file(path, old_to_new), matches)
-        )
-        for result in results:
-            combined_edges.update(result)
+    with ProcessPoolExecutor() as executor:
+        futures = [executor.submit(read_edge_file, p, id_to_domain) for p in matches]
+        for fut in as_completed(futures):
+            combined_edges.update(fut.result())
 
     if os.path.exists(target_path):
         with gzip.open(target_path, 'rt', encoding='utf-8') as f:
             for line in f:
-                combined_edges.add(line.strip())
+                line = line.strip()
+                parts = line.split('\t', 1)
+                combined_edges.add((parts[0], parts[1]))
 
     with gzip.open(target_path, 'wt', encoding='utf-8') as f:
-        for edge in combined_edges:
-            f.write(edge + '\n')
+        for src, dst in combined_edges:
+            f.write(f'{src}\t{dst}\n')
 
     print(f'[INFO] Aggregated {len(combined_edges)} edges → {target_path}')
 
 
 def gradual_all(source_base: str, target_base_root: str) -> None:
-    """Gradual construction of full graph, no seed set, unique IDs."""
     os.makedirs(target_base_root, exist_ok=True)
-    old_to_new: Dict[int, int] = append_all_nodes(source_base, target_base_root)
-    append_all_edges(source_base, target_base_root, old_to_new)
+    id_to_domain = append_all_nodes(source_base, target_base_root)
+    append_all_edges(source_base, target_base_root, id_to_domain)
 
 
 def main() -> None:

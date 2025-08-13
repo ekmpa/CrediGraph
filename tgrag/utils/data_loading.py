@@ -15,17 +15,19 @@ def read_vertex_file(path: str) -> Set[str]:
     return result
 
 
-def read_edge_file(path: str, old_to_new: Dict[int, int]) -> Set[str]:
-    result: Set[str] = set()
+def read_edge_file(path: str, id_to_domain: Dict[int, str]) -> Set[Tuple[str, str]]:
+    result: Set[Tuple[str, str]] = set()
+    get = id_to_domain.get
     with gzip.open(path, 'rt', encoding='utf-8') as f:
         for line in f:
             parts = line.strip().split('\t')
-            if len(parts) < 2:
-                continue
-            src, dst = int(parts[0]), int(parts[1])
-            src = old_to_new.get(src, src)
-            dst = old_to_new.get(dst, dst)
-            result.add(f'{src}\t{dst}')
+            src_id = int(parts[0])
+            dst_id = int(parts[1])
+            src = get(src_id)
+            dst = get(dst_id)
+            if src is None or dst is None:
+                continue  # skip if an endpoint wasn't present in vertices map
+            result.add((src, dst))
     return result
 
 
