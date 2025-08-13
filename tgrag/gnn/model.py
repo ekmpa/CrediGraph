@@ -4,6 +4,7 @@ import torch
 from torch import Tensor, nn
 
 from tgrag.gnn.modules import (
+    FFModule,
     GATModule,
     GCNModule,
     NodePredictor,
@@ -19,6 +20,7 @@ class Model(torch.nn.Module):
         'GCN': GCNModule,
         'SAGE': SAGEModule,
         'GAT': GATModule,
+        'FF': FFModule,
     }
     normalization_map: dict[str, NormalizationType] = {
         'none': torch.nn.Identity,

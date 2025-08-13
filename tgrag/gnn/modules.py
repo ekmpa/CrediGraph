@@ -118,3 +118,16 @@ class GATModule(nn.Module):
         x = self.conv(x, edge_index)
         x = self.feed_forward_module(x, edge_index)
         return x
+
+
+class FFModule(nn.Module):
+    def __init__(self, dim: int, dropout: float):
+        super().__init__()
+        self.feed_forward_module = FeedForwardModule(
+            dim=dim,
+            dropout=dropout,
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.feed_forward_module(x)
+        return x
