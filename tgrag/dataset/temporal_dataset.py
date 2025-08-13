@@ -19,6 +19,8 @@ class TemporalDataset(InMemoryDataset):
         edge_file: str = 'edges.csv',
         target_file: str = 'target.csv',
         target_col: str = 'cr_score',
+        target_index_name: str = 'node_id',
+        target_index_col: int = 0,
         edge_src_col: str = 'src',
         edge_dst_col: str = 'dst',
         index_col: int = 1,
@@ -36,6 +38,8 @@ class TemporalDataset(InMemoryDataset):
         self.edge_dst_col = edge_dst_col
         self.index_col = index_col
         self.index_name = index_name
+        self.target_index_name = target_index_name
+        self.target_index_col = target_index_col
         self.encoding = encoding
         self.seed = seed
         super().__init__(root, transform, pre_transform)
@@ -69,17 +73,22 @@ class TemporalDataset(InMemoryDataset):
         if x_full is None:
             raise TypeError('X is None type. Please use an encoding.')
 
-        df = pd.read_csv(node_path)
-        if self.index_col != 0:
-            df = df.set_index(self.index_name).loc[mapping.keys()]
-
         df_target = pd.read_csv(target_path)
+        if self.target_index_col != 0:
+            print('Reindexing the target')
+            df_target = df_target.set_index(self.target_index_name)
+
+        mapping_index = pd.Index(list(mapping.keys()), name=self.target_index_name)
+        df_target = df_target.reindex(mapping_index)
+
+        cr_score = torch.tensor(
+            df_target[self.target_col].astype('float32').fillna(-1).values,
+            dtype=torch.float,
+        )
+
+        labeled_mask = cr_score != -1.0
 
         # Transductive nodes only:
-        labeled_mask = (df_target[self.target_col] != -1.0).values
-        cr_score = torch.tensor(
-            df_target[self.target_col].values, dtype=torch.float
-        ).unsqueeze(1)
         edge_index, edge_attr = load_edge_csv(
             path=edge_path,
             src_index_col=self.edge_src_col,

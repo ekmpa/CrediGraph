@@ -9,12 +9,10 @@ from tgrag.dataset.temporal_dataset import TemporalDataset
 
 @torch.no_grad()
 def evaluate_mean(
-    model: torch.nn.Module,
     loader: NeighborLoader,
     mask_name: str,
+    device: torch.device,
 ) -> float:
-    model.eval()
-    device = next(model.parameters()).device
     total_loss = 0
     total_nodes = 0
     for batch in loader:
@@ -32,12 +30,10 @@ def evaluate_mean(
 
 @torch.no_grad()
 def evaluate_rand(
-    model: torch.nn.Module,
     loader: NeighborLoader,
     mask_name: str,
+    device: torch.device,
 ) -> float:
-    model.eval()
-    device = next(model.parameters()).device
     total_loss = 0
     total_nodes = 0
     for batch in loader:

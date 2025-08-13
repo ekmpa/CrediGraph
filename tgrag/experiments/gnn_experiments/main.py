@@ -74,7 +74,7 @@ def main() -> None:
     )
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
-        logging.info(f'Running: {experiment}')
+        logging.info(f'\n**Running**: {experiment}')
         if args.full_batch:
             run_gnn_baseline_full_batch(
                 experiment_arg.data_args, experiment_arg.model_args, dataset
