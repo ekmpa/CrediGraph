@@ -2,9 +2,11 @@ import argparse
 import logging
 from typing import List, Tuple
 
+import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, random_split
+from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 
 from tgrag.dataset.text_csv_dataset import TextCSVDataset
@@ -35,13 +37,13 @@ parser.add_argument(
 parser.add_argument(
     '--hidden-channels',
     type=int,
-    default=256,
+    default=64,
     help='Number of hidden channels.',
 )
 parser.add_argument(
     '--out-channels',
     type=int,
-    default=64,
+    default=32,
     help='Number of out channels before the final MLP.',
 )
 parser.add_argument(
@@ -53,7 +55,7 @@ parser.add_argument(
 parser.add_argument(
     '--dropout',
     type=float,
-    default=0.1,
+    default=0.3,
     help='The dropout.',
 )
 parser.add_argument(
@@ -173,7 +175,7 @@ def run_ff_experiment() -> None:
     device = torch.device(device)
 
     params = {
-        'batch_size': 64,
+        'batch_size': 256,
         'shuffle': True,
         'num_workers': 6,
     }
@@ -185,9 +187,16 @@ def run_ff_experiment() -> None:
         label_col='pc1',
         encode_fn=encoder,
     )
-    train_size = int(0.8 * len(data))
-    test_size = len(data) - train_size
-    train_dataset, test_dataset = random_split(data, [train_size, test_size])
+    y = data.y.numpy()
+    bins = np.quantile(y, [0.2, 0.4, 0.6, 0.8])
+    y_bins = np.digitize(y, bins, right=True)
+
+    idx = np.arange(len(y))
+    train_idx, test_idx = train_test_split(
+        idx, train_size=0.8, stratify=y_bins, random_state=args.seed
+    )
+    train_dataset = Subset(data, train_idx)
+    test_dataset = Subset(data, test_idx)
 
     train_loader = DataLoader(train_dataset, **params)
     test_loader = DataLoader(test_dataset, **params)
@@ -223,8 +232,8 @@ def run_ff_experiment() -> None:
         loss_run_mse,
         mlp.model_name,
         Scoring.mse,
-        title='MLP: Average MSE Loss over Trials. (Text embedding input)'
-        'mse_loss_plot.png',
+        title='MLP: Average MSE Loss over Trials. (Text embedding input)',
+        save_filename='mse_loss_plot.png',
     )
 
 
