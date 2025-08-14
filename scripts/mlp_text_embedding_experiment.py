@@ -105,7 +105,8 @@ def train(
     total_batches = 0
     for batch in tqdm(train_loader, desc='Batchs'):
         optimizer.zero_grad()
-        batch = batch.to(device)
+        batch.x = batch.x.to(device)
+        batch.y = batch.y.to(device)
         preds = model(x=batch.x)
         targets = batch.y
         loss = F.mse_loss(preds, targets)
@@ -178,7 +179,7 @@ def run_ff_experiment() -> None:
     optimizer = torch.optim.AdamW(mlp.parameters(), lr=args.lr)
     loss_run_mse: List[List[Tuple[float, float, float]]] = []
     logging.info('*** Training ***')
-    for run in tqdm(range(args.runs), desc='Runs'):
+    for _ in tqdm(range(args.runs), desc='Runs'):
         loss_epoch_mse: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + args.epochs), desc='Epochs'):
             train_mse = train(
