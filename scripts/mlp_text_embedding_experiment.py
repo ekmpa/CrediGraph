@@ -47,7 +47,7 @@ parser.add_argument(
 parser.add_argument(
     '--num-layers',
     type=int,
-    default=3,
+    default=1,
     help='Number of Residual FF layers.',
 )
 parser.add_argument(
@@ -59,7 +59,13 @@ parser.add_argument(
 parser.add_argument(
     '--lr',
     type=float,
-    default=0.01,
+    default=0.001,
+    help='The learning rate.',
+)
+parser.add_argument(
+    '--weight-decay',
+    type=float,
+    default=1e-4,
     help='The learning rate.',
 )
 parser.add_argument(
@@ -195,7 +201,9 @@ def run_ff_experiment() -> None:
         num_layers=args.num_layers,
         dropout=args.dropout,
     ).to(device)
-    optimizer = torch.optim.AdamW(mlp.parameters(), lr=args.lr)
+    optimizer = torch.optim.AdamW(
+        mlp.parameters(), lr=args.lr, weight_decay=args.weight_decay
+    )
     loss_run_mse: List[List[Tuple[float, float, float, float]]] = []
     logging.info('*** Training ***')
     for _ in tqdm(range(args.runs), desc='Runs'):
