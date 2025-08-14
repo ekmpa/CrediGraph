@@ -16,7 +16,6 @@ class TextCSVDataset(Dataset):
         text_col: str,
         label_col: str,
         encode_fn: Encoder,
-        max_seq_length: int = 256,
         batch_size: int = 64,
     ):
         df = pd.read_csv(csv_path)
