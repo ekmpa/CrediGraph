@@ -12,7 +12,7 @@ from tgrag.encoders.text_encoder import TextEncoder
 from tgrag.gnn.model import Model
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.path import get_root_dir
-from tgrag.utils.plot import Scoring, plot_avg_loss
+from tgrag.utils.plot import Scoring, plot_avg_loss_with_baseline
 from tgrag.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
@@ -107,7 +107,7 @@ def train(
         optimizer.zero_grad()
         x = batch[0].to(device)
         y = batch[1].to(device)
-        preds = model(x=x)
+        preds = model(x=x).squeeze()
         targets = y
         loss = F.mse_loss(preds, targets)
         loss.backward()
@@ -130,7 +130,25 @@ def evaluate(
     for batch in loader:
         x = batch[0].to(device)
         y = batch[1].to(device)
-        preds = model(x=x)
+        preds = model(x=x).squeeze()
+        targets = y
+        loss = F.mse_loss(preds, targets)
+        total_loss += loss.item()
+        total_batches += 1
+
+    mse = total_loss / total_batches
+    return mse
+
+
+def evaluate_mean(
+    loader: DataLoader,
+    device: torch.device,
+) -> float:
+    total_loss = 0
+    total_batches = 0
+    for batch in loader:
+        y = batch[1].to(device)
+        preds = torch.full(y.size(), 0.5).to(device).squeeze()
         targets = y
         loss = F.mse_loss(preds, targets)
         total_loss += loss.item()
@@ -178,21 +196,24 @@ def run_ff_experiment() -> None:
         dropout=args.dropout,
     ).to(device)
     optimizer = torch.optim.AdamW(mlp.parameters(), lr=args.lr)
-    loss_run_mse: List[List[Tuple[float, float, float]]] = []
+    loss_run_mse: List[List[Tuple[float, float, float, float]]] = []
     logging.info('*** Training ***')
     for _ in tqdm(range(args.runs), desc='Runs'):
-        loss_epoch_mse: List[Tuple[float, float, float]] = []
+        loss_epoch_mse: List[Tuple[float, float, float, float]] = []
         for _ in tqdm(range(1, 1 + args.epochs), desc='Epochs'):
             train_mse = train(
                 model=mlp, train_loader=train_loader, optimizer=optimizer, device=device
             )
             test_mse = evaluate(model=mlp, loader=test_loader, device=device)
+            baseline = evaluate_mean(loader=test_loader, device=device)
             val_mse = 0.0
-            result = (train_mse, val_mse, test_mse)
+            result = (train_mse, val_mse, test_mse, baseline)
             loss_epoch_mse.append(result)
         loss_run_mse.append(loss_epoch_mse)
     logging.info('*** Constructing Plots ***')
-    plot_avg_loss(loss_run_mse, mlp.model_name, Scoring.mse, 'mse_loss_plot.png')
+    plot_avg_loss_with_baseline(
+        loss_run_mse, mlp.model_name, Scoring.mse, 'mse_loss_plot.png'
+    )
 
 
 if __name__ == '__main__':
