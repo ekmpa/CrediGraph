@@ -4,6 +4,7 @@ import pandas as pd
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 from tgrag.encoders.encoder import Encoder
 
@@ -15,6 +16,7 @@ class TextCSVDataset(Dataset):
         text_col: str,
         label_col: str,
         encode_fn: Encoder,
+        max_seq_length: int = 256,
         batch_size: int = 64,
     ):
         df = pd.read_csv(csv_path)
@@ -30,7 +32,7 @@ class TextCSVDataset(Dataset):
         else:
             raise ValueError('encode_fn must be callable.')
 
-        for i in range(0, len(texts), batch_size):
+        for i in tqdm(range(0, len(texts), batch_size), desc='embedding batchs'):
             batch_texts = texts[i : i + batch_size]
             with torch.no_grad():
                 embeds = encode_fn(batch_texts)  # (B, D)
