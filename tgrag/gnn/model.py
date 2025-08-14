@@ -64,13 +64,16 @@ class Model(torch.nn.Module):
         )
         self.node_predictor = NodePredictor(in_dim=out_channels, out_dim=1)
 
-    def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
+    def forward(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
         x = self.input_linear(x)
         x = self.dropout(x)
         x = self.act(x)
 
         for re_module in self.re_modules:
-            x = re_module(x, edge_index)
+            if edge_index is not None:
+                x = re_module(x, edge_index)
+            else:
+                x = re_module(x)
 
         x = self.output_normalization(x)
         x = self.output_linear(x)
