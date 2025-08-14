@@ -27,15 +27,13 @@ class TextCSVDataset(Dataset):
         all_embeds = []
 
         if hasattr(encode_fn, '__call__'):
-            embeds = encode_fn(texts)
+            for i in tqdm(range(0, len(texts), batch_size), desc='embedding batchs'):
+                batch_texts = texts[i : i + batch_size]
+                with torch.no_grad():
+                    embeds = encode_fn(batch_texts)  # (B, D)
+                all_embeds.append(embeds.cpu())
         else:
             raise ValueError('encode_fn must be callable.')
-
-        for i in tqdm(range(0, len(texts), batch_size), desc='embedding batchs'):
-            batch_texts = texts[i : i + batch_size]
-            with torch.no_grad():
-                embeds = encode_fn(batch_texts)  # (B, D)
-            all_embeds.append(embeds.cpu())
 
         self.x = torch.cat(all_embeds, dim=0)  # (N, D -> depends on encoder)
         self.y = torch.as_tensor(labels, dtype=torch.float32)  # (N,)
