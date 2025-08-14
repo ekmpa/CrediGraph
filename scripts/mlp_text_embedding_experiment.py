@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     '--feature-file',
     type=str,
-    default='data/dqr/merged_domains_text_pc1.csv',
+    default='data/dqr/merged_domains_small_pc1.csv',
     help='Path to 11k dqr domains with text content in CSV format',
 )
 parser.add_argument(
@@ -65,7 +65,7 @@ parser.add_argument(
 parser.add_argument(
     '--device',
     type=int,
-    default=1,
+    default=0,
     help='The cuda device.',
 )
 parser.add_argument(
@@ -105,10 +105,10 @@ def train(
     total_batches = 0
     for batch in tqdm(train_loader, desc='Batchs'):
         optimizer.zero_grad()
-        batch.x = batch.x.to(device)
-        batch.y = batch.y.to(device)
-        preds = model(x=batch.x)
-        targets = batch.y
+        x = batch[0].to(device)
+        y = batch[1].to(device)
+        preds = model(x=x)
+        targets = y
         loss = F.mse_loss(preds, targets)
         loss.backward()
         optimizer.step()
@@ -128,9 +128,10 @@ def evaluate(
     total_loss = 0
     total_batches = 0
     for batch in loader:
-        batch.to(device)
-        preds = model(x=batch.x)
-        targets = batch.y
+        x = batch[0].to(device)
+        y = batch[1].to(device)
+        preds = model(x=x)
+        targets = y
         loss = F.mse_loss(preds, targets)
         total_loss += loss.item()
         total_batches += 1
