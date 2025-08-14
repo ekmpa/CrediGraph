@@ -11,8 +11,6 @@ def test_score_sum(new_nodes, tol=1e-3):
     return abs(total - 1.0) < tol
 
 def show_score_distribution(new_nodes):
-    plt.figure(figsize=(12, 8))
-    
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
     
     # 1. Log scale histogram
@@ -122,4 +120,61 @@ def build_adjacency(nodes, edges):
     incoming_df = edges.groupby('dst')['src'].apply(list)
     incoming = {node: incoming_df.get(node, []) for node in node_ids}
 
-    return node_ids, N, adjacency, out_degree, incoming
+    return node_ids, adjacency, out_degree, incoming
+
+def check_convergence(iteration, prev_importance, importance, tol):
+    diff = abs(prev_importance - importance).sum()
+    if iteration % 10 == 0 or iteration < 10:
+        print(f"Iteration {iteration + 1}: convergence diff = {diff:.8f} (target: {tol})")
+    if test_convergence(prev_importance, importance, tol):
+        print(f"Converged after {iteration + 1} iterations")
+        return True
+    return False
+
+def test_positive_values(nodes):
+    min_score = nodes['importance'].min()
+    return min_score > 0
+
+def test_degree_correlation(nodes, edges):
+    in_degree = edges['dst'].value_counts()
+
+    # Merge with nodes
+    test_df = nodes.copy()
+    test_df['in_degree'] = test_df['node_id'].map(in_degree).fillna(0)
+
+    # Calculate correlation
+    correlation = test_df['importance'].corr(test_df['in_degree'])
+
+    print(f"\n--- Degree-PageRank Correlation Test ---")
+    print(f"Correlation between in-degree and PageRank: {correlation:.4f}")
+
+    # Compare high vs low degree nodes
+    high_degree_threshold = test_df['in_degree'].quantile(0.9)
+    low_degree_threshold = test_df['in_degree'].quantile(0.1)
+
+    high_degree_avg = test_df[test_df['in_degree'] >= high_degree_threshold]['importance'].mean()
+    low_degree_avg = test_df[test_df['in_degree'] <= low_degree_threshold]['importance'].mean()
+
+    print(f"Avg PageRank for high in-degree nodes (top 10%): {high_degree_avg:.8f}")
+    print(f"Avg PageRank for low in-degree nodes (bottom 10%): {low_degree_avg:.8f}")
+
+    if len(test_df[test_df['in_degree'] <= low_degree_threshold]) > 0:
+        ratio = high_degree_avg / max(low_degree_avg, 1e-10)  # Avoid division by zero
+        print(f"Ratio (high/low): {ratio:.2f}")
+
+    # Plot scatter chart
+    plt.figure(figsize=(7, 5))
+    plt.scatter(test_df['in_degree'], test_df['importance'], alpha=0.5, s=10)
+    plt.xlabel('In-degree')
+    plt.ylabel('PageRank Score')
+    plt.title('In-degree vs PageRank Correlation')
+    plt.grid(True, linestyle='--', alpha=0.4)
+    plt.tight_layout()
+    plt.show()
+
+    if correlation > 0.1 and high_degree_avg > low_degree_avg:
+        print("✓ Positive correlation between degree and PageRank")
+        return True
+    else:
+        print("⚠️  Warning: Weak correlation between degree and PageRank")
+        return False
