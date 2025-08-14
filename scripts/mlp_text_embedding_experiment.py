@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     '--feature-file',
     type=str,
-    default='data/dqr/merged_domains_small_pc1.csv',
+    default='data/dqr/merged_domains_text_pc1.csv',
     help='Path to 11k dqr domains with text content in CSV format',
 )
 parser.add_argument(
