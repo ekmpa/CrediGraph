@@ -10,7 +10,12 @@ from tgrag.encoders.encoder import Encoder
 
 class TextCSVDataset(Dataset):
     def __init__(
-        self, csv_path: str, text_col: str, label_col: str, encode_fn: Encoder
+        self,
+        csv_path: str,
+        text_col: str,
+        label_col: str,
+        encode_fn: Encoder,
+        batch_size: int = 64,
     ):
         df = pd.read_csv(csv_path)
         texts = df[text_col].astype(str).to_list()
@@ -18,14 +23,20 @@ class TextCSVDataset(Dataset):
 
         self.labels = torch.from_numpy(labels).float()
 
+        all_embeds = []
+
         if hasattr(encode_fn, '__call__'):
             embeds = encode_fn(texts)
         else:
             raise ValueError('encode_fn must be callable.')
 
-        self.x = torch.as_tensor(
-            embeds, dtype=torch.float32
-        )  # (N, D -> depends on encoder)
+        for i in range(0, len(texts), batch_size):
+            batch_texts = texts[i : i + batch_size]
+            with torch.no_grad():
+                embeds = encode_fn(batch_texts)  # (B, D)
+            all_embeds.append(embeds.cpu())
+
+        self.x = torch.cat(all_embeds, dim=0)  # (N, D -> depends on encoder)
         self.y = torch.as_tensor(labels, dtype=torch.float32)  # (N,)
 
         self.domains = df.get('Domain_Name')
