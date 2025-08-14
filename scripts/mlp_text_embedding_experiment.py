@@ -212,7 +212,11 @@ def run_ff_experiment() -> None:
         loss_run_mse.append(loss_epoch_mse)
     logging.info('*** Constructing Plots ***')
     plot_avg_loss_with_baseline(
-        loss_run_mse, mlp.model_name, Scoring.mse, 'mse_loss_plot.png'
+        loss_run_mse,
+        mlp.model_name,
+        Scoring.mse,
+        title='MLP: Average MSE Loss over Trials. (Text embedding input)'
+        'mse_loss_plot.png',
     )
 
 

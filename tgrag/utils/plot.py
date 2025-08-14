@@ -70,6 +70,7 @@ def plot_avg_loss_with_baseline(
     loss_tuple_run: List[List[Tuple[float, float, float, float]]],
     model_name: str,
     score: Scoring,
+    title: str | None = None,
     save_filename: str = 'mse_loss_plot.png',
 ) -> None:
     """Plots the averaged MSE loss over trials for train, validation, and test sets with std dev bands."""
@@ -118,7 +119,10 @@ def plot_avg_loss_with_baseline(
     plt.ylabel(f'{score.value}')
     if score == Scoring.mse:
         plt.yscale('log')
-    plt.title(f'{model_name} : Average {score.value} Loss over Trials')
+    if title is None:
+        plt.title(f'{model_name} : Average {score.value} Loss over Trials')
+    else:
+        plt.title(title)
     plt.legend()
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.tight_layout()
