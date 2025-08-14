@@ -57,6 +57,12 @@ parser.add_argument(
     help='The dropout.',
 )
 parser.add_argument(
+    '--lr',
+    type=float,
+    default=0.01,
+    help='The learning rate.',
+)
+parser.add_argument(
     '--device',
     type=int,
     default=1,
