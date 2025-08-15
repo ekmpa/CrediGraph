@@ -4,6 +4,8 @@ from typing import Dict, List, Tuple
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from tgrag.utils.path import get_root_dir
+
 
 def test_score_sum(new_nodes: pd.DataFrame, tol: float = 1e-3) -> bool:
     total = new_nodes['importance'].sum()
@@ -13,6 +15,9 @@ def test_score_sum(new_nodes: pd.DataFrame, tol: float = 1e-3) -> bool:
 
 
 def show_score_distribution(new_nodes: pd.DataFrame) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'pagerank_plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
 
     # 1. Log scale histogram
@@ -45,7 +50,8 @@ def show_score_distribution(new_nodes: pd.DataFrame) -> None:
     ax4.tick_params(axis='x', rotation=45)
 
     plt.tight_layout()
-    plt.show()
+    plt.savefig(save_dir / 'score_distribution.png')
+    plt.close()
 
     logging.info(f'\nPageRank Statistics:')
     logging.info(f'Min score: {new_nodes["importance"].min():.8f}')
@@ -155,6 +161,9 @@ def test_positive_values(nodes: pd.DataFrame) -> bool:
 
 
 def test_degree_correlation(nodes: pd.DataFrame, edges: pd.DataFrame) -> bool:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'pagerank_plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
     in_degree = edges['dst'].value_counts()
 
     test_df = nodes.copy()
@@ -193,7 +202,8 @@ def test_degree_correlation(nodes: pd.DataFrame, edges: pd.DataFrame) -> bool:
     plt.title('In-degree vs PageRank Correlation')
     plt.grid(True, linestyle='--', alpha=0.4)
     plt.tight_layout()
-    plt.show()
+    plt.savefig(save_dir / 'degree_correlation.png')
+    plt.close()
 
     if correlation > 0.1 and high_degree_avg > low_degree_avg:
         logging.info('Positive correlation between degree and PageRank')
