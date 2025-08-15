@@ -66,6 +66,70 @@ def plot_avg_loss(
     plt.close()
 
 
+def plot_avg_loss_with_baseline(
+    loss_tuple_run: List[List[Tuple[float, float, float, float]]],
+    model_name: str,
+    score: Scoring,
+    title: str | None = None,
+    save_filename: str = 'mse_loss_plot.png',
+) -> None:
+    """Plots the averaged MSE loss over trials for train, validation, and test sets with std dev bands."""
+    num_epochs = len(loss_tuple_run[0])
+
+    data = np.array(loss_tuple_run)  # shape: (num_trials, num_epochs, 3)
+
+    avg = data.mean(axis=0)  # shape: (num_epochs, 3)
+    std = data.std(axis=0)  # shape: (num_epochs, 3)
+
+    avg_train, avg_val, avg_test, avg_baseline = (
+        avg[:, 0],
+        avg[:, 1],
+        avg[:, 2],
+        avg[:, 3],
+    )
+    std_train, std_val, std_test, std_baseline = (
+        std[:, 0],
+        std[:, 1],
+        std[:, 2],
+        std[:, 3],
+    )
+
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / model_name
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / save_filename
+
+    plt.figure(figsize=(10, 6))
+    epochs = np.arange(1, num_epochs + 1)
+
+    plt.plot(epochs, avg_train, label=f'Train {score.value}', linewidth=2)
+    plt.fill_between(epochs, avg_train - std_train, avg_train + std_train, alpha=0.2)
+
+    plt.plot(epochs, avg_val, label=f'Validation {score.value}', linewidth=2)
+    plt.fill_between(epochs, avg_val - std_val, avg_val + std_val, alpha=0.2)
+
+    plt.plot(epochs, avg_test, label=f'Test {score.value}', linewidth=2)
+    plt.fill_between(epochs, avg_test - std_test, avg_test + std_test, alpha=0.2)
+
+    plt.plot(epochs, avg_baseline, label=f'Baseline {score.value}', linewidth=2)
+    plt.fill_between(
+        epochs, avg_baseline - std_baseline, avg_baseline + std_baseline, alpha=0.2
+    )
+    plt.xlabel('Epoch')
+    plt.ylabel(f'{score.value}')
+    if score == Scoring.mse:
+        plt.yscale('log')
+    if title is None:
+        plt.title(f'{model_name} : Average {score.value} Loss over Trials')
+    else:
+        plt.title(title)
+    plt.legend()
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
+
 def load_all_loss_tuples(
     results_dir: str = 'results/logs',
 ) -> Dict[str, List[List[Tuple[float, float, float]]]]:
