@@ -23,36 +23,43 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     '--node-file',
     type=str,
+    default='data/crawl-data/temporal/temporal_nodes.csv',
     help='Path to the feature file in a csv format.',
 )
 parser.add_argument(
     '--edge-file',
     type=str,
+    default='data/crawl-data/temporal/temporal_edges.csv',
     help='Path to the edge file in a csv format.',
 )
 parser.add_argument(
     '--node-save-file',
     type=str,
+    default='data/crawl-data/temporal/temporal_nodes_pr.csv',
     help='Path to the written feature file in a csv format.',
 )
 parser.add_argument(
     '--edge-save-file',
     type=str,
+    default='data/crawl-data/temporal/temporal_edges_pr.csv',
     help='Path to the written edge file in a csv format.',
 )
 parser.add_argument(
     '--damping',
     type=float,
+    default=0.85,
     help='Damping paramater in Page Rank.',
 )
 parser.add_argument(
     '--max_iter',
-    type=float,
+    type=int,
+    default=100,
     help='The maximum iterations.',
 )
 parser.add_argument(
     '--tolerance',
     type=float,
+    default=1e-6,
     help='The convergence tolerance.',
 )
 parser.add_argument(
