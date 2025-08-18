@@ -7,6 +7,10 @@ def get_root_dir() -> Path:
     return Path(__file__).parent.parent.parent
 
 
+def get_curr_parent() -> Path:
+    return Path(__file__).parent.parent
+
+
 def get_no_backup() -> Path:
     return Path('/NOBACKUP')
 
