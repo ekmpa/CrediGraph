@@ -3,6 +3,7 @@ import logging
 from typing import Dict, List
 
 import pandas as pd
+from tqdm import tqdm
 
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.pagerank_utils import (
@@ -113,7 +114,7 @@ def main() -> None:
     importance = pd.Series(1.0 / N, index=node_ids)
     iteration = 0
     converged = False
-    while iteration < args.max_iter and not converged:
+    for iteration in tqdm(range(args.max_iter), desc='Power Iteration'):
         prev_importance = importance.copy()
         dangling_sum = sum(
             prev_importance[node] for node in node_ids if out_degree.get(node, 0) == 0
@@ -130,7 +131,8 @@ def main() -> None:
         converged = check_convergence(
             iteration, prev_importance, importance, args.tolerance
         )
-        iteration += 1
+        if converged:
+            break
 
     nodes['importance'] = nodes['node_id'].map(importance)
 
