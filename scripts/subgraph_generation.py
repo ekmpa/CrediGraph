@@ -3,6 +3,8 @@
 # Options:
 #   - Deg > k
 
+# TODO : either code generate_fused if we want it or (most likely) remove that option altogether
+
 import argparse
 import csv
 import gzip
