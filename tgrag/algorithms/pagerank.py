@@ -64,7 +64,6 @@ parser.add_argument(
 )
 parser.add_argument(
     '--use-scratch',
-    type=str,
     action='store_true',
     help='Whether to use scratch location as data root.',
 )
