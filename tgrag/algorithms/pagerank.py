@@ -14,7 +14,7 @@ from tgrag.utils.pagerank_utils import (
     test_positive_values,
     test_score_sum,
 )
-from tgrag.utils.path import get_root_dir
+from tgrag.utils.path import get_root_dir, get_scatch
 
 parser = argparse.ArgumentParser(
     description='Generate PageRank.',
@@ -23,25 +23,25 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     '--node-file',
     type=str,
-    default='data/crawl-data/temporal/temporal_nodes.csv',
+    default='data/crawl-data/manual/temporal_nodes.csv',
     help='Path to the feature file in a csv format.',
 )
 parser.add_argument(
     '--edge-file',
     type=str,
-    default='data/crawl-data/temporal/temporal_edges.csv',
+    default='data/crawl-data/manual/temporal_edges.csv',
     help='Path to the edge file in a csv format.',
 )
 parser.add_argument(
     '--node-save-file',
     type=str,
-    default='data/crawl-data/temporal/temporal_nodes_pr.csv',
+    default='data/crawl-data/manual/temporal_nodes_pr.csv',
     help='Path to the written feature file in a csv format.',
 )
 parser.add_argument(
     '--edge-save-file',
     type=str,
-    default='data/crawl-data/temporal/temporal_edges_pr.csv',
+    default='data/crawl-data/manual/temporal_edges_pr.csv',
     help='Path to the written edge file in a csv format.',
 )
 parser.add_argument(
@@ -61,6 +61,12 @@ parser.add_argument(
     type=float,
     default=1e-6,
     help='The convergence tolerance.',
+)
+parser.add_argument(
+    '--use-scratch',
+    type=str,
+    action='store_true',
+    help='Whether to use scratch location as data root.',
 )
 parser.add_argument(
     '--log-file',
@@ -95,8 +101,11 @@ def compute_new_importance(
 
 
 def main() -> None:
-    root = get_root_dir()
     args = parser.parse_args()
+    if args.use_scratch:
+        root = get_scatch('scratch')
+    else:
+        root = get_root_dir()
     setup_logging(args.log_file)
     nodes, edges = preprocess_data(root / args.node_file, root / args.edge_file)
     node_ids, adjacency, out_degree, incoming = build_adjacency(nodes, edges)
