@@ -185,6 +185,7 @@ def add_timestamps(output_path: str, slice: str) -> None:
         gzip.open(vertices_in, 'rt', encoding='utf-8') as fin,
         gzip.open(vertices_out, 'wt', encoding='utf-8', newline='') as fout,
     ):
+        fout.write('nid,domain,ts\n')
         for line in fin:
             parts = line.rstrip('\n').split('\t')
             nid, domain = parts[0].strip(), parts[1].strip()
@@ -195,6 +196,7 @@ def add_timestamps(output_path: str, slice: str) -> None:
         gzip.open(edges_in, 'rt', encoding='utf-8') as fin,
         gzip.open(edges_out, 'wt', encoding='utf-8', newline='') as fout,
     ):
+        fout.write('src,dst,ts\n')
         for line in fin:
             parts = line.rstrip('\n').split('\t')
             src, dst = parts[0].strip(), parts[1].strip()
