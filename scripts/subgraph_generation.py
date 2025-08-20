@@ -3,9 +3,6 @@
 # Options:
 #   - Deg > k
 
-# TODO : add headers
-
-
 import argparse
 import csv
 import gzip
