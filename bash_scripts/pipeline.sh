@@ -78,8 +78,10 @@ while read -r CRAWL || [[ -n "$CRAWL" ]]; do
         rm -rf "$DATA_DIR/$CRAWL/segments/"*
 
         # Run end-to-end on the given subset + aggregate to partial graph
-        bash end-to-end.sh "$CRAWL" $start_idx $end_idx
+        bash "$SCRIPT_DIR/end-to-end.sh" "$CRAWL" $start_idx $end_idx
+        echo "starting aggregate @ $(date '+%Y-%m-%d %H:%M:%S')"
         uv run python ../tgrag/construct_graph_scripts/construct_aggregate.py --source "$DATA_DIR/$CRAWL/output_text_dir" --target "$DATA_DIR/$CRAWL/output"
+        echo "ending aggregate @ $(date '+%Y-%m-%d %H:%M:%S')"
 
         for f in edges vertices; do
             target_file="$DATA_DIR/$CRAWL/output/${f}.txt.gz"
