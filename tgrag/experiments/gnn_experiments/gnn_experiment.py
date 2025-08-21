@@ -169,7 +169,7 @@ def run_gnn_baseline(
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
         loss_tuple_epoch_r2: List[Tuple[float, float, float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
-            train(model, train_loader, optimizer)
+            _, _, avg_preds, avg_targets = train(model, train_loader, optimizer)
             train_mse, train_mean_mse, train_random_mse, train_r2 = evaluate(
                 model, train_loader, 'train_mask'
             )
