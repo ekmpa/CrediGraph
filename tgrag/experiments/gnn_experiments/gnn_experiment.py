@@ -13,6 +13,7 @@ from tgrag.gnn.model import Model
 from tgrag.utils.args import DataArguments, ModelArguments
 from tgrag.utils.logger import Logger
 from tgrag.utils.plot import Scoring, plot_avg_loss, plot_avg_loss_r2
+from tgrag.utils.prob import ragged_mean_by_index
 from tgrag.utils.save import save_loss_results
 
 
@@ -45,8 +46,8 @@ def train(
         all_targets.append(targets[train_mask])
 
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
-    avg_preds = torch.mean(torch.stack(all_preds), dim=0)
-    avg_targets = torch.mean(torch.stack(all_targets), dim=0)
+    avg_preds = ragged_mean_by_index(all_preds)
+    avg_targets = ragged_mean_by_index(all_targets)
     mse = total_loss / total_batches
     return (mse, r2, avg_preds, avg_targets)
 
@@ -98,8 +99,6 @@ def run_gnn_baseline(
     model_arguments: ModelArguments,
     dataset: TemporalDataset,
 ) -> None:
-    is_random = model_arguments.model.upper() == 'RANDOM'
-    is_mean = model_arguments.model.upper() == 'MEAN'
     data = dataset[0]
     split_idx = dataset.get_idx_split()
     logging.info(
