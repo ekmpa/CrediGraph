@@ -3,6 +3,7 @@ from typing import List, Tuple
 
 import torch
 import torch.nn.functional as F
+from torch import Tensor
 from torch_geometric.loader import NeighborLoader
 from torcheval.metrics.functional import r2_score
 from tqdm import tqdm
@@ -19,11 +20,11 @@ def train(
     model: torch.nn.Module,
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
-) -> Tuple[float, float]:
+) -> Tuple[float, float, Tensor, Tensor]:
     model.train()
     device = next(model.parameters()).device
     total_loss = 0
-    total_nodes = 0
+    total_batches = 0
     all_preds = []
     all_targets = []
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
@@ -39,14 +40,15 @@ def train(
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
-        total_nodes += 1
+        total_batches += 1
         all_preds.append(preds[train_mask])
         all_targets.append(targets[train_mask])
 
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
-    mse = total_loss / total_nodes
-    # plot_avg_distribution(all_preds, all_targets, model.model_name)
-    return (mse, r2)
+    avg_preds = torch.mean(torch.stack(all_preds), dim=0)
+    avg_targets = torch.mean(torch.stack(all_targets), dim=0)
+    mse = total_loss / total_batches
+    return (mse, r2, avg_preds, avg_targets)
 
 
 @torch.no_grad()
@@ -60,7 +62,7 @@ def evaluate(
     total_loss = 0
     total_mean_loss = 0
     total_random_loss = 0
-    total_nodes = 0
+    total_batches = 0
     all_preds = []
     all_targets = []
     for batch in loader:
@@ -79,15 +81,15 @@ def evaluate(
         total_loss += loss.item()
         total_mean_loss += mean_loss.item()
         total_random_loss += random_loss.item()
-        total_nodes += 1
+        total_batches += 1
 
         all_preds.append(preds[mask])
         all_targets.append(targets[mask])
 
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
-    mse = total_loss / total_nodes
-    mse_mean = total_mean_loss / total_nodes
-    mse_random = total_random_loss / total_nodes
+    mse = total_loss / total_batches
+    mse_mean = total_mean_loss / total_batches
+    mse_random = total_random_loss / total_batches
     return (mse, mse_mean, mse_random, r2)
 
 
