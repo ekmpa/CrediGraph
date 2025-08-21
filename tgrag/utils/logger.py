@@ -36,7 +36,9 @@ def setup_logging(
     )
 
     # Suppress matplotlib.font_manager debug output
+    logging.getLogger('matplotlib').setLevel(logging.WARNING)
     logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
+    logging.getLogger('matplotlib.ticker').setLevel(logging.WARNING)
 
 
 class Logger(object):
