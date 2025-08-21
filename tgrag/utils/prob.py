@@ -34,7 +34,7 @@ def get_importance_node(pr_val: str, hc_val: str) -> float:
     return abs(float(pr_val) * float(hc_val))
 
 
-def ragged_mean_by_index(seq_list: List[torch.Tensor]) -> float:
+def ragged_mean_by_index(seq_list: List[torch.Tensor]) -> torch.Tensor:
     """seq_list: list[1D torch.Tensor], possibly different lengths.
     Returns: 1D torch.Tensor where i-th entry is the mean over all seqs
              that have index i.
