@@ -148,8 +148,8 @@ def main() -> None:
 
     show_score_distribution(nodes)
 
-    nodes.to_csv(args.node_save_file, index=False)
-    edges.to_csv(args.edge_save_file, index=False)
+    nodes.to_csv(root / args.node_save_file, index=False)
+    edges.to_csv(root / args.edge_save_file, index=False)
     logging.info(f'Results saved to {args.node_save_file} and {args.edge_save_file}')
 
 
