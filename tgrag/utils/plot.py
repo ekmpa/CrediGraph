@@ -21,6 +21,55 @@ class Scoring(str, Enum):
     r2 = 'R2'
 
 
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+
+
+def plot_pred_target_distributions_bin(
+    preds: torch.Tensor,
+    targets: torch.Tensor,
+    model_name: str,
+    title: str = 'Average distribution True vs Predicted',
+    save_filename: str = 'pred_target_distribution.png',
+    bins: int | np.ndarray = 40,
+    xlim: tuple[float, float] = (0.0, 1.0),
+    logy: bool = False,
+) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / model_name / 'distribution'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / save_filename
+    p = preds.detach().flatten().to('cpu').float().numpy()
+    t = targets.detach().flatten().to('cpu').float().numpy()
+
+    # clean NaNs/Infs
+    p = p[np.isfinite(p)]
+    t = t[np.isfinite(t)]
+
+    # fixed bins over the chosen x-range
+    if isinstance(bins, int):
+        bin_edges = np.linspace(xlim[0], xlim[1], bins + 1)
+    else:
+        bin_edges = np.asarray(bins)
+
+    plt.figure(figsize=(8, 6))
+    plt.hist(t, bins=bin_edges, alpha=0.6, label='True', density=False)
+    plt.hist(p, bins=bin_edges, alpha=0.6, label='Pred', density=False)
+
+    if logy:
+        plt.yscale('log')
+
+    plt.xlim(*xlim)
+    plt.xlabel('Value')
+    plt.ylabel('Frequency')
+    plt.title(title)
+    plt.legend()
+    plt.grid(alpha=0.3)
+    plt.savefig(save_path)
+    plt.close()
+
+
 def plot_pred_target_distributions(
     preds: torch.Tensor,
     targets: torch.Tensor,
