@@ -16,7 +16,7 @@ from tgrag.utils.plot import (
     Scoring,
     plot_avg_loss,
     plot_avg_loss_r2,
-    plot_pred_target_distributions,
+    plot_pred_target_distributions_bin,
 )
 from tgrag.utils.prob import ragged_mean_by_index
 from tgrag.utils.save import save_loss_results
@@ -208,7 +208,7 @@ def run_gnn_baseline(
     logging.info(logger.get_avg_statistics())
     logging.info('Constructing plots')
     if final_avg_targets is not None and final_avg_preds is not None:
-        plot_pred_target_distributions(
+        plot_pred_target_distributions_bin(
             preds=final_avg_preds,
             targets=final_avg_targets,
             model_name=model_arguments.model,
