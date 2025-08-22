@@ -1,0 +1,33 @@
+Source: https://gist.github.com/pjox/4de9fb8962b715fe73bbe09d70b2e94e?h=1#file-saturn-pretty-wat
+
+Metadata:
+{
+###################### Generic MetaData ##############
+Request_Metadata: wat_record['Envelope']['WARC-Header-Metadata'],
+MessageType:wat_record['Envelope']['WARC-Header-Metadata']['WARC-Type'], # can be [request, response, metadata]
+URL: wat_record['Envelope']['WARC-Header-Metadata']['WARC-Target-URI'],
+Web_Domain_IP: wat_record['Envelope']['WARC-Header-Metadata']['WARC-IP-Address'],
+Content-Type: wat_record['Envelope']['Payload-Metadata']['Actual-Content-Type'],
+Request_Date: wat_record['Envelope']['WARC-Header-Metadata']['WARC-Date'],
+################# if request ###################
+Method: wat_record['Envelope']['Payload-Metadata']['HTTP-Request-Metadata']['Request-Message']['Method'], # [ Get or Post ]
+Path: wat_record['Envelope']['Payload-Metadata']['HTTP-Request-Metadata']['Request-Message']['Path'], # [ link relative Path ]
+Accept-Language: wat_record['Envelope']['Payload-Metadata']['HTTP-Request-Metadata']['Headers']['Accept-Language'],
+Host: wat_record['Envelope']['Payload-Metadata']['HTTP-Request-Metadata']['Headers']['Host'],
+################# if response ###################
+Response-Message: wat_record['Envelope']['Payload-Metadata']['HTTP-Response-Metadata']['Response-Message'],
+Request_Headers: wat_record['Envelope']['Payload-Metadata']['HTTP-Response-Metadata']['Headers'],
+Content-language:wat_record['Envelope']['Payload-Metadata']['HTTP-Response-Metadata']['Headers']['content-language'],
+last-modified:wat_record['Envelope']['Payload-Metadata']['HTTP-Response-Metadata']['Headers']['last-modified'],
+Page_Title: wat_record['Envelope']['Payload-Metadata']['HTTP-Response-Metadata']['HTML-Metadata']['Head']['Title'],
+Page_Header_Links: wat_record['Envelope']['Payload-Metadata']['HTTP-Response-Metadata']['HTML-Metadata']['Head']['Link'],
+Page_Body_Links: wat_record['Envelope']['Payload-Metadata']['HTTP-Response-Metadata']['HTML-Metadata']['Links'],
+Page_Script_Files: wat_record['Envelope']['Payload-Metadata']['HTTP-Response-Metadata']['HTML-Metadata']['Head']['Scripts'],
+Page_Short_Desc: wat_record['Envelope']['Payload-Metadata']['HTTP-Response-Metadata']['HTML-Metadata']['Head']['Metas']['description']
+################# if metadata ###################
+cdl_languages: wat_record['Envelope']['Payload-Metadata']['WARC-Metadata-Metadata']['Metadata-Records']['languages-cld2'] # Score per each language
+}
+
+
+
+

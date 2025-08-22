@@ -41,20 +41,15 @@ export PYSPARK_DRIVER_PYTHON="$VENV_PATH/bin/python"
 
 
 # Run the Spark job
-# Local testing: use "$INPUT_DIR/test_wat.txt"
-# Cluster / full usage: ""$INPUT_DIR/all_wat_$CRAWL.txt"
-# --trusted_domains "../data/dqr/domain_pc1.csv"\
-# --trusted_domains "../common_urls_set_84k.csv" \
-# "$PROJECT_ROOT/tgrag/cc-scripts/wet_extract_domain_content_11k.py"
 
 "$VENV_PATH/bin/spark-submit" \
-    --driver-memory 10g \
-    --executor-memory 5g \
-    --py-files "$PROJECT_ROOT/tgrag/cc-scripts/sparkcc.py" \
-    "$PROJECT_ROOT/tgrag/cc-scripts/wet_extract_domain_content.py" \
-    "$INPUT_DIR/test_wet.txt" \
-    "$outputTableName" \
-    --trusted_domains "../data/dqr/domain_pc1.cs" \
-    --output_format "parquet" \
-    --output_compression "snappy" \
-    --log_level "WARN"
+  --driver-memory 10g \
+  --executor-memory 5g \
+  --py-files "$PROJECT_ROOT/tgrag/cc-scripts/sparkcc.py" \
+  "$PROJECT_ROOT/tgrag/cc-scripts/wet_extract_domain_urls.py" \
+  "$INPUT_DIR/test_wet.txt" \
+  "$outputTableName" \
+  --trusted_domains "../data/cc-label+deg_3.txt" \
+  --output_format "parquet" \
+  --output_compression "snappy" \
+  --log_level "WARN"

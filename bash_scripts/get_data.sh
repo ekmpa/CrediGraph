@@ -114,7 +114,12 @@ for data_type in  "${cc_file_types[@]}" ; do
       if [ -f "$file_path" ]; then
           echo "File '$file_path' exists."
       else
+          set +e
           wget --timestamping -P "../data/$first/$data_type/" "$BASE_URL/$wat_file"
+          set -e
+          if [ $? -ne 0 ]; then
+              echo "Failed Download File: '$file_path'."
+          fi
       fi
     done <<< "$wat_files"
 

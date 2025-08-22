@@ -78,12 +78,12 @@ for data_type in  "${cc_file_types[@]}" ; do
       elif [ "$data_type" = "wet" ]; then
         echo "#####################  run_wet_content_extraction #####################"
          if [ -z "$SCRATCH" ]; then
-#            echo "$PROJECT_ROOT/bash_scripts/spark-warehouse/wet_extract_content_batch_${lCRAWL//-/}_${start_idx}_${end_idx}/"
-            rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse/wet_extract_content_batch_${lCRAWL//-/}_${start_idx}_${end_idx}/" # Remove re-created directories before running
+            spark_table_name="wet_extract_content_batch_"
+            rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse/${spark_table_name}${lCRAWL//-/}_${start_idx}_${end_idx}/" # Remove re-created directories before running
          else
-            rm -rf "$SCRATCH/spark-warehouse/wet_extract_cotent_batch_${lCRAWL//-/}_${start_idx}_${end_idx}/" # Remove re-created directories before running
+            rm -rf "$SCRATCH/spark-warehouse/${spark_table_name}${lCRAWL//-/}_${start_idx}_${end_idx}/" # Remove re-created directories before running
          fi
-        ./run_extract_wet_content.sh "$CRAWL" "wet_extract_content_batch_${lCRAWL//-/}_${start_idx}_${end_idx}"
+        ./run_extract_wet_content.sh "$CRAWL" "${spark_table_name}${lCRAWL//-/}_${start_idx}_${end_idx}"
         echo "wet_extract_content_table constructed for $CRAWL batch_${start_idx}_${end_idx}"
       fi
   echo "********************** End Of $data_type Task **********************"
