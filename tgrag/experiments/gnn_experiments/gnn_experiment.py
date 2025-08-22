@@ -12,7 +12,12 @@ from tgrag.dataset.temporal_dataset import TemporalDataset
 from tgrag.gnn.model import Model
 from tgrag.utils.args import DataArguments, ModelArguments
 from tgrag.utils.logger import Logger
-from tgrag.utils.plot import Scoring, plot_avg_loss, plot_avg_loss_r2
+from tgrag.utils.plot import (
+    Scoring,
+    plot_avg_loss,
+    plot_avg_loss_r2,
+    plot_pred_target_distributions,
+)
 from tgrag.utils.prob import ragged_mean_by_index
 from tgrag.utils.save import save_loss_results
 
@@ -154,6 +159,8 @@ def run_gnn_baseline(
     logger = Logger(model_arguments.runs)
     loss_tuple_run_mse: List[List[Tuple[float, float, float, float, float]]] = []
     loss_tuple_run_r2: List[List[Tuple[float, float, float]]] = []
+    final_avg_preds: Tensor | None = None
+    final_avg_targets: Tensor | None = None
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
         model = Model(
@@ -168,8 +175,14 @@ def run_gnn_baseline(
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
         loss_tuple_epoch_r2: List[Tuple[float, float, float]] = []
+        epoch_avg_preds: List[Tensor] = []
+        epoch_avg_targets: List[Tensor] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
-            _, _, avg_preds, avg_targets = train(model, train_loader, optimizer)
+            _, _, avg_batch_preds, avg_batch_targets = train(
+                model, train_loader, optimizer
+            )
+            epoch_avg_preds.append(avg_batch_preds)
+            epoch_avg_targets.append(avg_batch_targets)
             train_mse, train_mean_mse, train_random_mse, train_r2 = evaluate(
                 model, train_loader, 'train_mask'
             )
@@ -185,6 +198,8 @@ def run_gnn_baseline(
             loss_tuple_epoch_r2.append(result_r2)
             logger.add_result(run, (train_mse, valid_mse, test_mse))
 
+        final_avg_preds = ragged_mean_by_index(epoch_avg_preds)
+        final_avg_targets = ragged_mean_by_index(epoch_avg_targets)
         loss_tuple_run_mse.append(loss_tuple_epoch_mse)
         loss_tuple_run_r2.append(loss_tuple_epoch_r2)
 
@@ -192,6 +207,12 @@ def run_gnn_baseline(
     logging.info(logger.get_statistics())
     logging.info(logger.get_avg_statistics())
     logging.info('Constructing plots')
+    if final_avg_targets is not None and final_avg_preds is not None:
+        plot_pred_target_distributions(
+            preds=final_avg_preds,
+            targets=final_avg_targets,
+            model_name=model_arguments.model,
+        )
     plot_avg_loss(
         loss_tuple_run_mse, model_arguments.model, Scoring.mse, 'mse_loss_plot.png'
     )
