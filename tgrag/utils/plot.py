@@ -21,6 +21,41 @@ class Scoring(str, Enum):
     r2 = 'R2'
 
 
+def plot_pred_target_distributions(
+    preds: torch.Tensor,
+    targets: torch.Tensor,
+    model_name: str,
+    title: str = 'Average distribution True vs Predicted',
+    save_filename: str = 'pred_target_distribution.png',
+) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / model_name / 'distribution'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / save_filename
+
+    preds = preds.detach().cpu().numpy()
+    targets = targets.detach().cpu().numpy()
+
+    plt.figure(figsize=(8, 6))
+    bins = 20  # adjust depending on granularity
+
+    # plot normalized histograms (distributions)
+    plt.hist(
+        targets, bins=bins, alpha=0.6, label='True', color='tab:blue', density=True
+    )
+    plt.hist(
+        preds, bins=bins, alpha=0.6, label='Pred', color='tab:orange', density=True
+    )
+
+    plt.xlabel('Value')
+    plt.ylabel('Frequency')
+    plt.title(title)
+    plt.legend()
+    plt.grid(alpha=0.3)
+    plt.savefig(save_path)
+    plt.close()
+
+
 def plot_avg_loss(
     loss_tuple_run: List[List[Tuple[float, float, float, float, float]]],
     model_name: str,
