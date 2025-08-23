@@ -1,10 +1,28 @@
 import gzip
+from datetime import date
 from typing import IO, Callable, Dict, List, Set, Tuple
 
 import pandas as pd
 import torch
 from torch import Tensor
 from tqdm import tqdm
+
+
+def iso_week_to_timestamp(iso_week_str: str) -> str:
+    """Convert CC-MAIN-YYYY-WW (ISO week) to YYYYMMDD for the Monday of that week."""
+    parts = iso_week_str.split('-')
+
+    year = int(parts[-2])
+    week = int(parts[-1])
+
+    # ISO week: Monday is day 1
+    monday_date = date.fromisocalendar(year, week, 1)
+    return monday_date.strftime('%Y%m%d')
+
+
+def count_lines(path: str) -> int:
+    with gzip.open(path, 'rt', encoding='utf-8') as f:
+        return sum(1 for _ in f)
 
 
 def read_vertex_file(path: str) -> Set[str]:

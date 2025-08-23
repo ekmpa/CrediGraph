@@ -9,27 +9,10 @@ import argparse
 import csv
 import gzip
 import os
-from datetime import date
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
-from tgrag.utils.load_labels import get_labelled_dict
-
-
-def iso_week_to_timestamp(iso_week_str: str) -> str:
-    """Convert CC-MAIN-YYYY-WW (ISO week) to YYYYMMDD for the Monday of that week."""
-    parts = iso_week_str.split('-')
-
-    year = int(parts[-2])
-    week = int(parts[-1])
-
-    # ISO week: Monday is day 1
-    monday_date = date.fromisocalendar(year, week, 1)
-    return monday_date.strftime('%Y%m%d')
-
-
-def count_lines(path: str) -> int:  # move to utils
-    with gzip.open(path, 'rt', encoding='utf-8') as f:
-        return sum(1 for _ in f)
+from tgrag.utils.data_loading import count_lines, iso_week_to_timestamp
+from tgrag.utils.load_labels import get_full_dict
 
 
 def add_node_IDs(graph_path: str) -> Tuple[Set[str], Set[str], Dict[int, int]]:
@@ -204,7 +187,7 @@ def add_timestamps(output_path: str, slice: str) -> None:
     print(f'[INFO] Wrote CSVs with timestamps to {vertices_out} and {edges_out}')
 
 
-def lookup(domain: str, dqr_domains: Dict[str, float]) -> Optional[float]:
+def lookup(domain: str, dqr_domains: Dict[str, List[float]]) -> Optional[List[float]]:
     domain_parts = domain.split('.')
     for key, value in dqr_domains.items():
         key_parts = key.split('.')
@@ -214,9 +197,9 @@ def lookup(domain: str, dqr_domains: Dict[str, float]) -> Optional[float]:
 
 
 def generate_separate(
-    output_path: str, vertices: str, dqr_domains: Dict[str, float]
+    output_path: str, vertices: str, dqr_domains: Dict[str, List[float]]
 ) -> None:
-    targets: Dict[int, float] = {}
+    targets: Dict[int, List[float]] = {}
 
     with gzip.open(vertices, 'rt', encoding='utf-8') as f:
         for line in f:
@@ -230,21 +213,44 @@ def generate_separate(
 
     with open(targets_path, 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['nid', 'cred_score'])
+        writer.writerow(
+            [
+                'nid',
+                'pc1',
+                'afm',
+                'afm_bias',
+                'afm_min',
+                'afm_rely',
+                'fc',
+                'mbfc',
+                'mbfc_bias',
+                'mbfc_fact',
+                'mbfc_min',
+                'lewandowsky_acc',
+                'lewandowsky_trans',
+                'lewandowsky_rely',
+                'lewandowsky_mean',
+                'lewandowsky_min',
+                'misinfome_bin',
+            ]
+        )
         for key, value in targets.items():
             writer.writerow([key, value])
 
     print(f'Wrote targets to {targets_path}')
 
 
-def generate_fused(output_path: str, vertices: str, dqr_dict: Dict[str, float]) -> None:
+def generate_fused(
+    output_path: str, vertices: str, dqr_dict: Dict[str, List[float]]
+) -> None:
     print('TODO')
 
 
 def generate_targets(output_path: str, separate_targets: bool) -> None:
     vertices = os.path.join(output_path, 'vertices.csv.gz')
     os.path.join(output_path, 'edges.csv.gz')
-    dqr_dict = get_labelled_dict()
+    # ßdqr_dict = get_labelled_dict()
+    dqr_dict = get_full_dict()
 
     if separate_targets:
         generate_separate(output_path, vertices, dqr_dict)
