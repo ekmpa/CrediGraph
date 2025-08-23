@@ -55,22 +55,22 @@ for data_type in  "${cc_file_types[@]}" ; do
       rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse"
 
       echo $CRAWL
-      echo "################################### run get data ###################################"
-      ./get_data.sh "$CRAWL" $start_idx $end_idx "[$data_type]"
+      echo "################################### run get data @ $(date '+%Y-%m-%d %H:%M:%S') ###################################"
+      "$SCRIPT_DIR/get_data.sh" "$CRAWL" $start_idx $end_idx "[$data_type]"
       echo "Data Downloaded for $CRAWL."
       if [ "$data_type" = "wat" ]; then
         echo "################ Start Processing Processing $data_type Files ######################"
-        echo "#####################  run_wat_to_link #####################"
-        ./run_wat_to_link.sh "$CRAWL"
+        echo "#####################  run_wat_to_link @ $(date '+%Y-%m-%d %H:%M:%S') #####################"
+        "$SCRIPT_DIR/run_wat_to_link.sh" "$CRAWL"
         echo "wat_output_table constructed for $CRAWL."
-        echo "#####################  run_link_to_graph #####################"
-        ./run_link_to_graph.sh "$CRAWL"
+        echo "#####################  run_link_to_graph @ $(date '+%Y-%m-%d %H:%M:%S') #####################"
+        "$SCRIPT_DIR/run_link_to_graph.sh" "$CRAWL"
         echo "Compressed graphs constructed for $CRAWL."
       elif [ "$data_type" = "wet" ]; then
-        echo "#####################  run_wet_content_extraction #####################"
-        ./run_extract_wet_content.sh "$CRAWL"
+        echo "#####################  run_wet_content_extraction @ $(date '+%Y-%m-%d %H:%M:%S') #####################"
+        "$SCRIPT_DIR/run_extract_wet_content.sh" "$CRAWL"
         echo "wat_extract_content_table constructed for $CRAWL."
       fi
-  echo "********************** End Of $data_type Task **********************"
+  echo "********************** End Of $data_type Task @ $(date '+%Y-%m-%d %H:%M:%S') **********************"
   done
 done #< "$CRAWLS"

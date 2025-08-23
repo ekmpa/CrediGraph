@@ -128,7 +128,7 @@ for data_type in  "${cc_file_types[@]}" ; do
     echo "file:$DATA_DIR/$wat_file" >>"$input"
   done <<< "$wat_files"
 
-  echo "############Downloading Files############"
+  echo "############Downloading Files @ $(date '+%Y-%m-%d %H:%M:%S') ############"
 
   # counters + skip log
   skipped=0
