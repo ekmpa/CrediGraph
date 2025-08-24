@@ -3,6 +3,7 @@ import logging
 from typing import Dict, List
 
 import pandas as pd
+from tqdm import tqdm
 
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.pagerank_utils import (
@@ -14,7 +15,7 @@ from tgrag.utils.pagerank_utils import (
     test_positive_values,
     test_score_sum,
 )
-from tgrag.utils.path import get_root_dir
+from tgrag.utils.path import get_root_dir, get_scatch
 
 parser = argparse.ArgumentParser(
     description='Generate PageRank.',
@@ -23,37 +24,49 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     '--node-file',
     type=str,
+    default='data/crawl-data/manual/temporal_nodes.csv',
     help='Path to the feature file in a csv format.',
 )
 parser.add_argument(
     '--edge-file',
     type=str,
+    default='data/crawl-data/manual/temporal_edges.csv',
     help='Path to the edge file in a csv format.',
 )
 parser.add_argument(
     '--node-save-file',
     type=str,
+    default='data/crawl-data/manual/temporal_nodes_pr.csv',
     help='Path to the written feature file in a csv format.',
 )
 parser.add_argument(
     '--edge-save-file',
     type=str,
+    default='data/crawl-data/manual/temporal_edges_pr.csv',
     help='Path to the written edge file in a csv format.',
 )
 parser.add_argument(
     '--damping',
     type=float,
+    default=0.85,
     help='Damping paramater in Page Rank.',
 )
 parser.add_argument(
     '--max_iter',
-    type=float,
+    type=int,
+    default=100,
     help='The maximum iterations.',
 )
 parser.add_argument(
     '--tolerance',
     type=float,
+    default=1e-6,
     help='The convergence tolerance.',
+)
+parser.add_argument(
+    '--use-scratch',
+    action='store_true',
+    help='Whether to use scratch location as data root.',
 )
 parser.add_argument(
     '--log-file',
@@ -88,8 +101,11 @@ def compute_new_importance(
 
 
 def main() -> None:
-    root = get_root_dir()
     args = parser.parse_args()
+    if args.use_scratch:
+        root = get_scatch('scratch')
+    else:
+        root = get_root_dir()
     setup_logging(args.log_file)
     nodes, edges = preprocess_data(root / args.node_file, root / args.edge_file)
     node_ids, adjacency, out_degree, incoming = build_adjacency(nodes, edges)
@@ -98,7 +114,7 @@ def main() -> None:
     importance = pd.Series(1.0 / N, index=node_ids)
     iteration = 0
     converged = False
-    while iteration < args.max_iter and not converged:
+    for iteration in tqdm(range(args.max_iter), desc='Power Iteration'):
         prev_importance = importance.copy()
         dangling_sum = sum(
             prev_importance[node] for node in node_ids if out_degree.get(node, 0) == 0
@@ -115,7 +131,8 @@ def main() -> None:
         converged = check_convergence(
             iteration, prev_importance, importance, args.tolerance
         )
-        iteration += 1
+        if converged:
+            break
 
     nodes['importance'] = nodes['node_id'].map(importance)
 
@@ -131,9 +148,17 @@ def main() -> None:
 
     show_score_distribution(nodes)
 
-    nodes.to_csv(args.node_save_file, index=False)
-    edges.to_csv(args.edge_save_file, index=False)
+    nodes.to_csv(root / args.node_save_file, index=False)
+    edges.to_csv(root / args.edge_save_file, index=False)
     logging.info(f'Results saved to {args.node_save_file} and {args.edge_save_file}')
+
+
+if __name__ == '__main__':
+    main()
+
+
+if __name__ == '__main__':
+    main()
 
 if __name__ == '__main__':
     main()
