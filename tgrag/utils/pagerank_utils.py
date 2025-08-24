@@ -67,6 +67,49 @@ def preprocess_data(
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     logging.info('Starting data preprocessing...')
 
+    # Print first three lines of input files
+    logging.info("First three lines of vertices file:")
+    logging.info(pd.read_csv(nodes_path, nrows=3).to_string(index=False))
+    logging.info("First three lines of edges file:")
+    logging.info(pd.read_csv(edges_path, nrows=3).to_string(index=False))
+
+    # Check and rename columns if needed
+    vertices_sample = pd.read_csv(nodes_path, nrows=3)
+    edges_sample = pd.read_csv(edges_path, nrows=3)
+
+    # Vertices columns
+    vertices_cols = list(vertices_sample.columns)
+    if vertices_cols == ['domain', 'node_id', 'time_id', 'cr_score']:
+        pass  # No action needed
+    elif vertices_cols == ['nid', 'domain', 'ts']:
+        logging.info("Renaming vertices columns: ['nid', 'domain', 'ts'] -> ['node_id', 'domain', 'time_id']")
+        vertices_sample.rename(columns={'nid': 'node_id', 'ts': 'time_id'}, inplace=True)
+        # Save for later use
+        pd.read_csv(nodes_path).rename(columns={'nid': 'node_id', 'ts': 'time_id'}).to_csv(nodes_path, index=False)
+    elif set(vertices_cols) >= {'node_id', 'domain', 'time_id'}:
+        pass  # Acceptable superset
+    else:
+        logging.warning(f"Potential issue: Unexpected vertices columns: {vertices_cols}")
+
+    # Edges columns
+    edges_cols = list(edges_sample.columns)
+    if edges_cols == ['src', 'dst', 'time_id']:
+        pass  # No action needed
+    elif edges_cols == ['src', 'dst', 'ts']:
+        logging.info("Renaming edges columns: ['src', 'dst', 'ts'] -> ['src', 'dst', 'time_id']")
+        edges_sample.rename(columns={'ts': 'time_id'}, inplace=True)
+        pd.read_csv(edges_path).rename(columns={'ts': 'time_id'}).to_csv(edges_path, index=False)
+    elif set(edges_cols) >= {'src', 'dst', 'time_id'}:
+        pass  # Acceptable superset
+    else:
+        logging.warning(f"Potential issue: Unexpected edges columns: {edges_cols}")
+
+    # Print first three lines of final files
+    logging.info("First three lines of final vertices file:")
+    logging.info(pd.read_csv(nodes_path, nrows=3).to_string(index=False))
+    logging.info("First three lines of final edges file:")
+    logging.info(pd.read_csv(edges_path, nrows=3).to_string(index=False))
+
     # Load raw data
     nodes = pd.read_csv(nodes_path)
     edges = pd.read_csv(edges_path)
