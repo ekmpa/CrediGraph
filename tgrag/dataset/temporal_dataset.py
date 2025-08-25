@@ -102,7 +102,7 @@ class TemporalDataset(InMemoryDataset):
         data = Data(x=x_full, y=cr_score, edge_index=edge_index, edge_attr=edge_attr)
         # data.adj_t = adj_t
 
-        data.labeled_mask = torch.tensor(labeled_mask, dtype=torch.bool)
+        data.labeled_mask = labeled_mask.detach().clone().bool()
 
         labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
         labeled_scores = cr_score[labeled_idx].squeeze().numpy()

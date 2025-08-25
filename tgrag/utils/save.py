@@ -5,7 +5,7 @@ from tgrag.utils.path import get_root_dir
 
 
 def save_loss_results(
-    loss_tuple_run: List[List[Tuple[float, float, float]]],
+    loss_tuple_run: List[List[Tuple[float, float, float, float, float]]],
     model_name: str,
     encoder_name: str,
 ) -> None:
