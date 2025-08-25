@@ -7,8 +7,20 @@ def get_root_dir() -> Path:
     return Path(__file__).parent.parent.parent
 
 
+def get_curr_parent() -> Path:
+    return Path(__file__).parent.parent
+
+
 def get_no_backup() -> Path:
     return Path('/NOBACKUP')
+
+
+def get_scatch(dir_name: str) -> Path:
+    home = Path.home()
+
+    scratch_dir = home.parent / home.name / dir_name
+
+    return scratch_dir
 
 
 def get_cwd() -> Path:

@@ -1,35 +1,24 @@
 import pathlib
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Dict, List, Optional, Tuple, Union
 
 import yaml
 from hf_argparser import HfArgumentParser
 
-from tgrag.utils.path import get_no_backup, get_root_dir
+from tgrag.utils.path import get_root_dir, get_scatch
+
+
+class Normalization(str, Enum):
+    NONE = 'none'
+    LAYER_NORM = 'LayerNorm'
+    BATCH_NORM = 'BatchNorm'
 
 
 @dataclass
 class MetaArguments:
     log_file_path: Optional[str] = field(
         metadata={'help': 'Path to the log file to use.'},
-    )
-    global_seed: int = field(
-        default=1337,
-        metadata={'help': 'Random seed to use for reproducibiility.'},
-    )
-
-    def __post_init__(self) -> None:
-        if self.log_file_path is not None:
-            self.log_file_path = str(get_root_dir() / self.log_file_path)
-
-
-@dataclass
-class DataArguments:
-    task_name: str = field(
-        metadata={'help': 'The name of the task to train on'},
-    )
-    is_regression: bool = field(
-        metadata={'help': 'Is the task a regression or classification problem'},
     )
     node_file: Union[str, List[str]] = field(
         metadata={
@@ -41,17 +30,63 @@ class DataArguments:
             'help': 'A csv or list of csv files containing the nodes of the graph.'
         },
     )
-    is_scratch_location: bool = field(
-        metadata={'help': 'Whether to use the /NOBACKUP/ disk on server.'}
+    target_file: Union[str, List[str]] = field(
+        metadata={'help': 'A csv or list of csv files containing the targets.'},
     )
-    num_test_shards: int = field(
-        metadata={'help': 'Number of test splits to do for uncertainty estimates.'},
+    target_col: str = field(
+        default='cr_score',
+        metadata={'help': 'The target column name in the target csv file.'},
+    )
+    edge_src_col: str = field(
+        default='src', metadata={'help': 'The source column name in the edge file.'}
+    )
+    edge_dst_col: str = field(
+        default='dst',
+        metadata={'help': 'The destination column name in the edge file.'},
+    )
+    index_col: int = field(
         default=1,
+        metadata={
+            'help': 'The integer corresponding to the column denoting node ids in the feature csv file.'
+        },
+    )
+    index_name: str = field(
+        default='node_id',
+        metadata={
+            'help': 'The name of the index column. If index_col = 0, then this need not given.'
+        },
+    )
+    encoder_dict: Dict[str, str] = field(
+        default_factory=lambda: {
+            'random': 'RNI',
+            'pr_val': 'NORM',
+            'hc_val': 'NORM',
+            'text': 'TEXT',
+        },
+        metadata={
+            'help': 'Node encoder dictionary defines which column is encoded by which encoder. Key: column, Value: Encoder'
+        },
+    )
+    global_seed: int = field(
+        default=1337,
+        metadata={'help': 'Random seed to use for reproducibiility.'},
+    )
+    is_scratch_location: bool = field(
+        default=False,
+        metadata={'help': 'Whether to use the /NOBACKUP/ or /SCRATCH/ disk on server.'},
+    )
+    data_dir_name: str = field(
+        default='scratch',
+        metadata={'help': 'The persistent storage location for large datasets.'},
     )
 
     def __post_init__(self) -> None:
         # Select root directory
-        root_dir = get_no_backup() if self.is_scratch_location else get_root_dir()
+        root_dir = (
+            get_scatch(self.data_dir_name)
+            if self.is_scratch_location
+            else get_root_dir()
+        )
         print(f'root_dir: {root_dir}')
 
         def resolve_paths(files: Union[str, List[str]]) -> Union[str, List[str]]:
@@ -63,10 +98,30 @@ class DataArguments:
                 return resolve(files)
             return [resolve(f) for f in files]
 
-        # Resolve both paths
         self.node_file = resolve_paths(self.node_file)
-        print(f'Node file: {self.node_file}')
         self.edge_file = resolve_paths(self.edge_file)
+        self.target_file = resolve_paths(self.target_file)
+
+        if self.log_file_path is not None:
+            self.log_file_path = str(get_root_dir() / self.log_file_path)
+
+
+@dataclass
+class DataArguments:
+    task_name: str = field(
+        metadata={'help': 'The name of the task to train on'},
+    )
+    initial_encoding_col: str = field(
+        default='random', metadata={'help': 'The initial input to the GNN.'}
+    )
+    num_test_shards: int = field(
+        metadata={'help': 'Number of test splits to do for uncertainty estimates.'},
+        default=1,
+    )
+    is_regression: bool = field(
+        default=False,
+        metadata={'help': 'Is the task a regression or classification problem'},
+    )
 
 
 @dataclass
@@ -75,13 +130,6 @@ class ModelArguments:
         default='GCN',
         metadata={'help': 'Model identifer for the GNN.'},
     )
-    encoder: str = field(
-        default='RNI', metadata={'help': 'Encoder identifer for node encoding.'}
-    )
-    encoder_col: str = field(
-        default='random',
-        metadata={'help': 'The column for which the encoder will encoder.'},
-    )
     num_layers: int = field(
         default=3,
         metadata={'help': 'Number of layers in GNN or iterations in message passing.'},
@@ -89,10 +137,29 @@ class ModelArguments:
     hidden_channels: int = field(
         default=256, metadata={'help': 'Inner dimension of update weight matrix.'}
     )
-    dropout: float = field(default=0.5, metadata={'help': 'Dropout value.'})
-    lr: float = field(default=0.01, metadata={'help': 'Learning Rate.'})
+    normalization: str = field(
+        default=Normalization.BATCH_NORM,
+        metadata={
+            'help': 'The normalization method. Choices: none, LayerNorm or BatchNorm.'
+        },
+    )
+    num_neighbors: list[int] = field(
+        default_factory=lambda: [
+            -1
+        ],  # TODO: Where do MEM errors occur, what is the size?
+        metadata={'help': 'Number of neighbors in Neighbor Loader.'},
+    )
+    batch_size: int = field(
+        default=128, metadata={'help': 'Batch size in Neighbor loader.'}
+    )
+    embedding_dimension: int = field(
+        default=128, metadata={'help': 'The output dimension of the GNN.'}
+    )
+    dropout: float = field(default=0.1, metadata={'help': 'Dropout value.'})
+    lr: float = field(default=0.001, metadata={'help': 'Learning Rate.'})
     epochs: int = field(default=500, metadata={'help': 'Number of epochs.'})
     runs: int = field(default=100, metadata={'help': 'Number of trials.'})
+    use_cuda: bool = field(default=True, metadata={'help': 'Whether to use cuda.'})
     device: int = field(default=0, metadata={'help': 'Device to be used.'})
     log_steps: int = field(
         default=50, metadata={'help': 'Step mod epoch to print logger.'}

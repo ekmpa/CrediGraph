@@ -1,38 +1,42 @@
 import logging
 import pickle
+from collections import defaultdict
+from enum import Enum
 from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import torch
 from pandas import DataFrame
 from scipy.ndimage import gaussian_filter
+from torch import Tensor
 
 from tgrag.utils.path import get_root_dir
 
 
-def plot_avg_rmse_loss(
+class Scoring(str, Enum):
+    mse = 'MSE'
+    r2 = 'R2'
+
+
+def plot_avg_loss(
     loss_tuple_run: List[List[Tuple[float, float, float]]],
     model_name: str,
+    score: Scoring,
     save_filename: str = 'rmse_loss_plot.png',
 ) -> None:
-    """Plots the averaged RMSE loss over trials for train, validation, and test sets.
-
-    Parameters:
-    - loss_tuple_run: List of runs (trials), each a list of (train, val, test) RMSE tuples per epoch.
-    - model_name: The name of the model
-    - save_filename: Name of the generated plot (name of png file).
-    """
+    """Plots the averaged MSE loss over trials for train, validation, and test sets with std dev bands."""
     num_epochs = len(loss_tuple_run[0])
 
     data = np.array(loss_tuple_run)  # shape: (num_trials, num_epochs, 3)
 
-    avg_rmse = data.mean(axis=0)  # shape: (num_epochs, 3)
+    avg = data.mean(axis=0)  # shape: (num_epochs, 3)
+    std = data.std(axis=0)  # shape: (num_epochs, 3)
 
-    avg_train = avg_rmse[:, 0]
-    avg_val = avg_rmse[:, 1]
-    avg_test = avg_rmse[:, 2]
+    avg_train, avg_val, avg_test = avg[:, 0], avg[:, 1], avg[:, 2]
+    std_train, std_val, std_test = std[:, 0], std[:, 1], std[:, 2]
 
     root = get_root_dir()
     save_dir = root / 'results' / 'plots' / model_name
@@ -42,15 +46,85 @@ def plot_avg_rmse_loss(
     plt.figure(figsize=(10, 6))
     epochs = np.arange(1, num_epochs + 1)
 
-    plt.plot(epochs, avg_train, label='Train RMSE', linewidth=2)
-    plt.plot(epochs, avg_val, label='Validation RMSE', linewidth=2)
-    plt.plot(epochs, avg_test, label='Test RMSE', linewidth=2)
+    plt.plot(epochs, avg_train, label=f'Train {score.value}', linewidth=2)
+    plt.fill_between(epochs, avg_train - std_train, avg_train + std_train, alpha=0.2)
 
+    plt.plot(epochs, avg_val, label=f'Validation {score.value}', linewidth=2)
+    plt.fill_between(epochs, avg_val - std_val, avg_val + std_val, alpha=0.2)
+
+    plt.plot(epochs, avg_test, label=f'Test {score.value}', linewidth=2)
+    plt.fill_between(epochs, avg_test - std_test, avg_test + std_test, alpha=0.2)
     plt.xlabel('Epoch')
-    plt.ylabel('RMSE Loss')
-    plt.title(f'{model_name} : Average RMSE Loss over Trials')
+    plt.ylabel(f'{score.value}')
+    if score == Scoring.mse:
+        plt.yscale('log')
+    plt.title(f'{model_name} : Average {score.value} Loss over Trials')
     plt.legend()
-    plt.grid(True)
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_avg_loss_with_baseline(
+    loss_tuple_run: List[List[Tuple[float, float, float, float]]],
+    model_name: str,
+    score: Scoring,
+    title: str | None = None,
+    save_filename: str = 'mse_loss_plot.png',
+) -> None:
+    """Plots the averaged MSE loss over trials for train, validation, and test sets with std dev bands."""
+    num_epochs = len(loss_tuple_run[0])
+
+    data = np.array(loss_tuple_run)  # shape: (num_trials, num_epochs, 3)
+
+    avg = data.mean(axis=0)  # shape: (num_epochs, 3)
+    std = data.std(axis=0)  # shape: (num_epochs, 3)
+
+    avg_train, avg_val, avg_test, avg_baseline = (
+        avg[:, 0],
+        avg[:, 1],
+        avg[:, 2],
+        avg[:, 3],
+    )
+    std_train, std_val, std_test, std_baseline = (
+        std[:, 0],
+        std[:, 1],
+        std[:, 2],
+        std[:, 3],
+    )
+
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / model_name
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / save_filename
+
+    plt.figure(figsize=(10, 6))
+    epochs = np.arange(1, num_epochs + 1)
+
+    plt.plot(epochs, avg_train, label=f'Train {score.value}', linewidth=2)
+    plt.fill_between(epochs, avg_train - std_train, avg_train + std_train, alpha=0.2)
+
+    plt.plot(epochs, avg_val, label=f'Validation {score.value}', linewidth=2)
+    plt.fill_between(epochs, avg_val - std_val, avg_val + std_val, alpha=0.2)
+
+    plt.plot(epochs, avg_test, label=f'Test {score.value}', linewidth=2)
+    plt.fill_between(epochs, avg_test - std_test, avg_test + std_test, alpha=0.2)
+
+    plt.plot(epochs, avg_baseline, label=f'Baseline {score.value}', linewidth=2)
+    plt.fill_between(
+        epochs, avg_baseline - std_baseline, avg_baseline + std_baseline, alpha=0.2
+    )
+    plt.xlabel('Epoch')
+    plt.ylabel(f'{score.value}')
+    if score == Scoring.mse:
+        plt.yscale('log')
+    if title is None:
+        plt.title(f'{model_name} : Average {score.value} Loss over Trials')
+    else:
+        plt.title(title)
+    plt.legend()
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
@@ -102,19 +176,122 @@ def plot_metric_across_models(
         plt.plot(epochs, metric_values, label=label, linewidth=2)
 
     plt.xlabel('Epoch')
-    plt.ylabel(f'{metric.capitalize()} RMSE')
-    plt.title(f'Comparison of {metric.capitalize()} RMSE Across Models')
+    plt.ylabel(f'{metric.capitalize()} MSE')
+    plt.yscale('log')
+    plt.title(f'Comparison of {metric.capitalize()} MSE Across Models')
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
 
     root = get_root_dir()
-    save_dir = root / 'results' / 'plots'
+    save_dir = root / 'results' / 'plots' / 'combined'
     save_dir.mkdir(parents=True, exist_ok=True)
     save_path = save_dir / save_filename
 
     plt.savefig(save_path)
     plt.close()
+
+
+def plot_model_per_encoder(
+    all_results: dict[str, list[list[tuple[float, float, float]]]],
+    metric: str = 'test',
+    save_prefix: str = 'model_plot',
+) -> None:
+    """Plots the selected metric for each model across encoders over epochs.
+
+    Args:
+        all_results: Dict from model_encoder to loss_tuple_run.
+        metric: One of "train", "valid", or "test".
+        save_prefix: Prefix for saved plot filenames.
+    """
+    metric_index = {'train': 0, 'valid': 1, 'test': 2}[metric]
+    model_grouped: Dict[str, Dict[str, list[list[tuple[float, float, float]]]]] = (
+        defaultdict(dict)
+    )  # {model: {encoder: loss_tuple_run}}
+
+    for key, loss_tuple_run in all_results.items():
+        try:
+            model, encoder = key.split('_')
+        except ValueError:
+            print(f'Skipping unrecognized key format: {key}')
+            continue
+        model_grouped[model][encoder] = loss_tuple_run
+
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / 'combined'
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    for model, encoder_dict in model_grouped.items():
+        plt.figure(figsize=(10, 6))
+        for encoder, loss_tuple_run in encoder_dict.items():
+            data = np.array(loss_tuple_run)  # shape: (runs, epochs, 3)
+            avg_over_runs = data.mean(axis=0)  # shape: (epochs, 3)
+            metric_values = avg_over_runs[:, metric_index]
+            epochs = np.arange(1, len(metric_values) + 1)
+            plt.plot(epochs, metric_values, label=encoder, linewidth=2)
+
+        plt.xlabel('Epoch')
+        plt.ylabel(f'{metric.capitalize()} MSE')
+        plt.yscale('log')
+        plt.title(f'{model}: {metric.capitalize()} MSE per Encoder')
+        plt.legend(title='Encoder')
+        plt.grid(True)
+        plt.tight_layout()
+
+        save_path = save_dir / f'{save_prefix}_{model}_rmse_over_models.png'
+        plt.savefig(save_path)
+        plt.close()
+
+
+def plot_metric_per_encoder(
+    all_results: dict[str, list[list[tuple[float, float, float]]]],
+    metric: str = 'test',
+    save_prefix: str = 'encoder_plot',
+) -> None:
+    """Plots the selected metric for each encoder across models over epochs.
+
+    Args:
+        all_results: Dict from model_encoder to loss_tuple_run.
+        metric: One of "train", "valid", or "test".
+        save_prefix: Prefix for saved plot filenames.
+    """
+    metric_index = {'train': 0, 'valid': 1, 'test': 2}[metric]
+    encoder_grouped: Dict[str, Dict[str, list[list[tuple[float, float, float]]]]] = (
+        defaultdict(dict)
+    )  # {model: {encoder: loss_tuple_run}}
+
+    for key, loss_tuple_run in all_results.items():
+        try:
+            model, encoder = key.split('_')
+        except ValueError:
+            print(f'Skipping unrecognized key format: {key}')
+            continue
+        encoder_grouped[encoder][model] = loss_tuple_run
+
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / 'combined'
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    for encoder, model_dict in encoder_grouped.items():
+        plt.figure(figsize=(10, 6))
+        for model, loss_tuple_run in model_dict.items():
+            data = np.array(loss_tuple_run)  # shape: (runs, epochs, 3)
+            avg_over_runs = data.mean(axis=0)  # shape: (epochs, 3)
+            metric_values = avg_over_runs[:, metric_index]
+            epochs = np.arange(1, len(metric_values) + 1)
+            plt.plot(epochs, metric_values, label=model, linewidth=2)
+
+        plt.xlabel('Epoch')
+        plt.ylabel(f'{metric.capitalize()} MSE')
+        plt.yscale('log')
+        plt.title(f'{encoder}: {metric.capitalize()} MSE per Model')
+        plt.legend(title='Model')
+        plt.grid(True)
+        plt.tight_layout()
+
+        save_path = save_dir / f'{save_prefix}_{encoder}.png'
+        plt.savefig(save_path)
+        plt.close()
 
 
 def plot_pr_cr_bin_correlation(heat_map: DataFrame) -> None:
@@ -372,3 +549,84 @@ def plot_pr_vs_cr_scatter(heat_map: pd.DataFrame) -> None:
     plt.close()
 
     logging.info(f'Scatter plot saved to: {save_path}')
+
+
+def plot_degree_distribution(degrees: list[int], experiment_name: str) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'topology' / 'plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    bins = np.logspace(np.log10(1), np.log10(max(degrees) + 1), 50)
+    ax.hist(degrees, bins=bins, color='steelblue', alpha=0.7)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_xlabel('Degree')
+    ax.set_ylabel('Frequency')
+    ax.set_title(f'{experiment_name} Degree Distribution (log-log)')
+    plt.tight_layout()
+    plt.savefig(save_dir / f'{experiment_name}_loghist.png')
+    plt.close()
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.kdeplot(np.log10(degrees), fill=True, color='darkred', bw_adjust=0.5)
+    ax.set_xlabel('log10(Degree)')
+    ax.set_ylabel('Density')
+    ax.set_title(f'{experiment_name} Degree KDE (log scale)')
+    plt.tight_layout()
+    plt.savefig(save_dir / f'{experiment_name}_kde.png')
+    plt.close()
+
+
+def plot_domain_scores(gov_scores: list[float], org_scores: list[float]) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'topology' / 'plots'
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.kdeplot(gov_scores, fill=True, color='green', label='.gov', bw_adjust=0.5)
+    sns.kdeplot(org_scores, fill=True, color='red', label='.org', bw_adjust=0.5)
+    ax.set_xlabel('Domain PC1 Score')
+    ax.set_ylabel('Density')
+    ax.set_title('Domain PC1 Score Distribution')
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig(save_dir / 'domain_pc1_kde.png')
+    plt.close()
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.hist(gov_scores, bins=20, alpha=0.6, label='.gov', color='green')
+    ax.hist(org_scores, bins=20, alpha=0.6, label='.org', color='red')
+    ax.set_xlabel('Domain PC1 Score')
+    ax.set_ylabel('Count')
+    ax.set_title('Domain PC1 Score Histogram')
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig(save_dir / 'domain_pc1_hist.png')
+    plt.close()
+
+
+def plot_avg_distribution(
+    all_preds: List[Tensor], all_targets: List[Tensor], model_name: str, bins: int = 50
+) -> None:
+    """Plots the average distribution of predictions and targets."""
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / model_name
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    preds = torch.cat(all_preds).detach().cpu().numpy()
+    targets = torch.cat(all_targets).detach().cpu().numpy()
+
+    avg_preds = np.mean(preds)
+    avg_targets = np.mean(targets)
+
+    plt.figure(figsize=(8, 5))
+    plt.hist(preds, bins=bins, alpha=0.6, label=f'Predictions (avg={avg_preds:.4f})')
+    plt.hist(targets, bins=bins, alpha=0.6, label=f'Targets (avg={avg_targets:.4f})')
+
+    plt.xlabel('Value')
+    plt.ylabel('Frequency')
+    plt.title('Average Value Distributions: Predictions vs Targets')
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.savefig(save_dir / 'train_pred_target_distribution.png')

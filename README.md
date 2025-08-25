@@ -46,11 +46,31 @@ cd bash_scripts
 
 ### Running GNN Baseline Experiment
 
+Given the size of our datasets we must leverage mini-batching in our GNN experiments. To do this we use PyG's neighbor_loader,
+which requires additional libraries having undocumented build-time dependencies. As such, users are required to install them in their
+own venv. seperate from `uv sync`.
+
+pyg-lib:
+
+```
+uv pip install pyg-lib -f https://data.pyg.org/whl/torch-${TORCH}+${CUDA}.html
+```
+
+PyTorch Sparse:
+
+```
+uv pip install torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-2.7.0+${CUDA}.html
+```
+
+For information on installations of these additional libraries see [pyg-lib](https://github.com/pyg-team/pyg-lib) and [PyTorch Sparse](https://github.com/rusty1s/pytorch_sparse).
+
+To run our baseline static experimentation:
+
 ```sh
 uv run tgrag/experiments/main.py
 ```
 
-Alternatively, you can design you own configuration.
+Alternatively, you can design you own configuration, updating the model paramaters:
 
 ```sh
 uv run tgrag/experiments/main.py --config configs/your_config.yaml
