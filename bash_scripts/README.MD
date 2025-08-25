@@ -14,7 +14,7 @@
 ```sh
 ./end-to-end.sh ['COMMON-CRAWL-DATES', ...] start_idx end_idx [wet]
 ```
-### Extract Wet Domain+URLs in Batches
+### Extract Wet Domain-URLs in Batches
 
 ```sh
 ./end-to-end-url.sh ['COMMON-CRAWL-DATES', ...] start_idx end_idx [wet]
