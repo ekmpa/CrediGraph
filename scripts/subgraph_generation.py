@@ -3,8 +3,6 @@
 # Options:
 #   - Deg > k
 
-# TODO : either code generate_fused if we want it or (most likely) remove that option altogether
-
 import argparse
 import csv
 import gzip
@@ -235,7 +233,7 @@ def generate_separate(
             ]
         )
         for key, value in targets.items():
-            writer.writerow([key, value])
+            writer.writerow([key, *value])
 
     print(f'Wrote targets to {targets_path}')
 
@@ -246,21 +244,14 @@ def generate_fused(
     print('TODO')
 
 
-def generate_targets(output_path: str, separate_targets: bool) -> None:
+def generate_targets(output_path: str) -> None:
     vertices = os.path.join(output_path, 'vertices.csv.gz')
-    os.path.join(output_path, 'edges.csv.gz')
-    # ßdqr_dict = get_labelled_dict()
     dqr_dict = get_full_dict()
-
-    if separate_targets:
-        generate_separate(output_path, vertices, dqr_dict)
-    else:
-        generate_fused(output_path, vertices, dqr_dict)
+    generate_separate(output_path, vertices, dqr_dict)
 
 
-def generate(graph_path: str, min_deg: int, separate_targets: bool, slice: str) -> None:
-    suffix = '_separate_targets' if separate_targets else ''
-    rest = f'deg{min_deg}{suffix}'
+def generate(graph_path: str, min_deg: int, slice: str) -> None:
+    rest = f'deg{min_deg}'
     output_path = os.path.join(graph_path, rest)  # f"deg>{min_deg}_{suffix}")
     os.makedirs(output_path, exist_ok=True)
 
@@ -270,7 +261,7 @@ def generate(graph_path: str, min_deg: int, separate_targets: bool, slice: str) 
 
     add_timestamps(output_path, slice)  # makes them csv
 
-    generate_targets(output_path, separate_targets)
+    generate_targets(output_path)
 
 
 def main() -> None:
@@ -288,15 +279,10 @@ def main() -> None:
         help='Path to CC output/ folder with the vertex and edge files.',
     )
     parser.add_argument('--slice', type=str, required=True, help='CC-MAIN-XXXX-XX')
-    parser.add_argument(
-        '--separate-targets',
-        action='store_true',
-        help='Set --separate-targets to save the ground truth labels in a separate targets.csv instead of as node features.',
-    )
     args = parser.parse_args()
 
     print(f'[START] Running subgraph generation with deg > {args.min_deg}')
-    generate(args.graph_path, args.min_deg, args.separate_targets, args.slice)
+    generate(args.graph_path, args.min_deg, args.slice)
 
 
 if __name__ == '__main__':
