@@ -1,7 +1,9 @@
-# Generate a subgraph of a given graph.
-# At the same time, it maps node IDs to domain names.
-# Options:
-#   - Deg > k
+# Processes the graph:
+# - Assign numeric IDs to nodes
+# - Compute stats on graph
+# - Discard nodes below a degree threshold
+# - Add timestamps to vertices and edges (outputs in csv.gz)
+# - Generate target labels for nodes based on DQR data
 
 import argparse
 import csv
@@ -22,9 +24,9 @@ def add_node_IDs(graph_path: str) -> Tuple[Set[str], Set[str], Dict[int, int]]:
     E = count_lines(edges_path)
 
     # dir_sparsity = (E / (V * (V - 1))) if V > 1 else 0.0
-    undir_sparsity = (E / (V * (V - 1) / 2)) if V > 1 else 0.0
+    sparsity = (E / (V * (V - 1) / 2)) if V > 1 else 0.0
     print(
-        f'[INFO] Initial graph: V={V}, E={E} \n \t undirected sparsity={undir_sparsity:.6g}'
+        f'[INFO] Initial graph: V={V}, E={E} \n \t undirected sparsity={sparsity:.6g}'
     )
 
     ID_count = 0
@@ -45,8 +47,6 @@ def add_node_IDs(graph_path: str) -> Tuple[Set[str], Set[str], Dict[int, int]]:
             line = f'{ID}\t{domain}'
             new_verts.add(line)
             ID_to_deg[ID] = 0
-
-    # max ID = ID count = # unique domains should = # vertices
 
     new_edges: Set[str] = set()
 
@@ -73,7 +73,7 @@ def discard_deg(
     new_edges: Set[str],
     ID_to_deg: Dict[int, int],
 ) -> None:
-    # STATS
+    # STATS (PRE)
     V0 = len(new_verts)
     E0 = len(new_edges)
     deg_values = ID_to_deg.values()
@@ -81,7 +81,7 @@ def discard_deg(
     leaf_count = sum(1 for d in ID_to_deg.values() if d == 1)
     min_deg_all = min(deg_values) if V0 else 0
     max_deg_all = max(deg_values) if V0 else 0
-    mean_deg_all = (2 * E0 / V0) if V0 else 0.0  # matches total-degree convention used
+    mean_deg_all = (2 * E0 / V0) if V0 else 0.0
     self_loops_all = 0
     for e in new_edges:
         s, t = e.split('\t')
@@ -120,8 +120,8 @@ def discard_deg(
     # STATS (POST)
     V = count_lines(vert_output)
     E = count_lines(edges_output)
-    (E / (V * (V - 1))) if V > 1 else 0.0
-    undir_sparsity = (E / (V * (V - 1) / 2)) if V > 1 else 0.0
+    # dir_sparsity = (E / (V * (V - 1))) if V > 1 else 0.0
+    sparsity = (E / (V * (V - 1) / 2)) if V > 1 else 0.0
 
     removed_V = V0 - V
     removed_E = E0 - E
@@ -134,7 +134,6 @@ def discard_deg(
     mean_deg_kept = (2 * E / V) if V else 0.0
     iso_kept = sum(1 for d in kept_deg_vals if d == 0)
     leaf_kept = sum(1 for d in kept_deg_vals if d == 1)
-    # print(f'[INFO] Having discarded all nodes with deg <= {min_deg}, graph: V={V}, E={E}, directed sparsity={dir_sparsity:.6g} & undirected sparsity={undir_sparsity:.6g}')
 
     print('[INFO] Pre-filter:')
     print(f'       V0={V0}, E0={E0}, iso={iso_count}, leaves={leaf_count}')
@@ -144,7 +143,7 @@ def discard_deg(
     print(f'[INFO] Having discarded nodes with deg <= {min_deg}:')
     print(f'       V={V} ({kept_V_pct:.2f}% kept), E={E} ({kept_E_pct:.2f}% kept)')
     print(f'       removed: vertices={removed_V}, edges={removed_E}')
-    print(f'       undirected sparsity={undir_sparsity:.6g}')
+    print(f'       undirected sparsity={sparsity:.6g}')
     print(f'       kept self-loops={kept_self_loops}')
     print(
         f'       kept degree(min/mean/max)={min_deg_kept}/{mean_deg_kept:.4g}/{max_deg_kept}'
@@ -194,18 +193,17 @@ def lookup(domain: str, dqr_domains: Dict[str, List[float]]) -> Optional[List[fl
     return None
 
 
-def generate_separate(
-    output_path: str, vertices: str, dqr_domains: Dict[str, List[float]]
-) -> None:
+def generate_targets(output_path: str) -> None:
+    vertices = os.path.join(output_path, 'vertices.csv.gz')
+    dqr_domains = get_full_dict()
     targets: Dict[int, List[float]] = {}
 
     with gzip.open(vertices, 'rt', encoding='utf-8') as f:
         for line in f:
             parts = line.split(',')
-            # print(parts[1].strip())
             result = lookup(parts[1].strip(), dqr_domains)
-            if result is not None:  # parts[1].strip() in dqr_domains.keys():
-                targets[int(parts[0].strip())] = result  # dqr_domains[parts[1].strip()]
+            if result is not None:
+                targets[int(parts[0].strip())] = result
 
     targets_path = os.path.join(output_path, 'targets.csv')
 
@@ -238,29 +236,14 @@ def generate_separate(
     print(f'Wrote targets to {targets_path}')
 
 
-def generate_fused(
-    output_path: str, vertices: str, dqr_dict: Dict[str, List[float]]
-) -> None:
-    print('TODO')
-
-
-def generate_targets(output_path: str) -> None:
-    vertices = os.path.join(output_path, 'vertices.csv.gz')
-    dqr_dict = get_full_dict()
-    generate_separate(output_path, vertices, dqr_dict)
-
-
-def generate(graph_path: str, min_deg: int, slice: str) -> None:
+def process(graph_path: str, min_deg: int, slice: str) -> None:
     rest = f'deg{min_deg}'
     output_path = os.path.join(graph_path, rest)  # f"deg>{min_deg}_{suffix}")
     os.makedirs(output_path, exist_ok=True)
 
     new_verts, new_edges, ID_to_deg = add_node_IDs(graph_path)
-
     discard_deg(output_path, min_deg, new_verts, new_edges, ID_to_deg)
-
     add_timestamps(output_path, slice)  # makes them csv
-
     generate_targets(output_path)
 
 
@@ -278,11 +261,11 @@ def main() -> None:
         required=True,
         help='Path to CC output/ folder with the vertex and edge files.',
     )
-    parser.add_argument('--slice', type=str, required=True, help='CC-MAIN-XXXX-XX')
+    parser.add_argument('--slice', type=str, required=True, help='CC-MAIN-YYYY-WW')
     args = parser.parse_args()
 
     print(f'[START] Running subgraph generation with deg > {args.min_deg}')
-    generate(args.graph_path, args.min_deg, args.slice)
+    process(args.graph_path, args.min_deg, args.slice)
 
 
 if __name__ == '__main__':
