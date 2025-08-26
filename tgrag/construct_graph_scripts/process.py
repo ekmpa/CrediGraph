@@ -38,11 +38,11 @@ def _lookup(domain: str, dqr_domains: Dict[str, List[float]]) -> Optional[List[f
 
 
 def keep_unique(
-    in_path: str, out_path: str, sort_cmd: str, tmpdir: str, mem: float
+    in_path: str, out_path: str, sort_cmd: str, tmpdir: str, mem: str
 ) -> None:
     env = os.environ.copy()
     env['LC_ALL'] = 'C'
-    cmd = [sort_cmd, '-S', str(mem), '-T', tmpdir, '-u', in_path]
+    cmd = [sort_cmd, '-S', mem, '-T', tmpdir, '-u', in_path]
     with open(out_path, 'w', encoding='utf-8', newline='') as fout:
         p = subprocess.Popen(
             cmd, stdout=fout, stderr=subprocess.PIPE, text=True, env=env
@@ -59,12 +59,12 @@ def external_sort_by_col(
     numeric: bool,
     sort_cmd: str,
     tmpdir: str,
-    mem: float,
+    mem: str,
 ) -> None:
     env = os.environ.copy()
     env['LC_ALL'] = 'C'
     key = f'{key_start_col},{key_start_col}' + ('n' if numeric else '')
-    cmd = [sort_cmd, '-S', str(mem), '-T', tmpdir, '-t', '\t', '-k', key, in_path]
+    cmd = [sort_cmd, '-S', mem, '-T', tmpdir, '-t', '\t', '-k', key, in_path]
     with open(out_path, 'w', encoding='utf-8', newline='') as fout:
         p = subprocess.Popen(
             cmd, stdout=fout, stderr=subprocess.PIPE, text=True, env=env
@@ -340,7 +340,7 @@ def process_graph(
     min_deg: int,
     slice_str: str,
     sort_cmd: str = 'sort',
-    mem: float = 0.6,
+    mem: str = '60%',
 ) -> None:
     v_gz = os.path.join(graph_path, 'vertices.txt.gz')
     e_gz = os.path.join(graph_path, 'edges.txt.gz')
