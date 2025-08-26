@@ -1,4 +1,4 @@
-# Processes the graph:
+# Processes the graph with temp files / external sort for efficiency:
 # - Assign numeric IDs to nodes
 # - Compute stats on graph
 # - Discard nodes below a degree threshold
