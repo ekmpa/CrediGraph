@@ -152,13 +152,5 @@ def main() -> None:
     edges.to_csv(root / args.edge_save_file, index=False)
     logging.info(f'Results saved to {args.node_save_file} and {args.edge_save_file}')
 
-
-if __name__ == '__main__':
-    main()
-
-
-if __name__ == '__main__':
-    main()
-
 if __name__ == '__main__':
     main()
