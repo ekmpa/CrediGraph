@@ -1,15 +1,9 @@
 import argparse
 import os
-import pathlib
 from typing import List
 
-import pandas as pd
-
-from tgrag.construct_graph_scripts.subnetwork_construct import (
-    construct_subnetwork,
-)
-from tgrag.utils.load_labels import get_credibility_intersection
-from tgrag.utils.path import get_crawl_data_path, get_data_paths, get_root_dir
+from tgrag.construct_graph_scripts.process import process_graph
+from tgrag.utils.path import get_scratch
 
 parser = argparse.ArgumentParser(
     description='Construct and process graph.',
@@ -34,39 +28,24 @@ parser.add_argument(
 )
 
 
-def main(slices: List[str] | str, construct_subnetworks: bool) -> None:
-    base_path = get_root_dir()
-    crawl_path = get_crawl_data_path(base_path)
+# def handle_subnetworks(construct_subnetworks: bool, out_path: str) -> None:
+#     if construct_subnetworks:
+#         output_path = os.path.join(out_path, 'subnetworks')
+#         pathlib.Path(output_path).mkdir(parents=True, exist_ok=True)
+#         construct_subnetwork(
+#             dqr_path, output_path, temporal_edges_df, temporal_vertices_df
+#         )
 
+
+def main(slices: List[str], min_deg: int, subnetworks: bool) -> None:
     for slice_id in slices:
-        vertices_path, edges_path = get_data_paths(slice_id, crawl_path)
+        graph_path = os.path.join(get_scratch(), 'crawl-data', slice_id, 'output')
+        process_graph(graph_path, min_deg, slice_id)
 
-        get_credibility_intersection(
-            data_path=f'{crawl_path}/{slice_id}',
-            label_path=base_path,
-            time_slice=slice_id,
-        )
-
-        annotated_vertices_path = os.path.join(
-            f'{crawl_path}/{slice_id}/output_text_dir/', 'vertices.csv'
-        )
-
-    dqr_path = f'{base_path}/data/dqr/domain_pc1.csv'
-    # temporal_path = f'{base_path}/data/crawl-data/temporal'
-    temporal_path = os.path.join(
-        os.environ.get('SCRATCH', f'{base_path}/data'), 'crawl-data', 'temporal'
-    )
-    temporal_edges_df = pd.read_csv(f'{temporal_path}/temporal_edges.csv')
-    temporal_vertices_df = pd.read_csv(f'{temporal_path}/temporal_nodes.csv')
-
-    if construct_subnetworks:
-        output_path = f'{base_path}/data/crawl-data/sub-networks/'
-        pathlib.Path(output_path).mkdir(parents=True, exist_ok=True)
-        construct_subnetwork(
-            dqr_path, output_path, temporal_edges_df, temporal_vertices_df
-        )
+        # if subnetworks:
+        #     handle_subnetworks(subnetworks, graph_path)
 
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    main(args.slices, args.subnetworks)
+    main(slices=args.slices, min_deg=args.min_deg, subnetworks=args.subnetworks)
