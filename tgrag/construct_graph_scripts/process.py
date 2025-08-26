@@ -11,7 +11,7 @@ import os
 import subprocess
 import sys
 import tempfile
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -22,19 +22,7 @@ from tgrag.utils.data_loading import (
     iso_week_to_timestamp,
 )
 from tgrag.utils.load_labels import get_full_dict
-
-
-def _lookup(domain: str, dqr_domains: Dict[str, List[float]]) -> Optional[List[float]]:
-    domain_parts = domain.split('.')
-    for key, value in dqr_domains.items():
-        key_parts = key.split('.')
-        if (
-            len(key_parts) >= 2
-            and key_parts[0] in domain_parts
-            and key_parts[1] in domain_parts
-        ):
-            return value
-    return None
+from tgrag.utils.matching import lookup
 
 
 def keep_unique(
@@ -302,7 +290,7 @@ def generate_targets(output_path: str) -> None:
         f.readline()
         for line in f:
             parts = line.split(',')
-            result = _lookup(parts[1].strip(), dqr_domains)
+            result = lookup(parts[1].strip(), dqr_domains)
             if result is not None:
                 targets[int(parts[0].strip())] = result
 

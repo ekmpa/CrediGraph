@@ -2,18 +2,23 @@
 used for label matching, and WET-WAT matching.
 """
 
-import gzip
-from urllib.parse import urlparse
+from typing import Dict, List, Optional
 
-import pandas as pd
 import tldextract
 
 
-def extract_domain_from_url(url: str) -> str:
-    try:
-        return urlparse(url).hostname or ''
-    except Exception:
-        return ''
+def lookup(domain: str, dqr_domains: Dict[str, List[float]]) -> Optional[List[float]]:
+    """Look up domain in dqr_domains, return associated data if found."""
+    domain_parts = domain.split('.')
+    for key, value in dqr_domains.items():
+        key_parts = key.split('.')
+        if (
+            len(key_parts) >= 2
+            and key_parts[0] in domain_parts
+            and key_parts[1] in domain_parts
+        ):
+            return value
+    return None
 
 
 def flip_if_needed(domain: str) -> str:
@@ -40,32 +45,5 @@ def flip_if_needed(domain: str) -> str:
         return domain
 
 
-def force_flip(domain: str) -> str:
-    parts = domain.strip().split('.')
-    return '.'.join(reversed(parts))
-
-
-def extract_registered_domain(url: str) -> str | None:
-    url = flip_if_needed(url)
-    ext = tldextract.extract(url)
-    return f'{ext.domain}.{ext.suffix}' if ext.domain and ext.suffix else None
-
-
-def extract_graph_domains(filepath: str) -> pd.DataFrame:
-    parsed = []
-    with gzip.open(filepath, 'rt', encoding='utf-8', errors='ignore') as f:
-        for i, line in enumerate(f):
-            line = line.strip()
-            domain = extract_registered_domain(line)
-            parsed.append((i, domain))
-
-    return pd.DataFrame(parsed, columns=['nid', 'domain'])
-
-
 def reverse_domain(domain: str) -> str:
     return '.'.join(domain.split('.')[::-1])
-
-
-def matches_suffix_pattern(domain_dqr: str, domain: str) -> bool:
-    """Assuming that the domain_dqr is already reversed in the lookup table."""
-    return domain == domain_dqr or domain.startswith(domain_dqr + '.')
