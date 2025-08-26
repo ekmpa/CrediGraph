@@ -1,8 +1,6 @@
 # CrediGraph
 
-Data analysis for TG/RAG project @ CDL
-
-<img src="img/logo_silver.png" alt="CrediGraph Logo" style="width: 400px; height: auto;" />
+<img src="img/logo_silver.png" alt="CrediGraph Logo" style="width: 300px; height: auto;" />
 
 ## Getting Started
 
@@ -38,11 +36,31 @@ source .venv/bin/activate
 
 ### Running full data processing scripts
 
+The `pipeline.sh` script iteratively runs the pipeline, with optional `--keep idx` to resume construction, skipping the first `idx` files:
+
 ```sh
 cd bash_scripts
 
-./end-to-end.sh /bash_scripts/CC-Crawl/CC-2025.txt
+bash pipeline.sh CC-Crawls/CC-2024-nov.txt # --keep idx
 ```
+
+where `CC-2024-nov.txt` is a `.txt` file with the slice names, e.g one `CC-MAIN-YYYY-WW` per line.
+
+This will construct the graph in `$SCRATCH/crawl-data/CC-MAIN-YYYY-WW/output`.
+
+#### Processing
+
+For processing a graph, run the `main` script in `tgrag/construct_graph_scripts`, with the slice name and the degree threshold `k`.
+
+```sh
+cd ..
+
+uv run python tgrag/construct_graph_scripts/main.py \
+    --slices CC-MAIN-YYYY-WW \
+    --min-deg k \
+```
+
+This will create a `processed-degk/` folder under the slice's `output/`.
 
 ### Running GNN Baseline Experiment
 

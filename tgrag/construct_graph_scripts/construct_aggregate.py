@@ -40,7 +40,7 @@ def append_all_nodes(source_base: str, target_base_root: str) -> Dict[int, str]:
         for vertex in combined_vertices:
             f.write(vertex + '\n')
 
-    print(f'[INFO] Newly aggregated {len(combined_vertices)} vertices → {target_path}')
+    print(f'[INFO] Aggregated {len(combined_vertices)} vertices → {target_path}')
     return id_to_domain
 
 
