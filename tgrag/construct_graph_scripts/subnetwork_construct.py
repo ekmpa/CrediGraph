@@ -37,7 +37,7 @@ def construct_subnetwork(
         if matched_vertices.empty:
             continue
 
-        seen_node_ids = set(matched_vertices['node_id'])
+        seen_node_ids = set(matched_vertices['nid'])
         current_frontier = set(seen_node_ids)
         all_edges = pd.DataFrame(columns=temporal_edges.columns)
 
@@ -60,7 +60,7 @@ def construct_subnetwork(
             current_frontier = next_frontier
 
         sub_vertices_df = temporal_vertices[
-            temporal_vertices['node_id'].isin(seen_node_ids)
+            temporal_vertices['nid'].isin(seen_node_ids)
         ]
         sub_edges_df = all_edges.drop_duplicates(subset=['src', 'dst'])
 
