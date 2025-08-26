@@ -1,6 +1,7 @@
 import os
 from glob import glob
 from pathlib import Path
+from typing import Tuple
 
 
 def get_root_dir() -> Path:
@@ -15,11 +16,9 @@ def get_no_backup() -> Path:
     return Path('/NOBACKUP')
 
 
-def get_scatch(dir_name: str) -> Path:
+def get_scratch() -> Path:
     home = Path.home()
-
-    scratch_dir = home.parent / home.name / dir_name
-
+    scratch_dir = home.parent / home.name / 'scratch'
     return scratch_dir
 
 
@@ -44,3 +43,9 @@ def get_wet_file_path(slice_id: str, project_dir: str) -> str:
         )
 
     return segment_dirs[0]
+
+
+def get_data_paths(slice: str, crawl_path: str) -> Tuple[str, str]:
+    vertices_path = os.path.join(f'{crawl_path}/{slice}/output/', 'vertices.txt.gz')
+    edges_path = os.path.join(f'{crawl_path}/{slice}/output/', 'edges.txt.gz')
+    return vertices_path, edges_path

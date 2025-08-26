@@ -15,7 +15,7 @@ from tgrag.utils.pagerank_utils import (
     test_positive_values,
     test_score_sum,
 )
-from tgrag.utils.path import get_root_dir, get_scatch
+from tgrag.utils.path import get_root_dir, get_scratch
 
 parser = argparse.ArgumentParser(
     description='Generate PageRank.',
@@ -103,7 +103,7 @@ def compute_new_importance(
 def main() -> None:
     args = parser.parse_args()
     if args.use_scratch:
-        root = get_scatch('scratch')
+        root = get_scratch()
     else:
         root = get_root_dir()
     setup_logging(args.log_file)
