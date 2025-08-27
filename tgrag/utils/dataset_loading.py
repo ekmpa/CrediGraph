@@ -29,7 +29,6 @@ def load_node_csv(
             if key in df.columns:
                 xs.append(encoder(df[key].values))
             else:
-                # Global encoder (In our case the RNIEncoder)
                 xs.append(encoder(df.shape[0]))
 
         x = torch.cat(xs, dim=-1)
