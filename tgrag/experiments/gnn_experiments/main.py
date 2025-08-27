@@ -9,9 +9,6 @@ from tgrag.encoders.norm_encoding import NormEncoder
 from tgrag.encoders.rni_encoding import RNIEncoder
 from tgrag.encoders.text_encoder import TextEncoder
 from tgrag.experiments.gnn_experiments.gnn_experiment import run_gnn_baseline
-from tgrag.experiments.gnn_experiments.gnn_experiment_full_batch import (
-    run_gnn_baseline_full_batch,
-)
 from tgrag.utils.args import parse_args
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.path import get_root_dir
@@ -32,11 +29,6 @@ parser.add_argument(
     type=str,
     default='configs/gnn_rni/base.yaml',
     help='Path to yaml configuration file to use',
-)
-parser.add_argument(
-    '--full-batch',
-    action='store_true',
-    help='Whether to use full-batching. Mini-batching is by default.',
 )
 
 
@@ -75,14 +67,7 @@ def main() -> None:
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
-        if args.full_batch:
-            run_gnn_baseline_full_batch(
-                experiment_arg.data_args, experiment_arg.model_args, dataset
-            )
-        else:
-            run_gnn_baseline(
-                experiment_arg.data_args, experiment_arg.model_args, dataset
-            )
+        run_gnn_baseline(experiment_arg.data_args, experiment_arg.model_args, dataset)
     results = load_all_loss_tuples()
     logging.info('Constructing Plots, across models')
     plot_metric_across_models(results)
