@@ -52,7 +52,7 @@ for data_type in  "${cc_file_types[@]}" ; do
       [[ -z "$CRAWL" || "$CRAWL" =~ ^# ]] && continue
       echo "Processing $CRAWL..."
       echo "Removing previous $CRAWL spark-warehouse"
-      rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse"
+      #rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse"
 
       echo $CRAWL
       echo "################################### run get data @ $(date '+%Y-%m-%d %H:%M:%S') ###################################"

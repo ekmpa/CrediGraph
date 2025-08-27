@@ -6,7 +6,8 @@ readme = "README.md"
 requires-python = ">=3.9"
 authors = [
 {name = "Sebastian Sabry", email = "sebastian.sabry@mail.mcgill.ca"},
-{name = "Emma Kondrup", email = "emma.kondrup@mail.mcgill.ca"}
+{name = "Emma Kondrup", email = "emma.kondrup@mail.mcgill.ca"},
+{name = "Hussein Abdallah", email = "hussein.abdallah@mail.concordia.ca"}
 ]
 dependencies = [
     "boto3>=1.38.33",
@@ -26,6 +27,9 @@ dependencies = [
     "torcheval>=0.0.7",
     "ujson>=5.10.0",
     "warcio>=1.7.5",
+    "cloudscraper>=1.2.71",
+    "BeautifulSoup4>=4.13.0",
+    "jsonpath-ng>=1.7.0",
 ]
 
 [tool.flit.module]

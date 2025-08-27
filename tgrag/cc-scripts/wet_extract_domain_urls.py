@@ -7,34 +7,21 @@ from jsonpath_ng import jsonpath, parse as jsonpath_parse
 import os
 import shutil
 import requests
-
-from pyspark.sql import Window
-from pyspark.sql.functions import row_number
-from pyspark.sql import functions as F
 class ExtractWetContentsJob(CCSparkJob):
     """Extract links from WAT files and redirects from WARC files
     and save them as pairs <from, to>.
     """
-    num_input_partitions = 64
-    num_output_partitions = 4
-    name = 'ExtractWetContentsJob'
+    num_input_partitions = 128
+    num_output_partitions = 2
+    name = 'ExtractWetUrlsJob'
     output_schema = StructType(
-        [StructField('Domain_Name', StringType(), True),
-         StructField('WARC_Target_URI', StringType(), True),
-         StructField('WARC_Identified_Content_Language', StringType(), True),
-         StructField('WARC_Date', StringType(), True),
-         StructField('Content_Type', StringType(), True),
-         StructField('Content_Length', IntegerType(), True),
-         StructField('wet_record_txt', StringType(), True),
-         ]
+        [StructField('Domain_Name', StringType(), True),]
     )
     records_response = None
     records_response_wet = None
     records_failed = None
     domains_pc1_dict=None
     supported_langs = ["eng", "fra"] # "language codes: ISO-639-3 "
-
-
     def add_arguments(self, parser):
         parser.add_argument(
             '--intermediate_output',
@@ -53,7 +40,7 @@ class ExtractWetContentsJob(CCSparkJob):
         count=0
         for record in archive_iterator:
                 for res in self.process_record(record):
-                    Domain_Name, WARC_Target_URI, WARC_Identified_Content_Language, WARC_Date, Content_Type,Content_Length, wet_record_txt=res
+                    Domain_Name=res
                     if Domain_Name:
                         yield res
                 self.records_processed.add(1)
@@ -73,37 +60,25 @@ class ExtractWetContentsJob(CCSparkJob):
             WARC_Identified_Content_Language = record.rec_headers['WARC-Identified-Content-Language']
             if WARC_Identified_Content_Language:
                 WARC_Identified_Content_Languages_lst = WARC_Identified_Content_Language.split(",")
-                Domain_Name, WARC_Target_URI, WARC_Date, Content_Type, Content_Length, wet_record_txt = None, None, None, None, None, None
-
+                Domain_Name= None
                 if len(set(WARC_Identified_Content_Languages_lst) & set(self.supported_langs)) > 0:
-                    WARC_Target_URI = record.rec_headers['WARC-Target-URI']
-                    Domain_Name = urlparse(WARC_Target_URI).netloc
-                    if Domain_Name in self.domains_pc1_dict.value:
-                    # if self.is_domain_exist(Domain_Name):
-                        # print(f"{Domain_Name} exist")
-                        WARC_Date = record.rec_headers['WARC-Date']
-                        Content_Type = record.rec_headers['Content-Type']
-                        Content_Length = int(record.rec_headers['Content-Length'])
-                        wet_record_txt = self.get_payload_stream(record).read().decode('utf-8')
-                    else:
-                        # print(f"{Domain_Name} Not exist")
-                        Domain_Name = None
-                yield (Domain_Name, WARC_Target_URI, WARC_Identified_Content_Language, WARC_Date, Content_Type, Content_Length, wet_record_txt)
-            return (None, None, None, None, None, None, None)
+                    Domain_Name = urlparse(record.rec_headers['WARC-Target-URI']).netloc
+                    # Domain_Name = record.rec_headers['WARC-Target-URI']
+                    # print(f"Domain_Name={Domain_Name}")
+                else:
+                    Domain_Name = None
+                yield (Domain_Name,)
+            return (None,)
         else:
-            return (None, None, None, None, None, None, None)
+            return (None,)
 
     def init_accumulators(self, session):
         super(ExtractWetContentsJob, self).init_accumulators(session)
         sc = session.sparkContext
         self.records_failed = sc.accumulator(0)
-        # self.records_non_html = sc.accumulator(0)
         self.records_response = sc.accumulator(0)
         self.records_response_wet = sc.accumulator(0)
         self.records_response_warc = sc.accumulator(0)
-        # self.records_response_redirect = sc.accumulator(0)
-        # self.records_response_robotstxt = sc.accumulator(0)
-        # self.link_count = sc.accumulator(0)
 
     def log_accumulators(self, session):
         super(ExtractWetContentsJob, self).log_accumulators(session)
@@ -116,17 +91,12 @@ class ExtractWetContentsJob(CCSparkJob):
         self.log_accumulator(
             session, self.records_response_wet, 'response records WET = {}'
         )
-
-        # self.log_accumulator(
-        #     session, self.records_response_redirect, 'response records redirects = {}'
-        # )
     @staticmethod
     def load_domain_pc1(domains_pc1_csv_path="../../data/dqr/domain_pc1.csv"):
         doamins_df = pd.read_csv(domains_pc1_csv_path)
         return dict(zip(doamins_df["domain"].tolist(), doamins_df["pc1"].tolist()))
     def run_job(self, session):
         out_path=str(session.conf.get("spark.sql.warehouse.dir")).split(":")[-1]+"/"+self.args.output
-        self.domains_pc1_dict = session.sparkContext.broadcast(self.load_domain_pc1(self.args.trusted_domains))
         if os.path.exists(out_path):
             shutil.rmtree(out_path)
         if self.args.input != '':
@@ -152,28 +122,11 @@ class ExtractWetContentsJob(CCSparkJob):
                 warehouse_dir, self.args.intermediate_output
             )
             df = session.read.parquet(intermediate_output)
-        df=df.dropDuplicates()
-        df = df.filter(df.Content_Length >= 500)
-        w_desc = Window.partitionBy("Domain_Name").orderBy(F.col("Content_Length").desc())
-        w_asc = Window.partitionBy("Domain_Name").orderBy(F.col("Content_Length").asc())
-        df_low = (df
-                  .withColumn("rn", F.row_number().over(w_asc))
-                  .filter(F.col("rn") <= 2)
-                  .drop("rn")
-                  )
-        df_high = (df
-                   .withColumn("rn", F.row_number().over(w_desc))
-                   .filter(F.col("rn") <= 2)
-                   .drop("rn")
-                   )
-        df_final = df_low.union(df_high).distinct()
-        df_final = df_final.orderBy(F.col("Domain_Name").asc(), F.col("Content_Length").asc())
-        # df_sorted.collect()
-        # df_sorted_Domain_Name_counts = df_final.groupBy("Domain_Name").count().collect()
-        df_final.coalesce(self.args.num_output_partitions).write.format(self.args.output_format).option(
+        df.dropDuplicates().coalesce(
+            self.args.num_output_partitions
+        ).sortWithinPartitions('Domain_Name').write.format(self.args.output_format).option(
             'compression', self.args.output_compression
         ).mode("overwrite").saveAsTable(self.args.output)
-
         self.log_accumulators(session.sparkContext)
 
 
@@ -181,7 +134,6 @@ class ExtractWetContentsJob(CCSparkJob):
 
 if __name__ == '__main__':
     job = ExtractWetContentsJob()
-    # ExtractWetContentsJob.domains_pc1_dict=load_domain_pc1()
     job.run()
 
 

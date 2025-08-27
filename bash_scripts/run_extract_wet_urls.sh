@@ -10,13 +10,11 @@ if [ -z "$1" ]; then
     exit 1
 fi
 CRAWL="$1"
-
 if [ -z "$2" ]; then
-    outputTableName="wat_output_table"
+    outputTableName="wat_extract_content_table"
 else
   outputTableName="$2"
 fi
-
 
 
 # Get the root of the project (one level above this script's directory)
@@ -43,15 +41,15 @@ export PYSPARK_DRIVER_PYTHON="$VENV_PATH/bin/python"
 
 
 # Run the Spark job
-# Local testing: use "$INPUT_DIR/test_wat.txt"
-# Cluster / full usage: ""$INPUT_DIR/all_wat_$CRAWL.txt"
+
 "$VENV_PATH/bin/spark-submit" \
+  --driver-memory 10g \
+  --executor-memory 5g \
   --py-files "$PROJECT_ROOT/tgrag/cc-scripts/sparkcc.py" \
-  "$PROJECT_ROOT/tgrag/cc-scripts/wat_extract_links.py" \
-  "$INPUT_DIR/test_wat.txt" \
+  "$PROJECT_ROOT/tgrag/cc-scripts/wet_extract_domain_urls.py" \
+  "$INPUT_DIR/test_wet.txt" \
   "$outputTableName" \
-  --input_base_url https://data.commoncrawl.org/
-
-
-
-#  ../../data/crawl-data/CC-MAIN-2025-21/input/test_wat.txt   wat_output_table   --input_base_url https://data.commoncrawl.org/
+  --trusted_domains "../data/cc-label+deg_3.txt" \
+  --output_format "parquet" \
+  --output_compression "snappy" \
+  --log_level "WARN"

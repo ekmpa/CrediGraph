@@ -45,7 +45,7 @@ class CCSparkJob(object):
     logging.basicConfig(level=log_level, format=LOGGING_FORMAT)
 
     num_input_partitions = 400
-    num_output_partitions = 10
+    num_output_partitions = 4
 
     # S3 client is thread-safe, cf.
     # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/clients.html#multithreading-or-multiprocessing-with-clients)
@@ -200,11 +200,15 @@ class CCSparkJob(object):
         builder = (SparkSession.builder\
                    .appName(self.name)
                    # .config("spark.executor.instances", str(os.cpu_count()/4))   # Number of executor JVMs (workers)
-                   .config("spark.executor.cores", "1")
+                   .config("spark.executor.cores", "4")
+                   .config("spark.executor.instances", "8")
                    .config("spark.executor.memory", "2g")
-                   .config("spark.driver.memory", "4g")
+                   .config("spark.driver.memory", "5g")
                    .config("spark.hadoop.dfs.block.size", "256m")
-                   .config("spark.sql.files.maxPartitionBytes", "64mb"))
+                   .config("spark.sql.files.maxPartitionBytes", "256mb")
+                   .config("spark.ui.host", "0.0.0.0")
+                   .config("spark.ui.port", "4040")
+                  )
 
         if self.args.spark_profiler:
             builder.config('spark.python.profile', 'true')
