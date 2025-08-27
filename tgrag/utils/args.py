@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import yaml
 from hf_argparser import HfArgumentParser
 
-from tgrag.utils.path import get_root_dir, get_scatch
+from tgrag.utils.path import get_root_dir, get_scratch
 
 
 class Normalization(str, Enum):
@@ -75,18 +75,10 @@ class MetaArguments:
         default=False,
         metadata={'help': 'Whether to use the /NOBACKUP/ or /SCRATCH/ disk on server.'},
     )
-    data_dir_name: str = field(
-        default='scratch',
-        metadata={'help': 'The persistent storage location for large datasets.'},
-    )
 
     def __post_init__(self) -> None:
         # Select root directory
-        root_dir = (
-            get_scatch(self.data_dir_name)
-            if self.is_scratch_location
-            else get_root_dir()
-        )
+        root_dir = get_scratch() if self.is_scratch_location else get_root_dir()
         print(f'root_dir: {root_dir}')
 
         def resolve_paths(files: Union[str, List[str]]) -> Union[str, List[str]]:
