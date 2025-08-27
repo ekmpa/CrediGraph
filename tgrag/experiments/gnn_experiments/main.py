@@ -23,13 +23,6 @@ from tgrag.utils.plot import (
 )
 from tgrag.utils.seed import seed_everything
 
-ENCODER_CLASSES: Dict[str, Encoder] = {
-    'RNI': RNIEncoder(),
-    'NORM': NormEncoder(),
-    'TEXT': TextEncoder(),
-    'CAT': CategoricalEncoder(),
-}
-
 parser = argparse.ArgumentParser(
     description='GNN Experiments.',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -55,9 +48,16 @@ def main() -> None:
     setup_logging(meta_args.log_file_path)
     seed_everything(meta_args.global_seed)
 
+    encoder_classes: Dict[str, Encoder] = {
+        'RNI': RNIEncoder(64),  # TODO: Set this a paramater
+        'NORM': NormEncoder(),
+        'TEXT': TextEncoder(),
+        'CAT': CategoricalEncoder(),
+    }
+
     encoding_dict: Dict[str, Encoder] = {}
     for index, value in meta_args.encoder_dict.items():
-        encoder_class = ENCODER_CLASSES[value]
+        encoder_class = encoder_classes[value]
         encoding_dict[index] = encoder_class
 
     dataset = TemporalDataset(
