@@ -1,11 +1,11 @@
 import torch
 
-from tgrag.encoders.rni_encoding import RNIEncoder
+from tgrag.encoders.zero_encoder import ZeroEncoder
 
 
-def test_rni_call():
-    rni = RNIEncoder(4)
-    x = rni(5)
+def test_zero_call():
+    z = ZeroEncoder(4)
+    x = z(5)
     assert isinstance(x, torch.Tensor)
     print(x)
     print(x.shape)
