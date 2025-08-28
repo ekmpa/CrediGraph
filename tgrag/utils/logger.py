@@ -46,7 +46,7 @@ class Logger(object):
         self.results: List[Any] = [[] for _ in range(runs)]
 
     def add_result(self, run: int, result: Tuple[float, float, float, float]) -> None:
-        assert len(result) == 5
+        assert len(result) == 4
         self.results[run].append(result)
 
     def get_statistics(self, run: int | None = None) -> str:
