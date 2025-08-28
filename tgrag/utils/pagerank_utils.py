@@ -74,7 +74,7 @@ def preprocess_data(
     logging.info(f'Loaded {len(nodes)} nodes and {len(edges)} edges')
 
     # Handle duplicate nodes
-    duplicate_nodes = nodes[nodes.duplicated(subset=['node_id'], keep=False)]
+    duplicate_nodes = nodes[nodes.duplicated(subset=['n_id'], keep=False)]
     if not duplicate_nodes.empty:
         logging.info(
             f'WARNING: Found {len(duplicate_nodes)} duplicate node IDs in {nodes_path}'
