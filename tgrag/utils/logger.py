@@ -45,7 +45,7 @@ class Logger(object):
     def __init__(self, runs: int):
         self.results: List[Any] = [[] for _ in range(runs)]
 
-    def add_result(self, run: int, result: Tuple[float, float, float]) -> None:
+    def add_result(self, run: int, result: Tuple[float, float, float, float]) -> None:
         assert len(result) == 3
         assert run >= 0 and run < len(self.results)
         self.results[run].append(result)
