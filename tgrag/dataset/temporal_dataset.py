@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Callable, Dict, List, Optional
 
@@ -64,11 +65,13 @@ class TemporalDataset(InMemoryDataset):
         node_path = os.path.join(self.raw_dir, self.node_file)
         edge_path = os.path.join(self.raw_dir, self.edge_file)
         target_path = os.path.join(self.raw_dir, self.target_file)
+        logging.info('***Constructing Feature Matrix***')
         x_full, mapping = load_node_csv(
             path=node_path,
             index_col=self.index_col,  # 'node_id'
             encoders=self.encoding,
         )
+        logging.info('***Feature Matrix Done***')
 
         if x_full is None:
             raise TypeError('X is None type. Please use an encoding.')
@@ -88,7 +91,7 @@ class TemporalDataset(InMemoryDataset):
 
         labeled_mask = cr_score != -1.0
 
-        # Transductive nodes only:
+        logging.info('***Constructing Edge Matrix***')
         edge_index, edge_attr = load_edge_csv(
             path=edge_path,
             src_index_col=self.edge_src_col,
@@ -96,6 +99,7 @@ class TemporalDataset(InMemoryDataset):
             mapping=mapping,
             encoders=None,
         )
+        logging.info('***Edge Matrix Constructed***')
 
         # adj_t = to_torch_csr_tensor(edge_index, size=(x_full.size(0), x_full.size(0)))
 
