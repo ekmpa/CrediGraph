@@ -418,13 +418,13 @@ def process_graph(
             print('[STEP] discard deg<k & write outputs')
             discard_deg(domains_ids, edges_ids, out_dir, min_deg, slice_str)
 
-    try:
-        print('[STEP] generating targets.csv')
-        generate_targets(out_dir)
+    # try:
+    #     print('[STEP] generating targets.csv')
+    #     generate_targets(out_dir)
 
-    except Exception as e:
-        print(
-            f'[ERROR] failed to generate targets.csv; make sure vertices.csv.gz exists in the output directory: {e}'
-        )
+    # except Exception as e:
+    #     print(
+    #         f'[ERROR] failed to generate targets.csv; make sure vertices.csv.gz exists in the output directory: {e}'
+    #     )
 
     print('[DONE] outputs in:', out_dir)
