@@ -42,12 +42,21 @@ def load_edge_csv(
     dst_index_col: str,
     mapping: Dict,
     encoders: Dict | None = None,
+    chunk_size: int = 500_000,
 ) -> Tuple[torch.Tensor, torch.Tensor | None]:
     usecols = [src_index_col, dst_index_col]
     if encoders is not None:
         usecols += [col for col in encoders if col not in usecols]
 
-    df = pd.read_csv(path, usecols=usecols)
+    dfs = []
+    total_rows = sum(1 for _ in open(path)) - 1
+    with pd.read_csv(path, usecols=usecols, chunksize=chunk_size) as reader:
+        for chunk in tqdm(
+            reader, total=total_rows // chunk_size + 1, desc='Reading edge CSV'
+        ):
+            dfs.append(chunk)
+
+    df = pd.concat(dfs, axis=0)
 
     src = torch.tensor([mapping[s] for s in df[src_index_col]], dtype=torch.long)
     dst = torch.tensor([mapping[d] for d in df[dst_index_col]], dtype=torch.long)
