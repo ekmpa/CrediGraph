@@ -19,7 +19,7 @@ class TemporalDataset(InMemoryDataset):
         node_file: str = 'features.csv',
         edge_file: str = 'edges.csv',
         target_file: str = 'target.csv',
-        target_col: str = 'cr_score',
+        target_col: str = 'score',
         target_index_name: str = 'node_id',
         target_index_col: int = 0,
         edge_src_col: str = 'src',
@@ -84,12 +84,13 @@ class TemporalDataset(InMemoryDataset):
         mapping_index = pd.Index(list(mapping.keys()), name=self.target_index_name)
         df_target = df_target.reindex(mapping_index)
 
-        cr_score = torch.tensor(
+        score = torch.tensor(
             df_target[self.target_col].astype('float32').fillna(-1).values,
             dtype=torch.float,
         )
+        logging.info(f'Size of score vector: {score.size}')
 
-        labeled_mask = cr_score != -1.0
+        labeled_mask = score != -1.0
 
         logging.info('***Constructing Edge Matrix***')
         edge_index, edge_attr = load_large_edge_csv(
@@ -103,13 +104,13 @@ class TemporalDataset(InMemoryDataset):
 
         # adj_t = to_torch_csr_tensor(edge_index, size=(x_full.size(0), x_full.size(0)))
 
-        data = Data(x=x_full, y=cr_score, edge_index=edge_index, edge_attr=edge_attr)
+        data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr)
         # data.adj_t = adj_t
 
         data.labeled_mask = labeled_mask.detach().clone().bool()
 
         labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
-        labeled_scores = cr_score[labeled_idx].squeeze().numpy()
+        labeled_scores = score[labeled_idx].squeeze().numpy()
 
         quantiles = np.quantile(labeled_scores, [1 / 3, 2 / 3])
         quartile_labels = np.digitize(labeled_scores, bins=quantiles)
