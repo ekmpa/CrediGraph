@@ -125,8 +125,6 @@ class TemporalDataset(InMemoryDataset):
             random_state=self.seed,
         )
 
-        quartile_labels_temp = quartile_labels_temp.sort()
-
         valid_idx, test_idx = train_test_split(
             temp_idx,
             train_size=0.5,
@@ -135,8 +133,11 @@ class TemporalDataset(InMemoryDataset):
         )
 
         train_idx = torch.as_tensor(train_idx)
+        logging.info(f'Train size: {train_idx.size()}')
         valid_idx = torch.as_tensor(valid_idx)
+        logging.info(f'Valid size: {valid_idx.size()}')
         test_idx = torch.as_tensor(test_idx)
+        logging.info(f'Test size: {test_idx.size()}')
 
         # Set global indices for our transductive nodes:
         num_nodes = data.num_nodes
