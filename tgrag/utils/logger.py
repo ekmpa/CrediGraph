@@ -45,9 +45,8 @@ class Logger(object):
     def __init__(self, runs: int):
         self.results: List[Any] = [[] for _ in range(runs)]
 
-    def add_result(self, run: int, result: Tuple[float, float, float]) -> None:
-        assert len(result) == 3
-        assert run >= 0 and run < len(self.results)
+    def add_result(self, run: int, result: Tuple[float, float, float, float]) -> None:
+        assert len(result) == 4
         self.results[run].append(result)
 
     def get_statistics(self, run: int | None = None) -> str:
@@ -70,6 +69,7 @@ class Logger(object):
                 test = r[:, 2].min().item()
                 val_selection_train = r[r[:, 1].argmin(), 0].item()
                 val_selection_test = r[r[:, 1].argmin(), 2].item()
+                val_selection_baseline = r[r[:, 1].argmin(), 3].item()
                 final_train = r[-1, 0].item()
                 final_valid = r[-1, 1].item()
                 final_test = r[-1, 2].item()
@@ -80,6 +80,7 @@ class Logger(object):
                         test,
                         val_selection_train,
                         val_selection_test,
+                        val_selection_baseline,
                         final_train,
                         final_valid,
                         final_test,
@@ -105,10 +106,13 @@ class Logger(object):
             lines.append(f'Test Loss @ Best Validation: {r.mean():.4f} ± {r.std():.4f}')
 
             r = best_result[:, 5]
-            lines.append(f'Final Train Loss: {r.mean():.4f}')
+            lines.append(f'Mean Loss @ Best Validation: {r.mean():.4f} ± {r.std():.4f}')
+
             r = best_result[:, 6]
-            lines.append(f'Final Valid Loss: {r.mean():.4f}')
+            lines.append(f'Final Train Loss: {r.mean():.4f}')
             r = best_result[:, 7]
+            lines.append(f'Final Valid Loss: {r.mean():.4f}')
+            r = best_result[:, 8]
             lines.append(f'Final Test Loss: {r.mean():.4f}')
 
         return '\n'.join(lines)

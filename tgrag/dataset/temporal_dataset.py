@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from torch_geometric.data import Data, InMemoryDataset
 
 from tgrag.encoders.encoder import Encoder
-from tgrag.utils.data_loading import load_edge_csv, load_node_csv
+from tgrag.utils.dataset_loading import load_edge_csv, load_node_csv
 
 
 class TemporalDataset(InMemoryDataset):
