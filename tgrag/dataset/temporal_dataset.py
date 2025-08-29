@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from torch_geometric.data import Data, InMemoryDataset
 
 from tgrag.encoders.encoder import Encoder
-from tgrag.utils.dataset_loading import load_edge_csv, load_node_csv
+from tgrag.utils.dataset_loading import load_large_edge_csv, load_node_csv
 
 
 class TemporalDataset(InMemoryDataset):
@@ -92,7 +92,7 @@ class TemporalDataset(InMemoryDataset):
         labeled_mask = cr_score != -1.0
 
         logging.info('***Constructing Edge Matrix***')
-        edge_index, edge_attr = load_edge_csv(
+        edge_index, edge_attr = load_large_edge_csv(
             path=edge_path,
             src_index_col=self.edge_src_col,
             dst_index_col=self.edge_dst_col,
