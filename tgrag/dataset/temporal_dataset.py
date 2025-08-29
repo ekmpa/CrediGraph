@@ -20,7 +20,7 @@ class TemporalDataset(InMemoryDataset):
         edge_file: str = 'edges.csv',
         target_file: str = 'target.csv',
         target_col: str = 'score',
-        target_index_name: str = 'node_id',
+        target_index_name: str = 'nid',
         target_index_col: int = 0,
         edge_src_col: str = 'src',
         edge_dst_col: str = 'dst',
