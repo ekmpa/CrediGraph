@@ -80,7 +80,7 @@ class TemporalDataset(InMemoryDataset):
         logging.info(f'Size of target dataframe: {df_target.shape}')
         if self.target_index_col != 0:
             print('Reindexing the target')
-            df_target = df_target.set_index(self.target_index_name)
+        df_target = df_target.set_index(self.target_index_name)
 
         mapping_index = pd.Index(list(mapping.keys()), name=self.target_index_name)
         df_target = df_target.reindex(mapping_index)
