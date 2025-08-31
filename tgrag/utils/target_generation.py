@@ -117,7 +117,7 @@ def load_target_nids(path: str) -> set[int]:
     return nids
 
 
-def generate_targets(vertices_gz: str, targets_csv: str) -> None:
+def generate(vertices_gz: str, targets_csv: str) -> None:
     dqr = get_full_dict()
 
     # GENERATION

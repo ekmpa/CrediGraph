@@ -5,13 +5,12 @@
 # - Add timestamps to vertices and edges (outputs in csv.gz)
 # - Generate target labels for nodes based on DQR data
 
-import csv
 import gzip
 import os
 import subprocess
 import sys
 import tempfile
-from typing import Dict, List, Tuple
+from typing import Tuple
 
 import numpy as np
 
@@ -21,8 +20,7 @@ from tgrag.utils.data_loading import (
     gz_line_reader,
     iso_week_to_timestamp,
 )
-from tgrag.utils.load_labels import get_full_dict
-from tgrag.utils.matching import lookup_exact
+from tgrag.utils.target_generation import generate
 
 
 def keep_unique(
@@ -283,45 +281,7 @@ def discard_deg(
 def generate_targets(output_path: str) -> None:
     vertices = os.path.join(output_path, 'vertices.csv.gz')
     targets_path = os.path.join(output_path, 'targets.csv')
-    dqr_domains = get_full_dict()
-    targets: Dict[int, List[float]] = {}
-
-    with gzip.open(vertices, 'rt', encoding='utf-8') as f:
-        f.readline()
-        for line in f:
-            parts = line.split(',')
-            # result = lookup(parts[1].strip(), dqr_domains)
-            result = lookup_exact(parts[1].strip(), dqr_domains)
-            if result is not None:
-                targets[int(parts[0].strip())] = result
-
-    with open(targets_path, 'w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(
-            [
-                'nid',
-                'pc1',
-                'afm',
-                'afm_bias',
-                'afm_min',
-                'afm_rely',
-                'fc',
-                'mbfc',
-                'mbfc_bias',
-                'mbfc_fact',
-                'mbfc_min',
-                'lewandowsky_acc',
-                'lewandowsky_trans',
-                'lewandowsky_rely',
-                'lewandowsky_mean',
-                'lewandowsky_min',
-                'misinfome_bin',
-            ]
-        )
-        for nid, values in targets.items():
-            writer.writerow([nid, *values])
-
-    print(f'[INFO] Wrote targets to {targets_path}')
+    generate(vertices, targets_path)
 
 
 def process_graph(
@@ -418,9 +378,8 @@ def process_graph(
             print('[STEP] discard deg<k & write outputs')
             discard_deg(domains_ids, edges_ids, out_dir, min_deg, slice_str)
 
-    # try:
-    #     print('[STEP] generating targets.csv')
-    #     generate_targets(out_dir)
+    print('[STEP] generating targets.csv')
+    generate_targets(out_dir)
 
     # except Exception as e:
     #     print(
