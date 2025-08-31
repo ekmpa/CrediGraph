@@ -1,13 +1,10 @@
 [project]
-name = "tgrag"
+name = "CrediBench"
 version = "0.1.0"
-description = "Temporal Graph Analysis on Web-Data"
+description = "Temporal Graph Analysis on Large-Scale Web Data"
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [
-{name = "Sebastian Sabry", email = "sebastian.sabry@mail.mcgill.ca"},
-{name = "Emma Kondrup", email = "emma.kondrup@mail.mcgill.ca"},
-{name = "Hussein Abdallah", email = "hussein.abdallah@mail.concordia.ca"}
 ]
 dependencies = [
     "boto3>=1.38.33",
