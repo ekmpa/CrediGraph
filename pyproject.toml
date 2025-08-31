@@ -1,5 +1,5 @@
 [project]
-name = "CrediBench"
+name = "tgrag"
 version = "0.1.0"
 description = "Temporal Graph Analysis on Large-Scale Web Data"
 readme = "README.md"
