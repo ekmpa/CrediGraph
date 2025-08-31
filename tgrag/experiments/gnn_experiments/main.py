@@ -7,7 +7,6 @@ from tgrag.encoders.categorical_encoder import CategoricalEncoder
 from tgrag.encoders.encoder import Encoder
 from tgrag.encoders.norm_encoding import NormEncoder
 from tgrag.encoders.rni_encoding import RNIEncoder
-from tgrag.encoders.text_encoder import TextEncoder
 from tgrag.encoders.zero_encoder import ZeroEncoder
 from tgrag.experiments.gnn_experiments.gnn_experiment import run_gnn_baseline
 from tgrag.utils.args import parse_args
@@ -45,7 +44,6 @@ def main() -> None:
         'RNI': RNIEncoder(64),  # TODO: Set this a paramater
         'ZERO': ZeroEncoder(64),
         'NORM': NormEncoder(),
-        'TEXT': TextEncoder(),
         'CAT': CategoricalEncoder(),
     }
 
