@@ -196,7 +196,7 @@ def run_gnn_baseline(
             result_r2 = (train_r2, valid_r2, test_r2)
             loss_tuple_epoch_mse.append(result)
             loss_tuple_epoch_r2.append(result_r2)
-            logger.add_result(run, (train_mse, valid_mse, test_mse, valid_random_mse))
+            logger.add_result(run, (train_mse, valid_mse, test_mse, valid_mean_mse))
 
         final_avg_preds = ragged_mean_by_index(epoch_avg_preds)
         final_avg_targets = ragged_mean_by_index(epoch_avg_targets)
