@@ -60,7 +60,7 @@ uv run python tgrag/construct_graph_scripts/main.py \
     --min-deg k \
 ```
 
-This will create a `processed-degk/` folder under the slice's `output/`.
+This will create a `processed-degk/` folder under the slice's `output/` with the processed, filtered csv's, and the target labels in a csv.
 
 ### Running GNN Baseline Experiment
 
