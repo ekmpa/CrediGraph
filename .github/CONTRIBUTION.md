@@ -66,8 +66,6 @@ to activate the environment.
 
 ```sh
 # Clone the repo
-git clone git@github.com:ekmpa/CrediGraph.git
-cd CrediGraph
 
 # Install core dependencies into an isolated environment
 uv sync
