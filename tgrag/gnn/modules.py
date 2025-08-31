@@ -126,7 +126,7 @@ class GATModule(nn.Module):
 class GATv2Module(nn.Module):
     def __init__(self, dim: int, dropout: float):
         super().__init__()
-        self.conv = GATv2Conv(in_channels=dim, out_channels=dim, heads=2)
+        self.conv = GATv2Conv(dim, dim)
         self.feed_forward_module = FeedForwardModule(
             dim=dim,
             dropout=dropout,

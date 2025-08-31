@@ -212,6 +212,7 @@ def run_gnn_baseline(
             preds=final_avg_preds,
             targets=final_avg_targets,
             model_name=model_arguments.model,
+            bins=1000,
         )
     plot_avg_loss(
         loss_tuple_run_mse, model_arguments.model, Scoring.mse, 'mse_loss_plot.png'
