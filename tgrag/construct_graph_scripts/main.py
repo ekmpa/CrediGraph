@@ -37,10 +37,12 @@ parser.add_argument(
 #         )
 
 
-def main(slices: List[str], min_deg: int, subnetworks: bool) -> None:
+def main(
+    slices: List[str], min_deg: int, only_targets: bool, subnetworks: bool
+) -> None:
     for slice_id in slices:
         graph_path = os.path.join(get_scratch(), 'crawl-data', slice_id, 'output')
-        process_graph(graph_path, min_deg, slice_id)
+        process_graph(graph_path, min_deg, slice_id, only_targets)
 
         # if subnetworks:
         #     handle_subnetworks(subnetworks, graph_path)
@@ -48,4 +50,9 @@ def main(slices: List[str], min_deg: int, subnetworks: bool) -> None:
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    main(slices=args.slices, min_deg=args.min_deg, subnetworks=args.subnetworks)
+    main(
+        slices=args.slices,
+        min_deg=args.min_deg,
+        only_targets=False,
+        subnetworks=args.subnetworks,
+    )
