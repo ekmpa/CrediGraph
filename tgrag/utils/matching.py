@@ -71,10 +71,7 @@ def lookup_exact(
     domain: str, dqr_domains: Dict[str, List[float]]
 ) -> Optional[List[float]]:
     domain_name = flip_if_needed(domain)
-    for key, value in dqr_domains.items():
-        if key == domain_name:
-            return value
-    return None
+    return dqr_domains.get(domain_name)
 
 
 def reverse_domain(domain: str) -> str:
