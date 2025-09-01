@@ -19,6 +19,7 @@ from tgrag.utils.path import get_root_dir
 class Scoring(str, Enum):
     mse = 'MSE'
     r2 = 'R2'
+    mae = 'MAE'
 
 
 import matplotlib.pyplot as plt
@@ -109,7 +110,7 @@ def plot_avg_loss(
     loss_tuple_run: List[List[Tuple[float, float, float, float, float]]],
     model_name: str,
     score: Scoring,
-    save_filename: str = 'rmse_loss_plot.png',
+    save_filename: str = 'loss_plot.png',
 ) -> None:
     """Plots the averaged MSE loss over trials for train, validation, and test sets with std dev bands."""
     num_epochs = len(loss_tuple_run[0])

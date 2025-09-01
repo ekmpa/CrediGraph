@@ -215,7 +215,7 @@ def run_gnn_baseline(
             bins=1000,
         )
     plot_avg_loss(
-        loss_tuple_run_mse, model_arguments.model, Scoring.mse, 'mse_loss_plot.png'
+        loss_tuple_run_mse, model_arguments.model, Scoring.mae, 'loss_plot.png'
     )
     plot_avg_loss_r2(
         loss_tuple_run_r2, model_arguments.model, Scoring.r2, 'r2_plot.png'
