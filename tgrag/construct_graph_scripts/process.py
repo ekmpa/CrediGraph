@@ -10,7 +10,8 @@ import os
 import subprocess
 import sys
 import tempfile
-from typing import Tuple
+from pathlib import Path
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -23,19 +24,59 @@ from tgrag.utils.data_loading import (
 from tgrag.utils.target_generation import generate
 
 
-def keep_unique(
-    in_path: str, out_path: str, sort_cmd: str, tmpdir: str, mem: str
+def run_sort(
+    in_path: str | Path,
+    out_path: str | Path,
+    *,
+    sort_cmd: str = 'sort',
+    mem: str = '60%',
+    tmpdir: str | Path,
+    unique: bool = False,
+    field: Optional[tuple[int, bool]] = None,
+    delimiter: Optional[str] = None,  # must be None to match keep_unique behavior
 ) -> None:
+    """Run external sort with consistent env/options, matching the Popen pattern."""
     env = os.environ.copy()
     env['LC_ALL'] = 'C'
-    cmd = [sort_cmd, '-S', mem, '-T', tmpdir, '-u', in_path]
-    with open(out_path, 'w', encoding='utf-8', newline='') as fout:
+
+    cmd = [
+        sort_cmd,
+        '-S',
+        mem,
+        '-T',
+        tmpdir if isinstance(tmpdir, str) else str(tmpdir),
+    ]
+    if delimiter is not None:
+        cmd += ['-t', delimiter]
+    if field is not None:
+        start, numeric = field
+        cmd += ['-k', f'{start},{start}' + ('n' if numeric else '')]
+    if unique:
+        cmd += ['-u']
+    cmd += [str(in_path)]
+
+    out_path = Path(out_path)
+    with out_path.open('w', encoding='utf-8', newline='') as fout:
         p = subprocess.Popen(
             cmd, stdout=fout, stderr=subprocess.PIPE, text=True, env=env
         )
         _, err = p.communicate()
         if p.returncode != 0:
             raise RuntimeError(f"sort failed: {' '.join(cmd)}\n{err}")
+
+
+def keep_unique(
+    in_path: str, out_path: str, sort_cmd: str, tmpdir: str, mem: str
+) -> None:
+    run_sort(
+        in_path,
+        out_path,
+        sort_cmd=sort_cmd,
+        mem=mem,
+        tmpdir=tmpdir,
+        unique=True,
+        delimiter=None,
+    )
 
 
 def external_sort_by_col(
@@ -47,17 +88,15 @@ def external_sort_by_col(
     tmpdir: str,
     mem: str,
 ) -> None:
-    env = os.environ.copy()
-    env['LC_ALL'] = 'C'
-    key = f'{key_start_col},{key_start_col}' + ('n' if numeric else '')
-    cmd = [sort_cmd, '-S', mem, '-T', tmpdir, '-t', '\t', '-k', key, in_path]
-    with open(out_path, 'w', encoding='utf-8', newline='') as fout:
-        p = subprocess.Popen(
-            cmd, stdout=fout, stderr=subprocess.PIPE, text=True, env=env
-        )
-        _, err = p.communicate()
-        if p.returncode != 0:
-            raise RuntimeError(f"sort failed: {' '.join(cmd)}\n{err}")
+    run_sort(
+        in_path,
+        out_path,
+        sort_cmd=sort_cmd,
+        mem=mem,
+        tmpdir=tmpdir,
+        field=(key_start_col, numeric),
+        delimiter='\t',
+    )
 
 
 def add_IDs_to_edges(edges_gz: str, src_idx_path: str, dst_idx_path: str) -> int:
@@ -380,10 +419,5 @@ def process_graph(
 
     print('[STEP] generating targets.csv')
     generate_targets(out_dir)
-
-    # except Exception as e:
-    #     print(
-    #         f'[ERROR] failed to generate targets.csv; make sure vertices.csv.gz exists in the output directory: {e}'
-    #     )
 
     print('[DONE] outputs in:', out_dir)
