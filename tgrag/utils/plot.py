@@ -31,7 +31,6 @@ def plot_pred_target_distributions_bin_list(
     preds: List[List[float]],
     targets: List[List[float]],
     model_name: str,
-    label: Label = Label.pc1,
     title: str = 'Average distribution True vs Predicted',
     save_filename: str = 'pred_target_distribution.png',
     bins: int = 40,
@@ -60,7 +59,7 @@ def plot_pred_target_distributions_bin_list(
     plt.plot(bin_centers, avg_targets, label='True', linewidth=2)
     plt.plot(bin_centers, avg_preds, label='Preds', linewidth=2)
     # plt.title(title)
-    plt.xlabel(label.value)
+    plt.xlabel('Score')
     plt.ylabel('Frequency')
     plt.legend()
     plt.grid(alpha=0.3)
