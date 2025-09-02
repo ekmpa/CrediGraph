@@ -27,6 +27,14 @@ class Label(str, Enum):
     mbfc = 'MBFC-BIAS'
 
 
+def mean_across_lists(lists: list[list[float]]) -> list[float]:
+    max_len = max(len(lst) for lst in lists)
+    arr = np.full((len(lists), max_len), np.nan, dtype=float)
+    for i, lst in enumerate(lists):
+        arr[i, : len(lst)] = lst
+    return np.nanmean(arr, axis=0).tolist()
+
+
 def plot_pred_target_distributions_bin_list(
     preds: List[List[float]],
     targets: List[List[float]],
