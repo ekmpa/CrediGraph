@@ -40,7 +40,7 @@ def plot_pred_target_distributions_bin_list(
     targets: List[List[float]],
     model_name: str,
     title: str = 'True vs Predicted Distribution',
-    save_filename: str = 'pred_target_distribution.png',
+    save_filename: str = 'pred_target_distribution.pdf',
     bins: int = 50,
 ) -> None:
     root = get_root_dir()
@@ -72,7 +72,7 @@ def plot_pred_target_distributions_bin_list(
         edgecolor='black',
         color='orange',
         label='True',
-        alpha=0.6,
+        alpha=0.4,
     )
 
     plt.rc('font', size=13)
