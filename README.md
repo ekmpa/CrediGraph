@@ -20,7 +20,6 @@ brew install uv
 
 ```sh
 # Clone the repo
-git@github.com:ekmpa/CrediGraph.git
 
 # Enter the repo directory
 cd CrediGraph
@@ -60,7 +59,7 @@ uv run python tgrag/construct_graph_scripts/main.py \
     --min-deg k \
 ```
 
-This will create a `processed-degk/` folder under the slice's `output/`.
+This will create a `processed-degk/` folder under the slice's `output/` with the processed, filtered csv's, and the target labels in a csv.
 
 
 ### Running domain's content extraction 
@@ -104,7 +103,7 @@ uv run python tgrag/experiments/mlp_experiments/main.py --target pc1 --embed_typ
 
 ### Running GNN Baseline Experiment
 
-Given the size of our datasets we must leverage mini-batching in our GNN experiments. To do this we use PyG's neighbor_loader,
+Given the size of our datasets we must leverage mini-batching in our GNN experiments. To do this we use PyG's `neighbor_loader`,
 which requires additional libraries having undocumented build-time dependencies. As such, users are required to install them in their
 own venv. seperate from `uv sync`.
 
@@ -128,10 +127,22 @@ To run our baseline static experimentation:
 uv run tgrag/experiments/main.py
 ```
 
-Alternatively, you can design you own configuration, updating the model paramaters:
+Alternatively, you can design your own configuration, updating the model parameters:
 
 ```sh
 uv run tgrag/experiments/main.py --config configs/your_config.yaml
 ```
 
 To learn more about making a contribution to CrediGraph see our [contribution guide](./.github/CONTRIBUTION.md)
+
+
+---
+### Citation
+```
+@article{,
+  title={CrediBench: Building Web-Scale Network Datasets for Information Integrity},
+  author={},
+  journal={},
+  year={2025}
+}
+```

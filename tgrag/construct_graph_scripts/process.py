@@ -5,13 +5,13 @@
 # - Add timestamps to vertices and edges (outputs in csv.gz)
 # - Generate target labels for nodes based on DQR data
 
-import csv
 import gzip
 import os
 import subprocess
 import sys
 import tempfile
-from typing import Dict, List, Tuple
+from pathlib import Path
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -21,23 +21,62 @@ from tgrag.utils.data_loading import (
     gz_line_reader,
     iso_week_to_timestamp,
 )
-from tgrag.utils.load_labels import get_full_dict
-from tgrag.utils.matching import lookup
+from tgrag.utils.target_generation import generate
 
 
-def keep_unique(
-    in_path: str, out_path: str, sort_cmd: str, tmpdir: str, mem: str
+def run_sort(
+    in_path: str | Path,
+    out_path: str | Path,
+    *,
+    sort_cmd: str = 'sort',
+    mem: str = '60%',
+    tmpdir: str | Path,
+    unique: bool = False,
+    field: Optional[tuple[int, bool]] = None,
+    delimiter: Optional[str] = None,  # must be None to match keep_unique behavior
 ) -> None:
+    """Run external sort with consistent env/options, matching the Popen pattern."""
     env = os.environ.copy()
     env['LC_ALL'] = 'C'
-    cmd = [sort_cmd, '-S', mem, '-T', tmpdir, '-u', in_path]
-    with open(out_path, 'w', encoding='utf-8', newline='') as fout:
+
+    cmd = [
+        sort_cmd,
+        '-S',
+        mem,
+        '-T',
+        tmpdir if isinstance(tmpdir, str) else str(tmpdir),
+    ]
+    if delimiter is not None:
+        cmd += ['-t', delimiter]
+    if field is not None:
+        start, numeric = field
+        cmd += ['-k', f'{start},{start}' + ('n' if numeric else '')]
+    if unique:
+        cmd += ['-u']
+    cmd += [str(in_path)]
+
+    out_path = Path(out_path)
+    with out_path.open('w', encoding='utf-8', newline='') as fout:
         p = subprocess.Popen(
             cmd, stdout=fout, stderr=subprocess.PIPE, text=True, env=env
         )
         _, err = p.communicate()
         if p.returncode != 0:
             raise RuntimeError(f"sort failed: {' '.join(cmd)}\n{err}")
+
+
+def keep_unique(
+    in_path: str, out_path: str, sort_cmd: str, tmpdir: str, mem: str
+) -> None:
+    run_sort(
+        in_path,
+        out_path,
+        sort_cmd=sort_cmd,
+        mem=mem,
+        tmpdir=tmpdir,
+        unique=True,
+        delimiter=None,
+    )
 
 
 def external_sort_by_col(
@@ -49,17 +88,15 @@ def external_sort_by_col(
     tmpdir: str,
     mem: str,
 ) -> None:
-    env = os.environ.copy()
-    env['LC_ALL'] = 'C'
-    key = f'{key_start_col},{key_start_col}' + ('n' if numeric else '')
-    cmd = [sort_cmd, '-S', mem, '-T', tmpdir, '-t', '\t', '-k', key, in_path]
-    with open(out_path, 'w', encoding='utf-8', newline='') as fout:
-        p = subprocess.Popen(
-            cmd, stdout=fout, stderr=subprocess.PIPE, text=True, env=env
-        )
-        _, err = p.communicate()
-        if p.returncode != 0:
-            raise RuntimeError(f"sort failed: {' '.join(cmd)}\n{err}")
+    run_sort(
+        in_path,
+        out_path,
+        sort_cmd=sort_cmd,
+        mem=mem,
+        tmpdir=tmpdir,
+        field=(key_start_col, numeric),
+        delimiter='\t',
+    )
 
 
 def add_IDs_to_edges(edges_gz: str, src_idx_path: str, dst_idx_path: str) -> int:
@@ -283,50 +320,14 @@ def discard_deg(
 def generate_targets(output_path: str) -> None:
     vertices = os.path.join(output_path, 'vertices.csv.gz')
     targets_path = os.path.join(output_path, 'targets.csv')
-    dqr_domains = get_full_dict()
-    targets: Dict[int, List[float]] = {}
-
-    with gzip.open(vertices, 'rt', encoding='utf-8') as f:
-        f.readline()
-        for line in f:
-            parts = line.split(',')
-            result = lookup(parts[1].strip(), dqr_domains)
-            if result is not None:
-                targets[int(parts[0].strip())] = result
-
-    with open(targets_path, 'w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(
-            [
-                'nid',
-                'pc1',
-                'afm',
-                'afm_bias',
-                'afm_min',
-                'afm_rely',
-                'fc',
-                'mbfc',
-                'mbfc_bias',
-                'mbfc_fact',
-                'mbfc_min',
-                'lewandowsky_acc',
-                'lewandowsky_trans',
-                'lewandowsky_rely',
-                'lewandowsky_mean',
-                'lewandowsky_min',
-                'misinfome_bin',
-            ]
-        )
-        for nid, values in targets.items():
-            writer.writerow([nid, *values])
-
-    print(f'[INFO] Wrote targets to {targets_path}')
+    generate(vertices, targets_path)
 
 
 def process_graph(
     graph_path: str,
     min_deg: int,
     slice_str: str,
+    only_targets: bool = False,
     sort_cmd: str = 'sort',
     mem: str = '60%',
 ) -> None:
@@ -342,78 +343,79 @@ def process_graph(
     out_dir = os.path.join(graph_path, f'processed-deg{min_deg}')
     os.makedirs(out_dir, exist_ok=True)
 
-    with tempfile.TemporaryDirectory(prefix='extsort_') as td:
-        all_domains = os.path.join(td, 'all_domains.txt')
-        domains_sorted = os.path.join(td, 'domains.sorted.txt')
-        domains_ids = os.path.join(td, 'domains.with_ids.txt')
-        src_idx = os.path.join(td, 'src_idx.tsv')
-        dst_idx = os.path.join(td, 'dst_idx.tsv')
-        src_idx_sorted = os.path.join(td, 'src_idx.sorted.tsv')
-        dst_idx_sorted = os.path.join(td, 'dst_idx.sorted.tsv')
-        src_idx_id = os.path.join(td, 'src_idx_id.tsv')
-        dst_idx_id = os.path.join(td, 'dst_idx_id.tsv')
-        src_idx_id_sorted = os.path.join(td, 'src_idx_id.sorted.tsv')
-        dst_idx_id_sorted = os.path.join(td, 'dst_idx_id.sorted.tsv')
-        edges_ids = os.path.join(td, 'edges_ids.tsv')
+    if not only_targets:
+        with tempfile.TemporaryDirectory(prefix='extsort_') as td:
+            all_domains = os.path.join(td, 'all_domains.txt')
+            domains_sorted = os.path.join(td, 'domains.sorted.txt')
+            domains_ids = os.path.join(td, 'domains.with_ids.txt')
+            src_idx = os.path.join(td, 'src_idx.tsv')
+            dst_idx = os.path.join(td, 'dst_idx.tsv')
+            src_idx_sorted = os.path.join(td, 'src_idx.sorted.tsv')
+            dst_idx_sorted = os.path.join(td, 'dst_idx.sorted.tsv')
+            src_idx_id = os.path.join(td, 'src_idx_id.tsv')
+            dst_idx_id = os.path.join(td, 'dst_idx_id.tsv')
+            src_idx_id_sorted = os.path.join(td, 'src_idx_id.sorted.tsv')
+            dst_idx_id_sorted = os.path.join(td, 'dst_idx_id.sorted.tsv')
+            edges_ids = os.path.join(td, 'edges_ids.tsv')
 
-        print('[STEP] extracting & keep unique set of domains')
-        extract_all_domains(v_gz, e_gz, all_domains)
-        keep_unique(all_domains, domains_sorted, sort_cmd, td, mem=mem)
+            print('[STEP] extracting & keep unique set of domains')
+            extract_all_domains(v_gz, e_gz, all_domains)
+            keep_unique(all_domains, domains_sorted, sort_cmd, td, mem=mem)
 
-        print('[STEP] assign numeric IDs')
-        V, E = assign_IDs(domains_sorted, domains_ids, e_gz, src_idx, dst_idx)
-        print(f'[INFO] unique domains (V) = {V}')
-        print(f'[INFO] E ~ {E}')
+            print('[STEP] assign numeric IDs')
+            V, E = assign_IDs(domains_sorted, domains_ids, e_gz, src_idx, dst_idx)
+            print(f'[INFO] unique domains (V) = {V}')
+            print(f'[INFO] E ~ {E}')
 
-        # sorting src_idx, dst_idx by domain to merge-join with domains.with_ids
-        external_sort_by_col(
-            src_idx,
-            src_idx_sorted,
-            key_start_col=2,
-            numeric=False,
-            sort_cmd=sort_cmd,
-            tmpdir=td,
-            mem=mem,
-        )
-        external_sort_by_col(
-            dst_idx,
-            dst_idx_sorted,
-            key_start_col=2,
-            numeric=False,
-            sort_cmd=sort_cmd,
-            tmpdir=td,
-            mem=mem,
-        )
+            # sorting src_idx, dst_idx by domain to merge-join with domains.with_ids
+            external_sort_by_col(
+                src_idx,
+                src_idx_sorted,
+                key_start_col=2,
+                numeric=False,
+                sort_cmd=sort_cmd,
+                tmpdir=td,
+                mem=mem,
+            )
+            external_sort_by_col(
+                dst_idx,
+                dst_idx_sorted,
+                key_start_col=2,
+                numeric=False,
+                sort_cmd=sort_cmd,
+                tmpdir=td,
+                mem=mem,
+            )
 
-        # joining to replace domains with IDs
-        merge_join_index_to_IDs(src_idx_sorted, domains_ids, src_idx_id)
-        merge_join_index_to_IDs(dst_idx_sorted, domains_ids, dst_idx_id)
+            # joining to replace domains with IDs
+            merge_join_index_to_IDs(src_idx_sorted, domains_ids, src_idx_id)
+            merge_join_index_to_IDs(dst_idx_sorted, domains_ids, dst_idx_id)
 
-        # sort back by edge index to zip
-        external_sort_by_col(
-            src_idx_id,
-            src_idx_id_sorted,
-            key_start_col=1,
-            numeric=True,
-            sort_cmd=sort_cmd,
-            tmpdir=td,
-            mem=mem,
-        )
-        external_sort_by_col(
-            dst_idx_id,
-            dst_idx_id_sorted,
-            key_start_col=1,
-            numeric=True,
-            sort_cmd=sort_cmd,
-            tmpdir=td,
-            mem=mem,
-        )
+            # sort back by edge index to zip
+            external_sort_by_col(
+                src_idx_id,
+                src_idx_id_sorted,
+                key_start_col=1,
+                numeric=True,
+                sort_cmd=sort_cmd,
+                tmpdir=td,
+                mem=mem,
+            )
+            external_sort_by_col(
+                dst_idx_id,
+                dst_idx_id_sorted,
+                key_start_col=1,
+                numeric=True,
+                sort_cmd=sort_cmd,
+                tmpdir=td,
+                mem=mem,
+            )
 
-        # combine src/dst ids to final edges
-        combine_IDs_by_index(src_idx_id_sorted, dst_idx_id_sorted, edges_ids)
+            # combine src/dst ids to final edges
+            combine_IDs_by_index(src_idx_id_sorted, dst_idx_id_sorted, edges_ids)
 
-        print('[STEP] discard deg<k & write outputs')
-        discard_deg(domains_ids, edges_ids, out_dir, min_deg, slice_str)
+            print('[STEP] discard deg<k & write outputs')
+            discard_deg(domains_ids, edges_ids, out_dir, min_deg, slice_str)
 
     print('[STEP] generating targets.csv')
     generate_targets(out_dir)

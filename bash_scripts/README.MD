@@ -1,7 +1,14 @@
 # Bash scripts for data processing
 
 ## Usage
-### Build Custom Graph
+### Build Custom Graph 
+
+```sh
+./pipeline.sh file.txt [--keep idx] 
+```
+where `file.txt` contains 1 crawl ID per line, and `idx` is an optional index on which to resume construction from. 
+
+#### (one batch)
 
 ```sh
 ./end-to-end.sh ['COMMON-CRAWL-DATES', ...] start_idx end_idx [wat] 

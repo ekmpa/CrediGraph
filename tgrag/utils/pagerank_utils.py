@@ -74,25 +74,25 @@ def preprocess_data(
     logging.info(f'Loaded {len(nodes)} nodes and {len(edges)} edges')
 
     # Handle duplicate nodes
-    duplicate_nodes = nodes[nodes.duplicated(subset=['node_id'], keep=False)]
+    duplicate_nodes = nodes[nodes.duplicated(subset=['nid'], keep=False)]
     if not duplicate_nodes.empty:
         logging.info(
             f'WARNING: Found {len(duplicate_nodes)} duplicate node IDs in {nodes_path}'
         )
         logging.info('Duplicate node IDs:')
-        logging.info(duplicate_nodes['node_id'].value_counts().sort_index())
+        logging.info(duplicate_nodes['nid'].value_counts().sort_index())
         logging.info('\nFirst few duplicate rows:')
         logging.info(duplicate_nodes.head(10))
 
         original_count = len(nodes)
-        nodes = nodes.drop_duplicates(subset=['node_id'], keep='first')
+        nodes = nodes.drop_duplicates(subset=['nid'], keep='first')
         logging.info(f'\nRemoved {original_count - len(nodes)} duplicate rows')
         logging.info(f'Unique nodes remaining: {len(nodes)}')
     else:
         logging.info(f'No duplicate node IDs found in {nodes_path}')
 
     # Validate edge consistency
-    nodes_from_df = set(nodes['node_id'])
+    nodes_from_df = set(nodes['nid'])
     nodes_from_edges = set(edges['src'].unique()) | set(edges['dst'].unique())
 
     missing_in_nodes = nodes_from_edges - nodes_from_df
@@ -103,7 +103,7 @@ def preprocess_data(
         logging.info(f'First few missing nodes: {list(missing_in_nodes)[:10]}')
 
         # Add missing nodes to nodes DataFrame
-        missing_nodes_df = pd.DataFrame({'node_id': list(missing_in_nodes)})
+        missing_nodes_df = pd.DataFrame({'nid': list(missing_in_nodes)})
         nodes = pd.concat([nodes, missing_nodes_df], ignore_index=True)
         logging.info(f'Added {len(missing_in_nodes)} missing nodes to nodes DataFrame')
 
@@ -126,7 +126,7 @@ def preprocess_data(
 def build_adjacency(
     nodes: pd.DataFrame, edges: pd.DataFrame
 ) -> Tuple[List[int], Dict[int, pd.DataFrame], Dict[int, int], Dict[int, List[int]]]:
-    all_node_ids = set(nodes['node_id'])
+    all_node_ids = set(nodes['nid'])
     node_ids = list(all_node_ids)
     len(node_ids)
 
@@ -167,7 +167,7 @@ def test_degree_correlation(nodes: pd.DataFrame, edges: pd.DataFrame) -> bool:
     in_degree = edges['dst'].value_counts()
 
     test_df = nodes.copy()
-    test_df['in_degree'] = test_df['node_id'].map(in_degree).fillna(0)
+    test_df['in_degree'] = test_df['nid'].map(in_degree).fillna(0)
 
     correlation = test_df['importance'].corr(test_df['in_degree'])
 

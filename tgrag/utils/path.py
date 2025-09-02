@@ -16,6 +16,15 @@ def get_no_backup() -> Path:
     return Path('/NOBACKUP')
 
 
+def get_data_root() -> str:
+    here = os.path.abspath(os.path.dirname(__file__))
+    for up in [here, os.path.dirname(here), os.path.dirname(os.path.dirname(here))]:
+        probe = os.path.join(up, 'data', 'dqr', 'domain_ratings.csv')
+        if os.path.exists(probe):
+            return up
+    return os.getcwd()
+
+
 def get_scratch() -> Path:
     home = Path.home()
     scratch_dir = home.parent / home.name / 'scratch'

@@ -289,7 +289,7 @@ def plot_avg_loss_with_baseline(
 
 def load_all_loss_tuples(
     results_dir: str = 'results/logs',
-) -> Dict[str, List[List[Tuple[float, float, float]]]]:
+) -> Dict[str, List[List[Tuple[float, float, float, float, float]]]]:
     """Loads all loss_tuple_run.pkl files from results/logs/MODEL/ENCODER.
 
     Returns:

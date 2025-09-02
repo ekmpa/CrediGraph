@@ -42,7 +42,7 @@ def train(
         if train_mask.sum() == 0:
             continue
 
-        loss = F.mse_loss(preds[train_mask], targets[train_mask])
+        loss = F.l1_loss(preds[train_mask], targets[train_mask])
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -80,9 +80,9 @@ def evaluate(
             continue
         mean_preds = torch.full(batch.y[mask].size(), 0.5).to(device)
         random_preds = torch.rand(batch.y[mask].size(0)).to(device)
-        loss = F.mse_loss(preds[mask], targets[mask])
-        mean_loss = F.mse_loss(mean_preds, targets[mask])
-        random_loss = F.mse_loss(random_preds, targets[mask])
+        loss = F.l1_loss(preds[mask], targets[mask])
+        mean_loss = F.l1_loss(mean_preds, targets[mask])
+        random_loss = F.l1_loss(random_preds, targets[mask])
 
         total_loss += loss.item()
         total_mean_loss += mean_loss.item()
@@ -196,7 +196,7 @@ def run_gnn_baseline(
             result_r2 = (train_r2, valid_r2, test_r2)
             loss_tuple_epoch_mse.append(result)
             loss_tuple_epoch_r2.append(result_r2)
-            logger.add_result(run, (train_mse, valid_mse, test_mse))
+            logger.add_result(run, (train_mse, valid_mse, test_mse, valid_random_mse))
 
         final_avg_preds = ragged_mean_by_index(epoch_avg_preds)
         final_avg_targets = ragged_mean_by_index(epoch_avg_targets)

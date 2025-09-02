@@ -6,6 +6,52 @@ from typing import Dict, List, Optional
 
 import tldextract
 
+_extract = tldextract.TLDExtract(include_psl_private_domains=True)
+
+
+def flip_if_needed(domain: str) -> str:
+    """Normalize a possibly flipped domain (e.g., 'co.uk.theregister') into the
+    canonical 'domain.suffix' (e.g., 'theregister.co.uk').
+
+    Strategy: try all cyclic rotations of labels; pick the parse with
+    the longest PSL suffix (# of labels), then longest domain label.
+    """
+    if not domain:
+        return domain
+
+    labels = [p for p in domain.strip('.').lower().split('.') if p]
+    if not labels:
+        return domain
+
+    best = None  # (suffix_label_count, domain_len, normalized_str)
+
+    n = len(labels)
+    for r in range(n):
+        # rotation: move the last r labels to the front
+        rotated = labels[-r:] + labels[:-r] if r else labels
+        rotated_str = '.'.join(rotated)
+
+        ext = _extract(rotated_str)
+        if not ext.suffix or not ext.domain:
+            continue
+
+        suffix_labels = ext.suffix.count('.') + 1  # e.g., 'co.uk' -> 2
+        dom_len = len(ext.domain)
+        normalized = f'{ext.domain}.{ext.suffix}'
+
+        cand = (suffix_labels, dom_len, normalized)
+        if (best is None) or (cand > best):
+            best = cand
+
+    # Fall back: parse the input as-is if no rotation produced a valid suffix
+    if best is None:
+        ext = _extract('.'.join(labels))
+        if ext.suffix and ext.domain:
+            return f'{ext.domain}.{ext.suffix}'
+        return '.'.join(labels)
+
+    return best[2]
+
 
 def lookup(domain: str, dqr_domains: Dict[str, List[float]]) -> Optional[List[float]]:
     """Look up domain in dqr_domains, return associated data if found."""
@@ -21,28 +67,11 @@ def lookup(domain: str, dqr_domains: Dict[str, List[float]]) -> Optional[List[fl
     return None
 
 
-def flip_if_needed(domain: str) -> str:
-    """More comprehensive function for flipping. Use this instead of flip (deals with composite cases etc)."""
-    extract = tldextract.TLDExtract(include_psl_private_domains=True)
-
-    original_parts = domain.split('.')
-
-    # Try correct order
-    correct = extract(domain)
-    '.'.join(part for part in [correct.domain, correct.suffix] if part)
-
-    # Try reversed domain
-    reversed_domain = '.'.join(reversed(original_parts))
-    reversed_extract = extract(reversed_domain)
-    '.'.join(
-        part for part in [reversed_extract.domain, reversed_extract.suffix] if part
-    )
-
-    # Heuristic: pick the version with a known suffix and longer domain part
-    if reversed_extract.suffix and len(reversed_extract.domain) >= len(correct.domain):
-        return reversed_domain
-    else:
-        return domain
+def lookup_exact(
+    domain: str, dqr_domains: Dict[str, List[float]]
+) -> Optional[List[float]]:
+    domain_name = flip_if_needed(domain)
+    return dqr_domains.get(domain_name)
 
 
 def reverse_domain(domain: str) -> str:
