@@ -1,6 +1,7 @@
 import logging
 from typing import List, Tuple
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -16,7 +17,7 @@ from tgrag.utils.plot import (
     Scoring,
     plot_avg_loss,
     plot_avg_loss_r2,
-    plot_pred_target_distributions_bin,
+    plot_pred_target_distributions_bin_list,
 )
 from tgrag.utils.prob import ragged_mean_by_index
 from tgrag.utils.save import save_loss_results
@@ -57,6 +58,48 @@ def train(
     return (mse, r2, avg_preds, avg_targets)
 
 
+def train_(
+    model: torch.nn.Module,
+    train_loader: NeighborLoader,
+    optimizer: torch.optim.AdamW,
+) -> Tuple[float, float, List, List]:
+    model.train()
+    device = next(model.parameters()).device
+    total_loss = 0
+    total_batches = 0
+    all_preds = []
+    all_targets = []
+    # TODO: Score in one list
+    pred_scores = []
+    target_scores = []
+    for batch in tqdm(train_loader, desc='Batchs', leave=False):
+        optimizer.zero_grad()
+        batch = batch.to(device)
+        preds = model(batch.x, batch.edge_index).squeeze()
+        targets = batch.y
+        train_mask = batch.train_mask
+        if train_mask.sum() == 0:
+            continue
+
+        loss = F.l1_loss(preds[train_mask], targets[train_mask])
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+        total_batches += 1
+        all_preds.append(preds[train_mask])
+        all_targets.append(targets[train_mask])
+        for pred in preds[train_mask]:
+            pred_scores.append(pred)
+        for targ in targets[train_mask]:
+            target_scores.append(targ)
+
+    r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
+    ragged_mean_by_index(all_preds)
+    ragged_mean_by_index(all_targets)
+    mse = total_loss / total_batches
+    return (mse, r2, pred_scores, target_scores)
+
+
 @torch.no_grad()
 def evaluate(
     model: torch.nn.Module,
@@ -78,12 +121,13 @@ def evaluate(
         mask = getattr(batch, mask_name)
         if mask.sum() == 0:
             continue
-        mean_preds = torch.full(batch.y[mask].size(), 0.5).to(device)
+        mean_preds = torch.full(batch.y[mask].size(), 0.546).to(device)
         random_preds = torch.rand(batch.y[mask].size(0)).to(device)
         loss = F.l1_loss(preds[mask], targets[mask])
         mean_loss = F.l1_loss(mean_preds, targets[mask])
         random_loss = F.l1_loss(random_preds, targets[mask])
 
+        # TODO: Change this to report the loss of mean to be accurate. Use full score for don't average per batch.
         total_loss += loss.item()
         total_mean_loss += mean_loss.item()
         total_random_loss += random_loss.item()
@@ -159,8 +203,8 @@ def run_gnn_baseline(
     logger = Logger(model_arguments.runs)
     loss_tuple_run_mse: List[List[Tuple[float, float, float, float, float]]] = []
     loss_tuple_run_r2: List[List[Tuple[float, float, float]]] = []
-    final_avg_preds: Tensor | None = None
-    final_avg_targets: Tensor | None = None
+    final_avg_preds: List[List[float]] = []
+    final_avg_targets: List[List[float]] = []
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
         model = Model(
@@ -175,31 +219,39 @@ def run_gnn_baseline(
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
         loss_tuple_epoch_r2: List[Tuple[float, float, float]] = []
-        epoch_avg_preds: List[Tensor] = []
-        epoch_avg_targets: List[Tensor] = []
+        epoch_avg_preds: List[List[float]] = []
+        epoch_avg_targets: List[List[float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
-            _, _, avg_batch_preds, avg_batch_targets = train(
-                model, train_loader, optimizer
-            )
-            epoch_avg_preds.append(avg_batch_preds)
-            epoch_avg_targets.append(avg_batch_targets)
-            train_mse, train_mean_mse, train_random_mse, train_r2 = evaluate(
-                model, train_loader, 'train_mask'
-            )
-            valid_mse, valid_mean_mse, valid_random_mse, valid_r2 = evaluate(
+            _, _, batch_preds, batch_targets = train_(model, train_loader, optimizer)
+            epoch_avg_preds.append(batch_preds)
+            epoch_avg_targets.append(batch_targets)
+            train_loss, _, _, train_r2 = evaluate(model, train_loader, 'train_mask')
+            valid_loss, valid_mean_baseline_loss, _, valid_r2 = evaluate(
                 model, val_loader, 'valid_mask'
             )
-            test_mse, test_mean_mse, test_random_mse, test_r2 = evaluate(
-                model, test_loader, 'test_mask'
+            test_loss, test_mean_baseline_loss, test_random_baseline_loss, test_r2 = (
+                evaluate(model, test_loader, 'test_mask')
             )
-            result = (train_mse, valid_mse, test_mse, test_mean_mse, test_random_mse)
+            result = (
+                train_loss,
+                valid_loss,
+                test_loss,
+                test_mean_baseline_loss,
+                test_random_baseline_loss,
+            )
             result_r2 = (train_r2, valid_r2, test_r2)
             loss_tuple_epoch_mse.append(result)
             loss_tuple_epoch_r2.append(result_r2)
-            logger.add_result(run, (train_mse, valid_mse, test_mse, valid_mean_mse))
+            logger.add_result(
+                run, (train_loss, valid_loss, test_loss, valid_mean_baseline_loss)
+            )
 
-        final_avg_preds = ragged_mean_by_index(epoch_avg_preds)
-        final_avg_targets = ragged_mean_by_index(epoch_avg_targets)
+        final_avg_preds.append(
+            np.mean(np.array(epoch_avg_preds, dtype=float), axis=0).tolist()
+        )
+        final_avg_targets.append(
+            np.mean(np.array(epoch_avg_targets, dtype=float), axis=0).tolist()
+        )
         loss_tuple_run_mse.append(loss_tuple_epoch_mse)
         loss_tuple_run_r2.append(loss_tuple_epoch_r2)
 
@@ -207,13 +259,12 @@ def run_gnn_baseline(
     logging.info(logger.get_statistics())
     logging.info(logger.get_avg_statistics())
     logging.info('Constructing plots')
-    if final_avg_targets is not None and final_avg_preds is not None:
-        plot_pred_target_distributions_bin(
-            preds=final_avg_preds,
-            targets=final_avg_targets,
-            model_name=model_arguments.model,
-            bins=1000,
-        )
+    plot_pred_target_distributions_bin_list(
+        preds=final_avg_preds,
+        targets=final_avg_targets,
+        model_name=model_arguments.model,
+        bins=100,
+    )
     plot_avg_loss(
         loss_tuple_run_mse, model_arguments.model, Scoring.mae, 'loss_plot.png'
     )
