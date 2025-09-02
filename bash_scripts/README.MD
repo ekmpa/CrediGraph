@@ -4,20 +4,19 @@
 ### Build Custom Graph
 
 ```sh
-./end-to-end.sh ['COMMON-CRAWL-DATES', ...] start_idx end_idx [wat]
+./end-to-end.sh ['COMMON-CRAWL-DATES', ...] start_idx end_idx [wat] 
 ```
 
-### Extract Wet Content
-
+### Extract Wet Content  
 #### Extract Wet Content in Batches
 
 ```sh
-./end-to-end.sh ['COMMON-CRAWL-DATES', ...] start_idx end_idx [wet]
+./end-to-end.sh ['COMMON-CRAWL-DATES', ...] start_idx end_idx [wet] ../data/dqr/domain_pc1.csv content_table
 ```
 ### Extract Wet Domain-URLs in Batches
 
 ```sh
-./end-to-end-url.sh ['COMMON-CRAWL-DATES', ...] start_idx end_idx [wet]
+./end-to-end-url.sh ['COMMON-CRAWL-DATES', ...] start_idx end_idx [wet] ../data/dqr/domain_pc1.csv urls_table
 ```
 
 ### Optionally running in parts:

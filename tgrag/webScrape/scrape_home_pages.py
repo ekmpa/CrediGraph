@@ -67,9 +67,9 @@ def scrape(url):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="WebSite Home Page Scraper")
-    parser.add_argument("--domains_path", type=str, default="../../data/dqr/domain_pc1.csv")
-    parser.add_argument("--output_path", type=str, default="../../data/scrape/")
-    parser.add_argument("--batch_size", type=int, default=1000)
+    parser.add_argument("--domains_path", type=str, default="../../data/dqr/domain_pc1.csv", help="dqr dataset path")
+    parser.add_argument("--output_path", type=str, default="../../data/scrape/",help="output path")
+    parser.add_argument("--batch_size", type=int, default=1000, help="scarp batch_size")
     args = parser.parse_args()
     if not os.path.exists(f"../../data/scrapedContent/"):
         os.mkdir(f"../../data/scrapedContent/")

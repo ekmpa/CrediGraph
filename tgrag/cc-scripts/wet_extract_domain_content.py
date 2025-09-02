@@ -125,6 +125,7 @@ class ExtractWetContentsJob(CCSparkJob):
         doamins_df = pd.read_csv(domains_pc1_csv_path)
         return dict(zip(doamins_df["domain"].tolist(), doamins_df["pc1"].tolist()))
     def run_job(self, session):
+        self.get_logger().info(f"seed domain path={self.args.trusted_domains}")
         out_path=str(session.conf.get("spark.sql.warehouse.dir")).split(":")[-1]+"/"+self.args.output
         self.domains_pc1_dict = session.sparkContext.broadcast(self.load_domain_pc1(self.args.trusted_domains))
         if os.path.exists(out_path):
