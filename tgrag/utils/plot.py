@@ -22,9 +22,51 @@ class Scoring(str, Enum):
     mae = 'MAE'
 
 
-import matplotlib.pyplot as plt
-import numpy as np
-import torch
+class Label(str, Enum):
+    pc1 = 'PC1'
+    mbfc = 'MBFC-BIAS'
+
+
+def plot_pred_target_distributions_bin_list(
+    preds: List[List[float]],
+    targets: List[List[float]],
+    model_name: str,
+    label: Label = Label.pc1,
+    title: str = 'Average distribution True vs Predicted',
+    save_filename: str = 'pred_target_distribution.png',
+    bins: int = 40,
+) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / model_name / 'distribution'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / save_filename
+
+    # Shared bin edges in [0,1]
+    bin_edges = np.linspace(0, 1, bins + 1)
+    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+
+    def avg_hist(trials: List[List[float]]) -> np.ndarray:
+        hists = []
+        for trial in trials:
+            hist, _ = np.histogram(trial, bins=bin_edges, density=True)
+            hists.append(hist)
+        return np.mean(hists, axis=0)
+
+    avg_preds = avg_hist(preds)
+    avg_targets = avg_hist(targets)
+
+    # Plot
+    plt.figure(figsize=(8, 5), dpi=120)
+    plt.plot(bin_centers, avg_targets, label='True', linewidth=2)
+    plt.plot(bin_centers, avg_preds, label='Preds', linewidth=2)
+    # plt.title(title)
+    plt.xlabel(label.value)
+    plt.ylabel('Frequency')
+    plt.legend()
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
 
 
 def plot_pred_target_distributions_bin(
