@@ -97,6 +97,10 @@ def train_(
     ragged_mean_by_index(all_preds)
     ragged_mean_by_index(all_targets)
     mse = total_loss / total_batches
+    print(f'++++++')
+    print(f'Size of predictions: {len(pred_scores)}')
+    print(f'Size of targets: {len(target_scores)}')
+    print(f'++++++')
     return (mse, r2, pred_scores, target_scores)
 
 
