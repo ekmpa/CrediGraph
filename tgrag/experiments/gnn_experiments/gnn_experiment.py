@@ -1,7 +1,6 @@
 import logging
 from typing import List, Tuple
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -15,6 +14,7 @@ from tgrag.utils.args import DataArguments, ModelArguments
 from tgrag.utils.logger import Logger
 from tgrag.utils.plot import (
     Scoring,
+    mean_across_lists,
     plot_avg_loss,
     plot_avg_loss_r2,
     plot_pred_target_distributions_bin_list,
@@ -97,10 +97,6 @@ def train_(
     ragged_mean_by_index(all_preds)
     ragged_mean_by_index(all_targets)
     mse = total_loss / total_batches
-    print(f'++++++')
-    print(f'Size of predictions: {len(pred_scores)}')
-    print(f'Size of targets: {len(target_scores)}')
-    print(f'++++++')
     return (mse, r2, pred_scores, target_scores)
 
 
@@ -250,12 +246,8 @@ def run_gnn_baseline(
                 run, (train_loss, valid_loss, test_loss, valid_mean_baseline_loss)
             )
 
-        final_avg_preds.append(
-            np.mean(np.array(epoch_avg_preds, dtype=float), axis=0).tolist()
-        )
-        final_avg_targets.append(
-            np.mean(np.array(epoch_avg_targets, dtype=float), axis=0).tolist()
-        )
+        final_avg_preds.append(mean_across_lists(epoch_avg_preds))
+        final_avg_targets.append(mean_across_lists(epoch_avg_targets))
         loss_tuple_run_mse.append(loss_tuple_epoch_mse)
         loss_tuple_run_r2.append(loss_tuple_epoch_r2)
 
