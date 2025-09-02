@@ -121,7 +121,8 @@ def evaluate(
         mask = getattr(batch, mask_name)
         if mask.sum() == 0:
             continue
-        mean_preds = torch.full(batch.y[mask].size(), 0.546).to(device)
+        # MEAN: 0.546
+        mean_preds = torch.full(batch.y[mask].size(), 0.5).to(device)
         random_preds = torch.rand(batch.y[mask].size(0)).to(device)
         loss = F.l1_loss(preds[mask], targets[mask])
         mean_loss = F.l1_loss(mean_preds, targets[mask])
