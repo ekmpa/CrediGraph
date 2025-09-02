@@ -39,40 +39,50 @@ def plot_pred_target_distributions_bin_list(
     preds: List[List[float]],
     targets: List[List[float]],
     model_name: str,
-    title: str = 'Average distribution True vs Predicted',
+    title: str = 'True vs Predicted Distribution',
     save_filename: str = 'pred_target_distribution.png',
-    bins: int = 40,
+    bins: int = 50,
 ) -> None:
     root = get_root_dir()
     save_dir = root / 'results' / 'plots' / model_name / 'distribution'
     save_dir.mkdir(parents=True, exist_ok=True)
     save_path = save_dir / save_filename
 
-    # Shared bin edges in [0,1]
-    bin_edges = np.linspace(0, 1, bins + 1)
-    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+    preds_flat = np.concatenate([np.array(p, dtype=float) for p in preds])
+    targets_flat = np.concatenate([np.array(t, dtype=float) for t in targets])
 
-    def avg_hist(trials: List[List[float]]) -> np.ndarray:
-        hists = []
-        for trial in trials:
-            hist, _ = np.histogram(trial, bins=bin_edges, density=True)
-            hists.append(hist)
-        return np.mean(hists, axis=0)
+    hist_true, _ = np.histogram(targets_flat, bins=bins, range=(0, 1))
+    hist_pred, _ = np.histogram(preds_flat, bins=bins, range=(0, 1))
+    y_max = max(hist_true.max(), hist_pred.max())
 
-    avg_preds = avg_hist(preds)
-    avg_targets = avg_hist(targets)
+    plt.figure(figsize=(6, 4), dpi=120)
+    plt.hist(
+        preds_flat,
+        bins=bins,
+        range=(0, 1),
+        edgecolor='black',
+        color='lightblue',
+        label='Pred',
+        alpha=0.8,
+    )
+    plt.hist(
+        targets_flat,
+        bins=bins,
+        range=(0, 1),
+        edgecolor='black',
+        color='orange',
+        label='True',
+        alpha=0.6,
+    )
 
-    # Plot
-    plt.figure(figsize=(8, 5), dpi=120)
-    plt.plot(bin_centers, avg_targets, label='True', linewidth=2)
-    plt.plot(bin_centers, avg_preds, label='Preds', linewidth=2)
-    # plt.title(title)
+    plt.rc('font', size=13)
+    plt.xticks(np.arange(0, 1.1, 0.2))
+    plt.yticks(np.arange(0, y_max + 50, 100))
     plt.xlabel('Score')
     plt.ylabel('Frequency')
     plt.legend()
-    plt.grid(alpha=0.3)
     plt.tight_layout()
-    plt.savefig(save_path)
+    plt.savefig(save_path, bbox_inches='tight', pad_inches=0.1)
     plt.close()
 
 
