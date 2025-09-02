@@ -62,7 +62,7 @@ def train_(
     model: torch.nn.Module,
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
-) -> Tuple[float, float, List, List]:
+) -> Tuple[float, float, List[float], List[float]]:
     model.train()
     device = next(model.parameters()).device
     total_loss = 0
@@ -89,9 +89,9 @@ def train_(
         all_preds.append(preds[train_mask])
         all_targets.append(targets[train_mask])
         for pred in preds[train_mask]:
-            pred_scores.append(pred)
+            pred_scores.append(pred.item())
         for targ in targets[train_mask]:
-            target_scores.append(targ)
+            target_scores.append(targ.item())
 
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
     ragged_mean_by_index(all_preds)
