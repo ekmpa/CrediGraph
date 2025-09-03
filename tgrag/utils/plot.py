@@ -19,11 +19,72 @@ from tgrag.utils.path import get_root_dir
 class Scoring(str, Enum):
     mse = 'MSE'
     r2 = 'R2'
+    mae = 'MAE'
 
 
-import matplotlib.pyplot as plt
-import numpy as np
-import torch
+class Label(str, Enum):
+    pc1 = 'PC1'
+    mbfc = 'MBFC-BIAS'
+
+
+def mean_across_lists(lists: list[list[float]]) -> list[float]:
+    max_len = max(len(lst) for lst in lists)
+    arr = np.full((len(lists), max_len), np.nan, dtype=float)
+    for i, lst in enumerate(lists):
+        arr[i, : len(lst)] = lst
+    return np.nanmean(arr, axis=0).tolist()
+
+
+def plot_pred_target_distributions_bin_list(
+    preds: List[List[float]],
+    targets: List[List[float]],
+    model_name: str,
+    title: str = 'True vs Predicted Distribution',
+    save_filename: str = 'pred_target_distribution.pdf',
+    bins: int = 50,
+) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / model_name / 'distribution'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / save_filename
+
+    preds_flat = np.concatenate([np.array(p, dtype=float) for p in preds])
+    targets_flat = np.concatenate([np.array(t, dtype=float) for t in targets])
+
+    hist_true, _ = np.histogram(targets_flat, bins=bins, range=(0, 1))
+    hist_pred, _ = np.histogram(preds_flat, bins=bins, range=(0, 1))
+    y_max = max(hist_true.max(), hist_pred.max())
+
+    plt.figure(figsize=(6, 4), dpi=120)
+    plt.hist(
+        preds_flat,
+        bins=bins,
+        range=(0, 1),
+        edgecolor='black',
+        color='lightblue',
+        label='Pred',
+        alpha=0.8,
+    )
+    plt.hist(
+        targets_flat,
+        bins=bins,
+        range=(0, 1),
+        edgecolor='black',
+        color='orange',
+        label='True',
+        alpha=0.4,
+    )
+
+    plt.rc('font', size=13)
+    plt.xticks(np.arange(0, 1.1, 0.2))
+    plt.yticks(np.arange(0, y_max + 200, 200))
+    plt.yscale('log')
+    plt.xlabel('Score')
+    plt.ylabel('Frequency')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(save_path, bbox_inches='tight', pad_inches=0.1)
+    plt.close()
 
 
 def plot_pred_target_distributions_bin(
@@ -109,7 +170,7 @@ def plot_avg_loss(
     loss_tuple_run: List[List[Tuple[float, float, float, float, float]]],
     model_name: str,
     score: Scoring,
-    save_filename: str = 'rmse_loss_plot.png',
+    save_filename: str = 'loss_plot.png',
 ) -> None:
     """Plots the averaged MSE loss over trials for train, validation, and test sets with std dev bands."""
     num_epochs = len(loss_tuple_run[0])

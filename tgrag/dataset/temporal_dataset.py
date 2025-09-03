@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Callable, Dict, List, Optional
 
@@ -8,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from torch_geometric.data import Data, InMemoryDataset
 
 from tgrag.encoders.encoder import Encoder
-from tgrag.utils.dataset_loading import load_edge_csv, load_node_csv
+from tgrag.utils.dataset_loading import load_large_edge_csv, load_node_csv
 
 
 class TemporalDataset(InMemoryDataset):
@@ -18,8 +19,8 @@ class TemporalDataset(InMemoryDataset):
         node_file: str = 'features.csv',
         edge_file: str = 'edges.csv',
         target_file: str = 'target.csv',
-        target_col: str = 'cr_score',
-        target_index_name: str = 'node_id',
+        target_col: str = 'score',
+        target_index_name: str = 'nid',
         target_index_col: int = 0,
         edge_src_col: str = 'src',
         edge_dst_col: str = 'dst',
@@ -64,48 +65,54 @@ class TemporalDataset(InMemoryDataset):
         node_path = os.path.join(self.raw_dir, self.node_file)
         edge_path = os.path.join(self.raw_dir, self.edge_file)
         target_path = os.path.join(self.raw_dir, self.target_file)
+        logging.info('***Constructing Feature Matrix***')
         x_full, mapping = load_node_csv(
             path=node_path,
             index_col=self.index_col,  # 'node_id'
             encoders=self.encoding,
         )
+        logging.info('***Feature Matrix Done***')
 
         if x_full is None:
             raise TypeError('X is None type. Please use an encoding.')
 
         df_target = pd.read_csv(target_path)
+        logging.info(f'Size of target dataframe: {df_target.shape}')
         if self.target_index_col != 0:
             print('Reindexing the target')
-            df_target = df_target.set_index(self.target_index_name)
+        df_target = df_target.set_index(self.target_index_name)
 
         mapping_index = pd.Index(list(mapping.keys()), name=self.target_index_name)
         df_target = df_target.reindex(mapping_index)
+        logging.info(f'Size of mapped target dataframe: {df_target.shape}')
 
-        cr_score = torch.tensor(
+        score = torch.tensor(
             df_target[self.target_col].astype('float32').fillna(-1).values,
             dtype=torch.float,
         )
+        logging.info(f'Size of score vector: {score.size()}')
 
-        labeled_mask = cr_score != -1.0
+        labeled_mask = score != -1.0
 
-        # Transductive nodes only:
-        edge_index, edge_attr = load_edge_csv(
+        logging.info('***Constructing Edge Matrix***')
+        edge_index, edge_attr = load_large_edge_csv(
             path=edge_path,
             src_index_col=self.edge_src_col,
             dst_index_col=self.edge_dst_col,
             mapping=mapping,
             encoders=None,
         )
+        logging.info('***Edge Matrix Constructed***')
 
         # adj_t = to_torch_csr_tensor(edge_index, size=(x_full.size(0), x_full.size(0)))
 
-        data = Data(x=x_full, y=cr_score, edge_index=edge_index, edge_attr=edge_attr)
+        data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr)
         # data.adj_t = adj_t
 
         data.labeled_mask = labeled_mask.detach().clone().bool()
 
         labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
-        labeled_scores = cr_score[labeled_idx].squeeze().numpy()
+        labeled_scores = score[labeled_idx].squeeze().numpy()
 
         quantiles = np.quantile(labeled_scores, [1 / 3, 2 / 3])
         quartile_labels = np.digitize(labeled_scores, bins=quantiles)
@@ -118,8 +125,6 @@ class TemporalDataset(InMemoryDataset):
             random_state=self.seed,
         )
 
-        quartile_labels_temp = quartile_labels_temp.sort()
-
         valid_idx, test_idx = train_test_split(
             temp_idx,
             train_size=0.5,
@@ -128,8 +133,11 @@ class TemporalDataset(InMemoryDataset):
         )
 
         train_idx = torch.as_tensor(train_idx)
+        logging.info(f'Train size: {train_idx.size()}')
         valid_idx = torch.as_tensor(valid_idx)
+        logging.info(f'Valid size: {valid_idx.size()}')
         test_idx = torch.as_tensor(test_idx)
+        logging.info(f'Test size: {test_idx.size()}')
 
         # Set global indices for our transductive nodes:
         num_nodes = data.num_nodes

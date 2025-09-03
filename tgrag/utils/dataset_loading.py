@@ -42,12 +42,21 @@ def load_edge_csv(
     dst_index_col: str,
     mapping: Dict,
     encoders: Dict | None = None,
+    chunk_size: int = 500_000,
 ) -> Tuple[torch.Tensor, torch.Tensor | None]:
     usecols = [src_index_col, dst_index_col]
     if encoders is not None:
         usecols += [col for col in encoders if col not in usecols]
 
-    df = pd.read_csv(path, usecols=usecols)
+    dfs = []
+    total_rows = sum(1 for _ in open(path)) - 1
+    with pd.read_csv(path, usecols=usecols, chunksize=chunk_size) as reader:
+        for chunk in tqdm(
+            reader, total=total_rows // chunk_size + 1, desc='Reading edge CSV'
+        ):
+            dfs.append(chunk)
+
+    df = pd.concat(dfs, axis=0)
 
     src = torch.tensor([mapping[s] for s in df[src_index_col]], dtype=torch.long)
     dst = torch.tensor([mapping[d] for d in df[dst_index_col]], dtype=torch.long)
@@ -63,5 +72,59 @@ def load_edge_csv(
                 edge_attrs.append(encoder(len(df)))
 
         edge_attr = torch.cat(edge_attrs, dim=-1)
+
+    return edge_index, edge_attr
+
+
+def load_large_edge_csv(
+    path: str,
+    src_index_col: str,
+    dst_index_col: str,
+    mapping: Dict,
+    encoders: Dict | None = None,
+    chunk_size: int = 500_000,
+) -> Tuple[torch.Tensor, torch.Tensor | None]:
+    usecols = [src_index_col, dst_index_col]
+    if encoders is not None:
+        usecols += [col for col in encoders if col not in usecols]
+
+    src_list, dst_list = [], []
+    edge_attrs_list = []
+
+    total_rows = sum(1 for _ in open(path)) - 1
+    with pd.read_csv(path, usecols=usecols, chunksize=chunk_size) as reader:
+        for chunk in tqdm(
+            reader, total=total_rows // chunk_size + 1, desc='Reading edge CSV'
+        ):
+            # Map src/dst indices to integer ids
+            src_list.append(
+                torch.tensor(
+                    [mapping[s] for s in chunk[src_index_col].values], dtype=torch.long
+                )
+            )
+            dst_list.append(
+                torch.tensor(
+                    [mapping[d] for d in chunk[dst_index_col].values], dtype=torch.long
+                )
+            )
+
+            # Encode edge attributes (if any)
+            if encoders is not None:
+                edge_attrs = []
+                for key, encoder in encoders.items():
+                    if key in chunk.columns:
+                        edge_attrs.append(encoder(chunk[key].values))
+                    else:
+                        edge_attrs.append(encoder(len(chunk)))
+                edge_attrs_list.append(torch.cat(edge_attrs, dim=-1))
+
+    # Concatenate results from all chunks
+    src = torch.cat(src_list, dim=0)
+    dst = torch.cat(dst_list, dim=0)
+    edge_index = torch.stack([src, dst], dim=0)
+
+    edge_attr = None
+    if edge_attrs_list:
+        edge_attr = torch.cat(edge_attrs_list, dim=0)
 
     return edge_index, edge_attr
