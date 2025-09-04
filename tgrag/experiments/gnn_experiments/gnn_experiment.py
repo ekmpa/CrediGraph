@@ -117,13 +117,18 @@ def evaluate(
     # TODO: Score in one list:
     pred_scores = []
     target_scores = []
+    count_mask = 0
+    print('+++++++++++++++++++++')
     for batch in loader:
+        print(f'Batch shape: {batch.size()}')
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
         mask = getattr(batch, mask_name)
         if mask.sum() == 0:
             continue
+        print(f'Mask number: {mask.sum()}')
+        count_mask += preds[mask].size(0)
         # MEAN: 0.546
         mean_preds = torch.full(batch.y[mask].size(), 0.546).to(device)
         random_preds = torch.rand(batch.y[mask].size(0)).to(device)
@@ -144,6 +149,10 @@ def evaluate(
         for targ in targets[mask]:
             target_scores.append(targ.item())
 
+    print(f'Shape of pred_scores: {len(pred_scores)}')
+    print(f'Shape of target_scores: {len(target_scores)}')
+    print(f'Mask sum: {count_mask}')
+    print('+++++++++++++++++++++')
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
     mse = total_loss / total_batches
     mse_mean = total_mean_loss / total_batches
