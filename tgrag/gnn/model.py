@@ -77,7 +77,9 @@ class Model(torch.nn.Module):
             else:
                 x = re_module(x)
 
+        # SAVE THE FINAL EMBEDDINGS:
         x = self.output_normalization(x)
+
         x = self.output_linear(x)
         x = self.node_predictor(x)
         return x

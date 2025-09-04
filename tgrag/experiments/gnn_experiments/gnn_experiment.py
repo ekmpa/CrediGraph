@@ -105,7 +105,7 @@ def evaluate(
     model: torch.nn.Module,
     loader: NeighborLoader,
     mask_name: str,
-) -> Tuple[float, float, float, float]:
+) -> Tuple[float, float, float, float, List[float], List[float]]:
     model.eval()
     device = next(model.parameters()).device
     total_loss = 0
@@ -114,6 +114,9 @@ def evaluate(
     total_batches = 0
     all_preds = []
     all_targets = []
+    # TODO: Score in one list:
+    pred_scores = []
+    target_scores = []
     for batch in loader:
         batch = batch.to(device)
         preds = model(batch.x, batch.edge_index).squeeze()
@@ -122,7 +125,7 @@ def evaluate(
         if mask.sum() == 0:
             continue
         # MEAN: 0.546
-        mean_preds = torch.full(batch.y[mask].size(), 0.5).to(device)
+        mean_preds = torch.full(batch.y[mask].size(), 0.546).to(device)
         random_preds = torch.rand(batch.y[mask].size(0)).to(device)
         loss = F.l1_loss(preds[mask], targets[mask])
         mean_loss = F.l1_loss(mean_preds, targets[mask])
@@ -136,12 +139,16 @@ def evaluate(
 
         all_preds.append(preds[mask])
         all_targets.append(targets[mask])
+        for pred in preds[mask]:
+            pred_scores.append(pred.item())
+        for targ in targets[mask]:
+            target_scores.append(targ.item())
 
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
     mse = total_loss / total_batches
     mse_mean = total_mean_loss / total_batches
     mse_random = total_random_loss / total_batches
-    return (mse, mse_mean, mse_random, r2)
+    return (mse, mse_mean, mse_random, r2, pred_scores, target_scores)
 
 
 def run_gnn_baseline(
@@ -224,15 +231,20 @@ def run_gnn_baseline(
         epoch_avg_targets: List[List[float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             _, _, batch_preds, batch_targets = train_(model, train_loader, optimizer)
-            epoch_avg_preds.append(batch_preds)
-            epoch_avg_targets.append(batch_targets)
-            train_loss, _, _, train_r2 = evaluate(model, train_loader, 'train_mask')
-            valid_loss, valid_mean_baseline_loss, _, valid_r2 = evaluate(
+            train_loss, _, _, train_r2, _, _ = evaluate(
+                model, train_loader, 'train_mask'
+            )
+            valid_loss, valid_mean_baseline_loss, _, valid_r2, _, _ = evaluate(
                 model, val_loader, 'valid_mask'
             )
-            test_loss, test_mean_baseline_loss, test_random_baseline_loss, test_r2 = (
-                evaluate(model, test_loader, 'test_mask')
-            )
+            (
+                test_loss,
+                test_mean_baseline_loss,
+                test_random_baseline_loss,
+                test_r2,
+                batch_test_preds,
+                batch_test_targets,
+            ) = evaluate(model, test_loader, 'test_mask')
             result = (
                 train_loss,
                 valid_loss,
@@ -240,6 +252,8 @@ def run_gnn_baseline(
                 test_mean_baseline_loss,
                 test_random_baseline_loss,
             )
+            epoch_avg_preds.append(batch_test_preds)
+            epoch_avg_targets.append(batch_test_targets)
             result_r2 = (train_r2, valid_r2, test_r2)
             loss_tuple_epoch_mse.append(result)
             loss_tuple_epoch_r2.append(result_r2)
