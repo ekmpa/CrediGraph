@@ -118,10 +118,12 @@ def evaluate(
     pred_scores = []
     target_scores = []
     count_mask = 0
+    count_seeds = 0
     print('+++++++++++++++++++++')
     for batch in loader:
         print(f'Batch shape: {batch.size()}')
         batch = batch.to(device)
+        num_seeds = batch.batch_size
         preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
         mask = getattr(batch, mask_name)
@@ -136,18 +138,25 @@ def evaluate(
         mean_loss = F.l1_loss(mean_preds, targets[mask])
         random_loss = F.l1_loss(random_preds, targets[mask])
 
+        seed_idx = torch.arange(num_seeds, device=preds.device)
+        preds_set = preds[seed_idx]
+        targets_set = targets[seed_idx]
+
         # TODO: Change this to report the loss of mean to be accurate. Use full score for don't average per batch.
         total_loss += loss.item()
         total_mean_loss += mean_loss.item()
         total_random_loss += random_loss.item()
         total_batches += 1
+        count_seeds += preds_set.size(0)
 
         all_preds.append(preds[mask])
         all_targets.append(targets[mask])
-        for pred in preds[mask]:
-            pred_scores.append(pred.item())
-        for targ in targets[mask]:
-            target_scores.append(targ.item())
+        # for pred in preds[mask]:
+        #     pred_scores.append(pred.item())
+        # for targ in targets[mask]:
+        #     target_scores.append(targ.item())
+        pred_scores.extend(preds_set.tolist())
+        target_scores.extend(targets_set.tolist())
 
     print(f'Shape of pred_scores: {len(pred_scores)}')
     print(f'Shape of target_scores: {len(target_scores)}')
