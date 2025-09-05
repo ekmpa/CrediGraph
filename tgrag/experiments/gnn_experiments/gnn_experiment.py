@@ -161,6 +161,7 @@ def evaluate(
     print(f'Shape of pred_scores: {len(pred_scores)}')
     print(f'Shape of target_scores: {len(target_scores)}')
     print(f'Mask sum: {count_mask}')
+    print(f'Total seeds (no duplicates): {count_seeds}')
     print('+++++++++++++++++++++')
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
     mse = total_loss / total_batches
