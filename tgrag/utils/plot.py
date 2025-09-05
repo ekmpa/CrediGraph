@@ -39,12 +39,13 @@ def plot_pred_target_distributions_bin_list(
     preds: List[List[float]],
     targets: List[List[float]],
     model_name: str,
+    set: str,
     title: str = 'True vs Predicted Distribution',
     save_filename: str = 'pred_target_distribution.pdf',
     bins: int = 50,
 ) -> None:
     root = get_root_dir()
-    save_dir = root / 'results' / 'plots' / model_name / 'distribution'
+    save_dir = root / 'results' / 'plots' / model_name / set / 'distribution'
     save_dir.mkdir(parents=True, exist_ok=True)
     save_path = save_dir / save_filename
 

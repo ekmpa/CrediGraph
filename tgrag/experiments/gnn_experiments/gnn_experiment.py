@@ -232,6 +232,10 @@ def run_gnn_baseline(
     loss_tuple_run_r2: List[List[Tuple[float, float, float]]] = []
     final_avg_preds: List[List[float]] = []
     final_avg_targets: List[List[float]] = []
+    final_avg_preds_train: List[List[float]] = []
+    final_avg_targets_train: List[List[float]] = []
+    final_avg_preds_val: List[List[float]] = []
+    final_avg_targets_val: List[List[float]] = []
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
         model = Model(
@@ -248,14 +252,23 @@ def run_gnn_baseline(
         loss_tuple_epoch_r2: List[Tuple[float, float, float]] = []
         epoch_avg_preds: List[List[float]] = []
         epoch_avg_targets: List[List[float]] = []
+        epoch_avg_preds_train: List[List[float]] = []
+        epoch_avg_targets_train: List[List[float]] = []
+        epoch_avg_preds_val: List[List[float]] = []
+        epoch_avg_targets_val: List[List[float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
             _, _, batch_preds, batch_targets = train_(model, train_loader, optimizer)
-            train_loss, _, _, train_r2, _, _ = evaluate(
-                model, train_loader, 'train_mask'
+            train_loss, _, _, train_r2, batch_train_preds, batch_train_targets = (
+                evaluate(model, train_loader, 'train_mask')
             )
-            valid_loss, valid_mean_baseline_loss, _, valid_r2, _, _ = evaluate(
-                model, val_loader, 'valid_mask'
-            )
+            (
+                valid_loss,
+                valid_mean_baseline_loss,
+                _,
+                valid_r2,
+                batch_valid_preds,
+                batch_valid_targets,
+            ) = evaluate(model, val_loader, 'valid_mask')
             (
                 test_loss,
                 test_mean_baseline_loss,
@@ -273,6 +286,10 @@ def run_gnn_baseline(
             )
             epoch_avg_preds.append(batch_test_preds)
             epoch_avg_targets.append(batch_test_targets)
+            epoch_avg_preds_train.append(batch_test_preds)
+            epoch_avg_targets_train.append(batch_test_targets)
+            epoch_avg_preds_val.append(batch_test_preds)
+            epoch_avg_targets_val.append(batch_test_targets)
             result_r2 = (train_r2, valid_r2, test_r2)
             loss_tuple_epoch_mse.append(result)
             loss_tuple_epoch_r2.append(result_r2)
@@ -282,6 +299,10 @@ def run_gnn_baseline(
 
         final_avg_preds.append(mean_across_lists(epoch_avg_preds))
         final_avg_targets.append(mean_across_lists(epoch_avg_targets))
+        final_avg_preds_train.append(mean_across_lists(epoch_avg_preds))
+        final_avg_targets_train.append(mean_across_lists(epoch_avg_targets))
+        final_avg_preds_val.append(mean_across_lists(epoch_avg_preds))
+        final_avg_targets_val.append(mean_across_lists(epoch_avg_targets))
         loss_tuple_run_mse.append(loss_tuple_epoch_mse)
         loss_tuple_run_r2.append(loss_tuple_epoch_r2)
 
@@ -293,6 +314,21 @@ def run_gnn_baseline(
         preds=final_avg_preds,
         targets=final_avg_targets,
         model_name=model_arguments.model,
+        set='test',
+        bins=100,
+    )
+    plot_pred_target_distributions_bin_list(
+        preds=final_avg_preds_train,
+        targets=final_avg_targets_train,
+        model_name=model_arguments.model,
+        set='train',
+        bins=100,
+    )
+    plot_pred_target_distributions_bin_list(
+        preds=final_avg_preds_val,
+        targets=final_avg_targets_val,
+        model_name=model_arguments.model,
+        set='val',
         bins=100,
     )
     plot_avg_loss(
