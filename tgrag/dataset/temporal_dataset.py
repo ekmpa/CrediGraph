@@ -77,6 +77,9 @@ class TemporalDataset(InMemoryDataset):
             raise TypeError('X is None type. Please use an encoding.')
 
         df_target = pd.read_csv(target_path)
+        df_target[self.target_index_name] = df_target[self.target_index_name].map(
+            lambda x: str(x).strip()
+        )
         logging.info(f'Size of target dataframe: {df_target.shape}')
         if self.target_index_col != 0:
             print('Reindexing the target')

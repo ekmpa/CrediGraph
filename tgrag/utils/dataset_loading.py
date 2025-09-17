@@ -22,6 +22,8 @@ def load_node_csv(
         index: i for i, index in tqdm(enumerate(df.index.unique()), desc='Indexing')
     }
 
+    df.index = df.index.map(lambda x: str(x).strip())
+
     x = None
     if encoders is not None:
         xs = []
