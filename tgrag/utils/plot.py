@@ -848,3 +848,90 @@ def plot_avg_distribution(
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.5)
     plt.savefig(save_dir / 'train_pred_target_distribution.png')
+
+
+def plot_loss(
+    train_loss: List[float],
+    valid_loss: List[float],
+    test_loss: List[float],
+    mean_loss: List[float],
+    out_path: str,
+    target: str = 'pc1',
+    embed_type: str = 'text',
+) -> None:
+    plt.figure(figsize=(5, 4))
+    plt.rc('font', size=16)
+    plt.plot(range(len(train_loss)), train_loss, label='train loss')
+    plt.plot(range(len(train_loss)), valid_loss, label='validation loss')
+    plt.plot(range(len(train_loss)), test_loss, label='test loss')
+    plt.plot(range(len(train_loss)), mean_loss, label='mean loss')
+    plt.xticks(range(0, len(train_loss) + 1, 2))
+    plt.xlabel('Epoch')
+    plt.ylabel('MSE')
+    plt.legend(fontsize=14)
+    plt.savefig(
+        f'{out_path}/11Kdataset_{target}_{embed_type}_loss_128-200-15-60-20-00.pdf',
+        bbox_inches='tight',
+        pad_inches=0.1,
+    )
+
+
+def plot_histogram(
+    true: List[float],
+    pred: np.ndarray,
+    out_path: str,
+    target: str = 'pc1',
+    embed_type: str = 'text',
+) -> None:
+    plt.figure(figsize=(5, 4))
+    plt.hist(
+        pred, bins=50, range=(0, 1), edgecolor='black', color='lightblue', label='Pred'
+    )
+    plt.hist(
+        true,
+        bins=50,
+        range=(0, 1),
+        edgecolor='black',
+        color='orange',
+        alpha=0.6,
+        label='True',
+    )
+    y_max = max(
+        np.histogram(true, bins=50, range=(0, 1))[0].max(),
+        np.histogram(pred, bins=50, range=(0, 1))[0].max(),
+    )
+    plt.rc('font', size=15)
+    plt.xticks(np.arange(0, 1.1, 0.2), rotation=0, ha='right')
+    plt.yticks(np.arange(0, y_max + 50, 100), rotation=0, ha='right')
+    plt.xlabel(target.upper().replace('_', '-'))
+    plt.ylabel('Frequancy')
+    plt.legend()
+    plt.savefig(
+        f'{out_path}/11Kdataset_{target}_{embed_type}_testset_true_vs_pred_frequancy.pdf',
+        bbox_inches='tight',
+        pad_inches=0.1,
+    )
+
+
+def plot_regression_scatter(
+    true: List[float],
+    pred: np.ndarray,
+    out_path: str,
+    target: str = 'pc1',
+    embed_type: str = 'text',
+) -> None:
+    plt.figure(figsize=(5, 4))
+    plt.rc('font', size=16)
+    plt.scatter(true, pred, alpha=0.7)
+    plt.plot([0, 1], [0, 1], color='red', linestyle='-', label='regression line')
+    plt.xticks(np.arange(0, 1.1, 0.2), rotation=0, ha='right')
+    plt.yticks(np.arange(0, 1.1, 0.2), rotation=0, ha='right')
+    plt.xlabel(target.upper().replace('_', '-'))
+    plt.ylabel(f'Predicted {target.upper().replace("_", "-")}')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(
+        f'{out_path}/11Kdataset_{target}_{embed_type}_testset_true_vs_pred_scatter.pdf',
+        bbox_inches='tight',
+        pad_inches=0.1,
+    )
