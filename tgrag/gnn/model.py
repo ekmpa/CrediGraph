@@ -8,6 +8,7 @@ from tgrag.gnn.modules import (
     GATModule,
     GATv2Module,
     GCNModule,
+    GINModule,
     NodePredictor,
     ResidualModuleWrapper,
     SAGEModule,
@@ -22,6 +23,7 @@ class Model(torch.nn.Module):
         'SAGE': SAGEModule,
         'GAT': GATModule,
         'GATv2': GATv2Module,
+        'GIN': GINModule,
         'FF': FFModule,
     }
     normalization_map: dict[str, NormalizationType] = {
