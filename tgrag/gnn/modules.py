@@ -1,7 +1,7 @@
 from typing import Type, Union
 
 from torch import Tensor, nn
-from torch_geometric.nn import GATConv, GATv2Conv, GCNConv, SAGEConv
+from torch_geometric.nn import GATConv, GATv2Conv, GCNConv, GINConv, SAGEConv
 
 NormalizationType = Union[Type[nn.Identity], Type[nn.LayerNorm], Type[nn.BatchNorm1d]]
 
@@ -127,6 +127,21 @@ class GATv2Module(nn.Module):
     def __init__(self, dim: int, dropout: float):
         super().__init__()
         self.conv = GATv2Conv(dim, dim)
+        self.feed_forward_module = FeedForwardModule(
+            dim=dim,
+            dropout=dropout,
+        )
+
+    def forward(self, x: Tensor, edge_index: Tensor) -> Tensor:
+        x = self.conv(x, edge_index)
+        x = self.feed_forward_module(x, edge_index)
+        return x
+
+
+class GINModule(nn.Module):
+    def __init__(self, dim: int, dropout: float):
+        super().__init__()
+        self.conv = GINConv(dim, dim)
         self.feed_forward_module = FeedForwardModule(
             dim=dim,
             dropout=dropout,
