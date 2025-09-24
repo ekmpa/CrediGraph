@@ -141,7 +141,12 @@ class GATv2Module(nn.Module):
 class GINModule(nn.Module):
     def __init__(self, dim: int, dropout: float):
         super().__init__()
-        self.conv = GINConv(dim, dim)
+        mlp = nn.Sequential(
+            nn.Linear(dim, dim),
+            nn.ReLU(),
+            nn.Linear(dim, dim),
+        )
+        self.conv = GINConv(mlp)
         self.feed_forward_module = FeedForwardModule(
             dim=dim,
             dropout=dropout,
