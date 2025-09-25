@@ -211,6 +211,7 @@ class Logger(object):
             lines.append(
                 f'Number of {percent}% error difference: {count}, ratio: {ratio}'
             )
+            i += 1
 
         return '\n'.join(lines)
 
