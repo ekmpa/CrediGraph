@@ -260,6 +260,16 @@ def run_gnn_baseline(
             preds=final_avg_preds, targets=final_avg_targets, percent=10
         )
     )
+    logging.info(
+        logger.per_run_within_error(
+            preds=final_avg_preds, targets=final_avg_targets, percent=5
+        )
+    )
+    logging.info(
+        logger.per_run_within_error(
+            preds=final_avg_preds, targets=final_avg_targets, percent=1
+        )
+    )
     logging.info('Constructing plots')
     plot_pred_target_distributions_bin_list(
         preds=final_avg_preds,
