@@ -48,18 +48,16 @@ def plot_pred_target_distributions_bin_list(
     save_dir.mkdir(parents=True, exist_ok=True)
     save_path = save_dir / save_filename
 
-    # preds_flat = np.concatenate([np.array(p, dtype=float) for p in preds])
-    # targets_flat = np.concatenate([np.array(t, dtype=float) for t in targets])
-    preds_mean = np.mean(np.array(preds, dtype=float), axis=0)
-    targets_mean = np.mean(np.array(targets, dtype=float), axis=0)
+    preds_flat = np.concatenate([np.array(p, dtype=float) for p in preds])
+    targets_flat = np.concatenate([np.array(t, dtype=float) for t in targets])
 
-    hist_true, _ = np.histogram(targets_mean, bins=bins, range=(0, 1))
-    hist_pred, _ = np.histogram(preds_mean, bins=bins, range=(0, 1))
+    hist_true, _ = np.histogram(targets_flat, bins=bins, range=(0, 1))
+    hist_pred, _ = np.histogram(preds_flat, bins=bins, range=(0, 1))
     y_max = max(hist_true.max(), hist_pred.max())
 
     plt.figure(figsize=(6, 4), dpi=120)
     plt.hist(
-        preds_mean,
+        preds_flat,
         bins=bins,
         range=(0, 1),
         edgecolor='black',
@@ -68,7 +66,7 @@ def plot_pred_target_distributions_bin_list(
         alpha=0.8,
     )
     plt.hist(
-        targets_mean,
+        targets_flat,
         bins=bins,
         range=(0, 1),
         edgecolor='black',
