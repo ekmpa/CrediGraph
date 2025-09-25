@@ -115,6 +115,11 @@ class Logger(object):
             r = best_result[:, 8]
             lines.append(f'Final Test Loss: {r.mean():.4f}')
 
+            ##Compute max and min Loss;
+            r = best_result[:, 3]
+            lines.append(f'Maximum Test Loss: {r.max():.4f}')
+            lines.append(f'Minimum Test Loss: {r.min():.4f}')
+
         return '\n'.join(lines)
 
     def get_avg_statistics(self) -> str:
