@@ -23,10 +23,7 @@ class TextEmbeddingEncoder(Encoder):
             else:
                 vec = torch.rand(self.default_dimension, dtype=torch.float32)
             embeddings.append(vec)
-            logging.info(
-                f'Matched domains using pre-loaded text embeddings: {text_embeddings_used}'
-            )
-            t = torch.stack(embeddings)
-            logging.info(f'Dimension of stacked embeddings: {t.shape}')
+        t = torch.stack(embeddings)
+        logging.info(f'Dimension of stacked embeddings: {t.shape}')
 
         return t  # [num_domains, embedding_dim]
