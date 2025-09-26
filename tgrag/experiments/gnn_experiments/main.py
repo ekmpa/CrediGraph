@@ -54,6 +54,8 @@ def main() -> None:
         encoder_class = encoder_classes[value]
         encoding_dict[index] = encoder_class
 
+    logging.info(f'Encoding Dictionary: {encoding_dict}')
+
     dataset = TemporalDataset(
         root=f'{root}/data/',
         node_file=cast(str, meta_args.node_file),
