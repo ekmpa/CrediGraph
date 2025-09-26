@@ -38,7 +38,10 @@ def load_node_csv(
             else:
                 xs.append(encoder(df.shape[0]))
 
-        x = torch.cat(xs, dim=-1)
+        if len(xs) == 1:
+            x = xs[0]
+        else:
+            x = torch.cat(xs, dim=-1)
 
     return x, mapping
 
