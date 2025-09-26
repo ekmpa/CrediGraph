@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List
+from typing import Dict
 
 import numpy as np
 import pandas as pd
@@ -17,18 +17,18 @@ class TextEmbeddingEncoder(Encoder):
     def __call__(
         self, domain_names: pd.Series, embeddings_lookup: Dict[str, np.ndarray]
     ) -> Tensor:
-        embeddings: List[torch.Tensor] = []
         text_embeddings_used = 0
-        for domain_name in tqdm(domain_names, desc='Domain lookup'):
+        n = len(domain_names)
+        out = torch.empty((n, self.default_dimension), dtype=torch.float32)
+        for i, domain_name in tqdm(domain_names, desc='Domain lookup'):
             if domain_name in embeddings_lookup:
-                vec = torch.as_tensor(
+                out[i] = torch.as_tensor(
                     embeddings_lookup[domain_name], dtype=torch.float32
                 )
                 text_embeddings_used += 1
             else:
-                vec = torch.rand(self.default_dimension, dtype=torch.float32)
-            embeddings.append(vec)
-        t = torch.stack(embeddings)
-        logging.info(f'Dimension of stacked embeddings: {t.shape}')
+                out[i] = torch.rand(self.default_dimension, dtype=torch.float32)
+        logging.info(f'Dimension of stacked embeddings: {out.shape}')
+        logging.info(f'Text embeddings used: {text_embeddings_used}')
 
-        return t  # [num_domains, embedding_dim]
+        return out  # [num_domains, embedding_dim]
