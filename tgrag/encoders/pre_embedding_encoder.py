@@ -22,10 +22,11 @@ class TextEmbeddingEncoder(Encoder):
         n = len(domain_names)
         out = torch.empty((n, self.default_dimension), dtype=torch.float32)
         for i, domain_name in tqdm(enumerate(domain_names), desc='Domain lookup'):
-            if reverse_domain(domain_name) in embeddings_lookup:
-                logging.info(f'Domain that is matched: {domain_name}')
+            rev_domain_name = reverse_domain(domain_name)
+            if rev_domain_name in embeddings_lookup:
+                logging.info(f'Domain that is matched: {rev_domain_name}')
                 out[i] = torch.as_tensor(
-                    embeddings_lookup[domain_name], dtype=torch.float32
+                    embeddings_lookup[rev_domain_name], dtype=torch.float32
                 )
                 text_embeddings_used += 1
             else:
