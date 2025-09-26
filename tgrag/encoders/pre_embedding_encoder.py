@@ -8,6 +8,7 @@ from torch import Tensor
 from tqdm import tqdm
 
 from tgrag.encoders.encoder import Encoder
+from tgrag.utils.matching import reverse_domain
 
 
 class TextEmbeddingEncoder(Encoder):
@@ -21,7 +22,7 @@ class TextEmbeddingEncoder(Encoder):
         n = len(domain_names)
         out = torch.empty((n, self.default_dimension), dtype=torch.float32)
         for i, domain_name in tqdm(enumerate(domain_names), desc='Domain lookup'):
-            if domain_name in embeddings_lookup:
+            if reverse_domain(domain_name) in embeddings_lookup:
                 logging.info(f'Domain that is matched: {domain_name}')
                 out[i] = torch.as_tensor(
                     embeddings_lookup[domain_name], dtype=torch.float32
