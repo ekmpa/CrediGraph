@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import torch
 from torch import Tensor
+from tqdm import tqdm
 
 from tgrag.encoders.encoder import Encoder
 
@@ -18,7 +19,7 @@ class TextEmbeddingEncoder(Encoder):
     ) -> Tensor:
         embeddings: List[torch.Tensor] = []
         text_embeddings_used = 0
-        for domain_name in domain_names:
+        for domain_name in tqdm(domain_names, desc='Domain lookup'):
             if domain_name in embeddings_lookup:
                 vec = torch.as_tensor(
                     embeddings_lookup[domain_name], dtype=torch.float32
