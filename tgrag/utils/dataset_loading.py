@@ -138,7 +138,7 @@ def load_large_edge_csv(
     return edge_index, edge_attr
 
 
-def get_seed_embeddings() -> Dict[str, 'np.ndarray']:
+def get_seed_embeddings() -> Dict[str, np.ndarray]:
     root = get_root_dir()
     path = f'{root}/data/dqr/labeled_11k_domainname_emb/labeled_11k_domainName_emb.pkl'
     with open(path, 'rb') as f:
