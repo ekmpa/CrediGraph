@@ -1,7 +1,6 @@
 import logging
 from typing import Dict
 
-import numpy as np
 import pandas as pd
 import torch
 from torch import Tensor
@@ -16,18 +15,17 @@ class TextEmbeddingEncoder(Encoder):
         self.default_dimension = default_dimension
 
     def __call__(
-        self, domain_names: pd.Series, embeddings_lookup: Dict[str, np.ndarray]
+        self, domain_names: pd.Series, embeddings_lookup: Dict[str, torch.Tensor]
     ) -> Tensor:
         text_embeddings_used = 0
         n = len(domain_names)
-        out = torch.empty((n, self.default_dimension), dtype=torch.float32)
+        out = torch.empty(
+            (n, self.default_dimension), dtype=torch.float32, device='cpu'
+        )
         for i, domain_name in tqdm(enumerate(domain_names), desc='Domain lookup'):
             rev_domain_name = reverse_domain(domain_name)
             if rev_domain_name in embeddings_lookup:
-                logging.info(f'Domain that is matched: {rev_domain_name}')
-                out[i] = torch.as_tensor(
-                    embeddings_lookup[rev_domain_name], dtype=torch.float32
-                )
+                out[i] = embeddings_lookup[rev_domain_name]
                 text_embeddings_used += 1
             else:
                 out[i] = torch.rand(self.default_dimension, dtype=torch.float32)

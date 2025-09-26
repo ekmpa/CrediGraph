@@ -2,7 +2,6 @@ import logging
 import pickle
 from typing import Dict, Tuple
 
-import numpy as np
 import pandas as pd
 import torch
 from torch import Tensor
@@ -138,10 +137,14 @@ def load_large_edge_csv(
     return edge_index, edge_attr
 
 
-def get_seed_embeddings() -> Dict[str, np.ndarray]:
+def get_seed_embeddings() -> Dict[str, torch.Tensor]:
     root = get_root_dir()
     path = f'{root}/data/dqr/labeled_11k_domainname_emb/labeled_11k_domainName_emb.pkl'
     with open(path, 'rb') as f:
         data = pickle.load(f)
 
-    return data
+    embeddings_lookup = {
+        k: torch.tensor(v, dtype=torch.float32) for k, v in data.items()
+    }
+
+    return embeddings_lookup
