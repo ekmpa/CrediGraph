@@ -34,7 +34,7 @@ def load_node_csv(
                 xs.append(encoder(df[key].values))
             elif key == 'pre':
                 logging.info('Pre-constructed text embeddings used.')
-                xs.append(encoder(df[key], get_seed_embeddings()))
+                xs.append(encoder(df['domain'], get_seed_embeddings()))
             else:
                 xs.append(encoder(df.shape[0]))
 
