@@ -6,6 +6,7 @@ from tgrag.dataset.temporal_dataset import TemporalDataset
 from tgrag.encoders.categorical_encoder import CategoricalEncoder
 from tgrag.encoders.encoder import Encoder
 from tgrag.encoders.norm_encoding import NormEncoder
+from tgrag.encoders.pre_embedding_encoder import TextEmbeddingEncoder
 from tgrag.encoders.rni_encoding import RNIEncoder
 from tgrag.encoders.zero_encoder import ZeroEncoder
 from tgrag.experiments.gnn_experiments.gnn_experiment import run_gnn_baseline
@@ -45,6 +46,7 @@ def main() -> None:
         'ZERO': ZeroEncoder(64),
         'NORM': NormEncoder(),
         'CAT': CategoricalEncoder(),
+        'PRE': TextEmbeddingEncoder(1024),
     }
 
     encoding_dict: Dict[str, Encoder] = {}
