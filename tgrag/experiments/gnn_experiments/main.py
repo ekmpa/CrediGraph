@@ -70,6 +70,7 @@ def main() -> None:
         seed=meta_args.global_seed,
         processed_dir=f'{scratch}/{meta_args.processed_location}',
     )  # Map to .to_cpu()
+    logging.info('In-Memory Dataset loaded.')
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
