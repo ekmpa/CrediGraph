@@ -30,6 +30,7 @@ class TemporalDataset(InMemoryDataset):
         transform: Optional[Callable] = None,
         pre_transform: Optional[Callable] = None,
         seed: int = 42,
+        processed_dir: Optional[str] = None,
     ):
         self.node_file = node_file
         self.edge_file = edge_file
@@ -43,6 +44,7 @@ class TemporalDataset(InMemoryDataset):
         self.target_index_col = target_index_col
         self.encoding = encoding
         self.seed = seed
+        self._custome_processed_dir = processed_dir
         super().__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
 
@@ -53,6 +55,12 @@ class TemporalDataset(InMemoryDataset):
     @property
     def raw_file_names(self) -> List[str]:
         return [self.node_file, self.edge_file]
+
+    @property
+    def processed_dir(self) -> str:
+        if self._custome_processed_dir is not None:
+            return self._custome_processed_dir
+        return super().processed_dir
 
     @property
     def processed_file_names(self) -> List[str]:

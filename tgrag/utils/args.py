@@ -33,6 +33,9 @@ class MetaArguments:
     target_file: Union[str, List[str]] = field(
         metadata={'help': 'A csv or list of csv files containing the targets.'},
     )
+    processed_location: Union[str, List[str]] = field(
+        metadata={'help': 'The location to save the processed feature matrix.'},
+    )
     target_col: str = field(
         default='cr_score',
         metadata={'help': 'The target column name in the target csv file.'},
@@ -93,6 +96,7 @@ class MetaArguments:
         self.node_file = resolve_paths(self.node_file)
         self.edge_file = resolve_paths(self.edge_file)
         self.target_file = resolve_paths(self.target_file)
+        self.processed_location = resolve_paths(self.processed_location)
 
         if self.log_file_path is not None:
             self.log_file_path = str(get_root_dir() / self.log_file_path)
