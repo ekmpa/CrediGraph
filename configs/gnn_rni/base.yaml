@@ -1,54 +1,83 @@
 MetaArguments:
-  log_file_path: "tgrag_gnn.log"
-  node_file: "data/crawl-data/temporal/temporal_nodes.csv"
-  edge_file: "data/crawl-data/temporal/temporal_edges.csv"
-  is_scratch_location: false
+  log_file_path: "gnn_baseline_dec_mbfc_30_3hop_1024.log"
+  node_file: "data/dec_2024/vertices.csv"
+  edge_file: "data/dec_2024/edges.csv"
+  target_file: "data/dec_2024/targets_corrected.csv"
+  target_col: "mbfc"
+  target_index_name: 'nid'
+  target_index_col: 0
+  edge_src_col: "src"
+  edge_dst_col: "dst"
+  index_col: 0
+  encoder_dict:
+    random: RNI
+  is_scratch_location: true
   global_seed: 42
 
 ExperimentArguments:
   exp_args:
-    GCN_RNI:
+    GCN:
       model_args:
         model: "GCN"
         num_layers: 3
-        hidden_channels: 128
-        batch_size: 128
-        dropout: 0.5
-        lr: 0.01
+        hidden_channels: 256
+        num_neighbors: [30, 30, 30]
+        batch_size: 1024
+        dropout: 0.1
+        lr: 0.001
         epochs: 100
-        runs: 1
+        runs: 3
         device: 0
         log_steps: 10
       data_args:
         task_name: "node-regression"
         is_regression: true
         num_test_shards: 2
-    SAGE_RNI:
+    SAGE:
       model_args:
         model: "SAGE"
         num_layers: 3
-        hidden_channels: 128
-        batch_size: 128
-        dropout: 0.5
-        lr: 0.01
+        hidden_channels: 256
+        num_neighbors: [30, 30, 30]
+        batch_size: 1024
+        dropout: 0.1
+        lr: 0.001
         epochs: 100
-        runs: 1
+        runs: 3
         device: 0
         log_steps: 10
       data_args:
         task_name: "node-regression"
         is_regression: true
         num_test_shards: 2
-    GAT_RNI:
+    GAT:
       model_args:
         model: "GAT"
         num_layers: 3
-        hidden_channels: 64
-        batch_size: 128
-        dropout: 0.5
-        lr: 0.01
+        hidden_channels: 256
+        num_neighbors: [30, 30, 30]
+        batch_size: 1024
+        dropout: 0.1
+        lr: 0.001
         epochs: 100
-        runs: 1
+        runs: 3
+        device: 0
+        log_steps: 10
+      data_args:
+        task_name: "node-regression"
+        is_regression: true
+        num_test_shards: 2
+    GATv2:
+      model_args:
+        model: "GATv2"
+        num_layers: 3
+        hidden_channels: 256
+        num_neighbors: [30, 30, 30]
+        batch_size: 1024
+        dropout: 0.1
+        lr: 0.001
+        epochs: 100
+        runs: 3
         device: 0
         log_steps: 10
       data_args:

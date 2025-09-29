@@ -1,9 +1,13 @@
+import logging
+import pickle
 from typing import Dict, Tuple
 
 import pandas as pd
 import torch
 from torch import Tensor
 from tqdm import tqdm
+
+from tgrag.utils.path import get_root_dir
 
 
 def load_node_csv(
@@ -28,10 +32,16 @@ def load_node_csv(
         for key, encoder in encoders.items():
             if key in df.columns:
                 xs.append(encoder(df[key].values))
+            elif key == 'pre':
+                logging.info('Pre-constructed text embeddings used.')
+                xs.append(encoder(df['domain'], get_seed_embeddings()))
             else:
                 xs.append(encoder(df.shape[0]))
 
-        x = torch.cat(xs, dim=-1)
+        if len(xs) == 1:
+            x = xs[0]
+        else:
+            x = torch.cat(xs, dim=-1)
 
     return x, mapping
 
@@ -128,3 +138,16 @@ def load_large_edge_csv(
         edge_attr = torch.cat(edge_attrs_list, dim=0)
 
     return edge_index, edge_attr
+
+
+def get_seed_embeddings() -> Dict[str, torch.Tensor]:
+    root = get_root_dir()
+    path = f'{root}/data/dqr/labeled_11k_domainname_emb/labeled_11k_domainName_emb.pkl'
+    with open(path, 'rb') as f:
+        data = pickle.load(f)
+
+    embeddings_lookup = {
+        k: torch.tensor(v, dtype=torch.float32) for k, v in data.items()
+    }
+
+    return embeddings_lookup

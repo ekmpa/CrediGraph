@@ -169,6 +169,50 @@ class Logger(object):
             f'Test @ Best Validation: {test_at_val_best:.4f} ± {test_at_val_best_std:.4f}'
         )
 
+        lines.append('')
+        lines.append(f'Maximum Test Loss: {test_mean_curve.max().item():.4f}')
+        lines.append(f'Minimum Test Loss: {test_mean_curve.min().item():.4f}')
+
+        return '\n'.join(lines)
+
+    def per_run_within_error(
+        self, preds: List[List[float]], targets: List[List[float]], percent: float
+    ) -> str:
+        if len(preds) != len(targets):
+            raise ValueError(
+                'Predictions and targets must have the same number of runs.'
+            )
+
+        tolerance = percent / 100.0
+        results = []
+
+        for run_preds, run_targets in zip(preds, targets):
+            if len(run_preds) != len(run_targets):
+                raise ValueError('Mismatched lengths in inner lists')
+
+            count = 0
+            total = 0
+            for p, t in zip(run_preds, run_targets):
+                if t == 0:
+                    continue
+                rel_error = abs(p - t) / abs(t)
+                if rel_error <= tolerance:
+                    count += 1
+                total += 1
+
+            ratio = count / total if total > 0 else 0.0
+            results.append((count, ratio))
+
+        lines = []
+
+        i = 0
+        for count, ratio in results:
+            lines.append(f'Run: {i}')
+            lines.append(
+                f'Number of {percent}% error difference: {count}, ratio: {ratio}'
+            )
+            i += 1
+
         return '\n'.join(lines)
 
 

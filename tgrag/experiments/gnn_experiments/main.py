@@ -6,12 +6,13 @@ from tgrag.dataset.temporal_dataset import TemporalDataset
 from tgrag.encoders.categorical_encoder import CategoricalEncoder
 from tgrag.encoders.encoder import Encoder
 from tgrag.encoders.norm_encoding import NormEncoder
+from tgrag.encoders.pre_embedding_encoder import TextEmbeddingEncoder
 from tgrag.encoders.rni_encoding import RNIEncoder
 from tgrag.encoders.zero_encoder import ZeroEncoder
 from tgrag.experiments.gnn_experiments.gnn_experiment import run_gnn_baseline
 from tgrag.utils.args import parse_args
 from tgrag.utils.logger import setup_logging
-from tgrag.utils.path import get_root_dir
+from tgrag.utils.path import get_root_dir, get_scratch
 from tgrag.utils.plot import (
     load_all_loss_tuples,
     plot_metric_across_models,
@@ -34,6 +35,7 @@ parser.add_argument(
 
 def main() -> None:
     root = get_root_dir()
+    scratch = get_scratch()
     args = parser.parse_args()
     config_file_path = root / args.config_file
     meta_args, experiment_args = parse_args(config_file_path)
@@ -45,12 +47,15 @@ def main() -> None:
         'ZERO': ZeroEncoder(64),
         'NORM': NormEncoder(),
         'CAT': CategoricalEncoder(),
+        'PRE': TextEmbeddingEncoder(1024),
     }
 
     encoding_dict: Dict[str, Encoder] = {}
     for index, value in meta_args.encoder_dict.items():
         encoder_class = encoder_classes[value]
         encoding_dict[index] = encoder_class
+
+    logging.info(f'Encoding Dictionary: {encoding_dict}')
 
     dataset = TemporalDataset(
         root=f'{root}/data/',
@@ -63,7 +68,9 @@ def main() -> None:
         index_col=meta_args.index_col,
         encoding=encoding_dict,
         seed=meta_args.global_seed,
-    )
+        processed_dir=f'{scratch}/{meta_args.processed_location}',
+    )  # Map to .to_cpu()
+    logging.info('In-Memory Dataset loaded.')
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
