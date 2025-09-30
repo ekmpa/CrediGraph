@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple
 import tldextract
 from load_labels import get_full_dict
 from matching import flip_if_needed, lookup_exact
+from tqdm import tqdm
 
 _extract = tldextract.TLDExtract(include_psl_private_domains=True)
 MAX_DOMAINS_TO_SHOW = 50
@@ -100,6 +101,63 @@ def generate_exact_targets(
     )
 
 
+def generate_exact_targets_csv(
+    node_file: str, targets_csv_out: str, dqr_domains: Dict[str, List[float]]
+) -> None:
+    """Generate targets.csv with exact domain matches."""
+    chosen: Dict[str, List[float]] = {}  # domain -> (domain, metrics)
+    total_lines = 0
+    rejected = 0
+
+    with open(node_file, 'rt', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in tqdm(reader, desc='Reading domains'):
+            total_lines += 1
+            raw_domain = row.get('domain', '').strip()
+            if not raw_domain:
+                continue
+
+            etld1 = strict_exact_etld1_match(raw_domain, dqr_domains)
+            if etld1 is None:
+                rejected += 1
+                continue
+
+            metrics = dqr_domains[etld1]
+            if etld1 not in chosen:
+                chosen[etld1] = metrics
+
+    with open(targets_csv_out, 'w', newline='', encoding='utf-8') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(
+            [
+                'domain',
+                'pc1',
+                'afm',
+                'afm_bias',
+                'afm_min',
+                'afm_rely',
+                'fc',
+                'mbfc',
+                'mbfc_bias',
+                'mbfc_fact',
+                'mbfc_min',
+                'lewandowsky_acc',
+                'lewandowsky_trans',
+                'lewandowsky_rely',
+                'lewandowsky_mean',
+                'lewandowsky_min',
+                'misinfome_bin',
+            ]
+        )
+        for domain, values in tqdm(chosen.items(), desc='Writing target features'):
+            writer.writerow([domain, *values])
+
+    print(f'[INFO] Generation done. Processed {total_lines:,} vertex rows.')
+    print(
+        f'[INFO] Wrote {len(chosen):,} exact-domain targets to {targets_csv_out}, rejected {rejected:,} nodes.'
+    )
+
+
 def load_target_nids(path: str) -> set[int]:
     nids = set()
     with open(path, newline='', encoding='utf-8') as f:
@@ -187,10 +245,3 @@ def generate(vertices_gz: str, targets_csv: str) -> None:
 
     else:
         print('\n[ERR] No targets matched any rated domain.')
-
-
-# if __name__ == "__main__":
-#     generate_targets(
-#         vertices_gz="/home/mila/k/kondrupe/scratch/crawl-data/CC-MAIN-2024-51/output0035-5090/processed/vertices.csv.gz",
-#         targets_csv="/home/mila/k/kondrupe/scratch/crawl-data/CC-MAIN-2024-51/output0035-5090/processed/targets.csv"
-#     )
