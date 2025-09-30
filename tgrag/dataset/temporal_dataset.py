@@ -76,7 +76,7 @@ class TemporalDataset(InMemoryDataset):
         logging.info('***Constructing Feature Matrix***')
         x_full, mapping = load_node_csv(
             path=node_path,
-            index_col=self.index_col,  # 'node_id'
+            index_col=0,
             encoders=self.encoding,
         )
         logging.info('***Feature Matrix Done***')
@@ -85,15 +85,19 @@ class TemporalDataset(InMemoryDataset):
             raise TypeError('X is None type. Please use an encoding.')
 
         df_target = pd.read_csv(target_path)
+        full_index = df_target.index
         logging.info(f'Size of target dataframe: {df_target.shape}')
-        if self.target_index_col != 0:
-            print('Reindexing the target')
-        df_target = df_target.set_index(self.target_index_name)
 
-        mapping_index = pd.Index(list(mapping.keys()), name=self.target_index_name)
+        mapping_index = [mapping[domain.strip()] for domain in df_target['domain']]
         df_target = df_target.reindex(mapping_index)
         logging.info(f'Size of mapped target dataframe: {df_target.shape}')
 
+        missing_idx = full_index.difference(mapping_index)
+        filler = pd.DataFrame(
+            {col: np.nan for col in df_target.columns}, index=missing_idx
+        )
+        df_target = pd.concat([df_target, filler])
+        df_target.sort_index(inplace=True)
         score = torch.tensor(
             df_target[self.target_col].astype('float32').fillna(-1).values,
             dtype=torch.float,
