@@ -10,6 +10,8 @@ from torch_geometric.data import Data, InMemoryDataset
 
 from tgrag.encoders.encoder import Encoder
 from tgrag.utils.dataset_loading import load_large_edge_csv, load_node_csv
+from tgrag.utils.load_labels import get_full_dict
+from tgrag.utils.target_generation import generate_exact_targets_csv
 
 
 class TemporalDataset(InMemoryDataset):
@@ -73,6 +75,13 @@ class TemporalDataset(InMemoryDataset):
         node_path = os.path.join(self.raw_dir, self.node_file)
         edge_path = os.path.join(self.raw_dir, self.edge_file)
         target_path = os.path.join(self.raw_dir, self.target_file)
+        if os.path.exists(target_path):
+            logging.info('Target file already exists.')
+        else:
+            logging.info('Generating target file.')
+            dqr = get_full_dict()
+            generate_exact_targets_csv(node_path, target_path, dqr)
+
         logging.info('***Constructing Feature Matrix***')
         x_full, mapping = load_node_csv(
             path=node_path,
