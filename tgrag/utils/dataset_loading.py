@@ -43,7 +43,7 @@ def load_node_csv(
         else:
             x = torch.cat(xs, dim=-1)
 
-    return x, mapping, df.index
+    return x, mapping, pd.RangeIndex(len(df))
 
 
 def load_edge_csv(
