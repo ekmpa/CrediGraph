@@ -4,9 +4,10 @@ from collections import Counter, defaultdict
 from typing import Dict, List, Optional, Tuple
 
 import tldextract
-from load_labels import get_full_dict
 from matching import flip_if_needed, lookup_exact
 from tqdm import tqdm
+
+from tgrag.utils.load_labels import get_full_dict
 
 _extract = tldextract.TLDExtract(include_psl_private_domains=True)
 MAX_DOMAINS_TO_SHOW = 50
