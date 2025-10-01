@@ -75,9 +75,9 @@ mkdir -p "$DATA_DIR/"
 INPUT_DIR="$DATA_DIR/crawl-data/$CRAWL/input"
 mkdir -p "$INPUT_DIR"
 
-#if [ -d "$SPARK_WAREHOUSE" ]; then
-#    rm -r "$SPARK_WAREHOUSE"/*
-#fi
+if [ -d "$SPARK_WAREHOUSE" ]; then
+    rm -rf "$SPARK_WAREHOUSE"
+fi
 
 #for data_type in warc wat wet; do
 for data_type in  "${cc_file_types[@]}" ; do
