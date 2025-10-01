@@ -115,6 +115,14 @@ class TemporalDataset(InMemoryDataset):
 
         labeled_mask = score != -1.0
 
+        labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
+        labeled_scores = score[labeled_idx].squeeze().numpy()
+
+        if labeled_scores.size == 0:
+            raise ValueError(
+                f"No labeled nodes found in target column '{self.target_col}'"
+            )
+
         logging.info('***Constructing Edge Matrix***')
         edge_index, edge_attr = load_large_edge_csv(
             path=edge_path,
@@ -131,9 +139,6 @@ class TemporalDataset(InMemoryDataset):
         # data.adj_t = adj_t
 
         data.labeled_mask = labeled_mask.detach().clone().bool()
-
-        labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
-        labeled_scores = score[labeled_idx].squeeze().numpy()
 
         quantiles = np.quantile(labeled_scores, [1 / 3, 2 / 3])
         quartile_labels = np.digitize(labeled_scores, bins=quantiles)
