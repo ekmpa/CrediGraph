@@ -95,12 +95,10 @@ class TemporalDataset(InMemoryDataset):
 
         df_target = pd.read_csv(target_path)
         logging.info(f'Size of target dataframe: {df_target.shape}')
-        logging.info(f'Head of target: {df_target.head()}')
 
         mapping_index = [mapping[domain.strip()] for domain in df_target['domain']]
         df_target.index = mapping_index
         logging.info(f'Size of mapped target dataframe: {df_target.shape}')
-        logging.info(f'Head of target post reindex: {df_target.head()}')
 
         missing_idx = full_index.difference(mapping_index)
         filler = pd.DataFrame(
@@ -108,7 +106,6 @@ class TemporalDataset(InMemoryDataset):
         )
         df_target = pd.concat([df_target, filler])
         df_target.sort_index(inplace=True)
-        logging.info(f'Head of target post fill/sort: {df_target.head()}')
         logging.info(f'Size of filled target dataframe: {df_target.shape}')
         score = torch.tensor(
             df_target[self.target_col].astype('float32').fillna(-1).values,
