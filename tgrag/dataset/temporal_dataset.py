@@ -83,7 +83,7 @@ class TemporalDataset(InMemoryDataset):
             generate_exact_targets_csv(node_path, target_path, dqr)
 
         logging.info('***Constructing Feature Matrix***')
-        x_full, mapping = load_node_csv(
+        x_full, mapping, full_index = load_node_csv(
             path=node_path,
             index_col=0,
             encoders=self.encoding,
@@ -94,7 +94,6 @@ class TemporalDataset(InMemoryDataset):
             raise TypeError('X is None type. Please use an encoding.')
 
         df_target = pd.read_csv(target_path)
-        full_index = df_target.index
         logging.info(f'Size of target dataframe: {df_target.shape}')
 
         mapping_index = [mapping[domain.strip()] for domain in df_target['domain']]
@@ -107,6 +106,7 @@ class TemporalDataset(InMemoryDataset):
         )
         df_target = pd.concat([df_target, filler])
         df_target.sort_index(inplace=True)
+        logging.info(f'Size of filled target dataframe: {df_target.shape}')
         score = torch.tensor(
             df_target[self.target_col].astype('float32').fillna(-1).values,
             dtype=torch.float,

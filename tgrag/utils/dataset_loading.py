@@ -12,7 +12,7 @@ from tgrag.utils.path import get_root_dir
 
 def load_node_csv(
     path: str, index_col: int, encoders: Dict | None = None, chunk_size: int = 500_000
-) -> Tuple[Tensor | None, Dict]:
+) -> Tuple[Tensor | None, Dict, pd.Index]:
     dfs = []
     total_rows = sum(1 for _ in open(path)) - 1
     with pd.read_csv(path, index_col=index_col, chunksize=chunk_size) as reader:
@@ -43,7 +43,7 @@ def load_node_csv(
         else:
             x = torch.cat(xs, dim=-1)
 
-    return x, mapping
+    return x, mapping, df.index
 
 
 def load_edge_csv(
