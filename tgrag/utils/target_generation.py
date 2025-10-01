@@ -7,7 +7,7 @@ import tldextract
 from tqdm import tqdm
 
 from tgrag.utils.load_labels import get_full_dict
-from tgrag.utils.matching import flip_if_needed, lookup_exact
+from tgrag.utils.matching import flip_if_needed, lookup_exact, reverse_domain
 
 _extract = tldextract.TLDExtract(include_psl_private_domains=True)
 MAX_DOMAINS_TO_SHOW = 50
@@ -125,7 +125,7 @@ def generate_exact_targets_csv(
 
             metrics = dqr_domains[etld1]
             if etld1 not in chosen:
-                chosen[etld1] = metrics
+                chosen[reverse_domain(etld1)] = metrics
 
     with open(targets_csv_out, 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
