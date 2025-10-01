@@ -98,7 +98,7 @@ class TemporalDataset(InMemoryDataset):
         logging.info(f'Head of target: {df_target.head()}')
 
         mapping_index = [mapping[domain.strip()] for domain in df_target['domain']]
-        df_target = df_target.reindex(mapping_index)
+        df_target.index = mapping_index
         logging.info(f'Size of mapped target dataframe: {df_target.shape}')
         logging.info(f'Head of target post reindex: {df_target.head()}')
 
