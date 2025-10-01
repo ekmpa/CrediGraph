@@ -1,6 +1,7 @@
 import gzip
 import subprocess
 from datetime import date
+from pathlib import Path
 from typing import IO, Callable, Dict, Iterator, List, Set, Tuple
 
 from tqdm import tqdm
@@ -39,7 +40,7 @@ def count_lines(path: str) -> int:
         return int(out)
 
 
-def gz_line_reader(path: str) -> Iterator[str]:
+def gz_line_reader(path: str | Path) -> Iterator[str]:
     with gzip.open(path, 'rt', encoding='utf-8', newline='') as f:
         for line in f:
             yield line.rstrip('\n')
