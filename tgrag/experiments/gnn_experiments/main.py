@@ -74,7 +74,12 @@ def main() -> None:
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
-        run_gnn_baseline(experiment_arg.data_args, experiment_arg.model_args, dataset)
+        run_gnn_baseline(
+            experiment_arg.data_args,
+            experiment_arg.model_args,
+            root / cast(str, meta_args.weights_directory),
+            dataset,
+        )
     results = load_all_loss_tuples()
     logging.info('Constructing Plots, across models')
     plot_metric_across_models(results)
