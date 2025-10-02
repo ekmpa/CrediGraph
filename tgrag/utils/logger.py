@@ -170,8 +170,12 @@ class Logger(object):
         )
 
         lines.append('')
-        lines.append(f'Maximum Test Loss: {test_mean_curve.max().item():.4f}')
-        lines.append(f'Minimum Test Loss: {test_mean_curve.min().item():.4f}')
+        lines.append(
+            f'Maximum Test Loss: {test_mean_curve.max().item():.4f} +/- {test_std_curve[test_mean_curve.argmax()].item():.4f}'
+        )
+        lines.append(
+            f'Minimum Test Loss: {test_mean_curve.min().item():.4f} +/- {test_std_curve[test_mean_curve.argmin()].item()}:4f'
+        )
 
         return '\n'.join(lines)
 
