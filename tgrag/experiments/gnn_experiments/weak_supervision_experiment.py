@@ -39,7 +39,7 @@ def run_weak_supervision_forward(
     phishing_dict: Dict[str, str] = {
         'IP2Location': 'data/phishing_data/cc_dec_2024_PhishDataset_legit_domains.csv',
         'URLHaus': 'data/phishing_data/cc_dec_2024_URLhaus_domains.csv',
-        'PhishTank': 'data/phishing_data/cc_dec_2024_phishtank_domain.csv',
+        'PhishTank': 'data/phishing_data/cc_dec_2024_phishtank_domains.csv',
     }
     data = dataset[0]
     device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
