@@ -12,6 +12,7 @@ from tgrag.dataset.temporal_dataset import TemporalDataset
 from tgrag.gnn.model import Model
 from tgrag.utils.args import ModelArguments, parse_args
 from tgrag.utils.logger import setup_logging
+from tgrag.utils.matching import reverse_domain
 from tgrag.utils.path import get_root_dir, get_scratch
 from tgrag.utils.seed import seed_everything
 
@@ -77,7 +78,9 @@ def run_weak_supervision_forward(
     for dataset_name, path in phishing_dict.items():
         logging.info(f'Predictions of {dataset_name}')
         df = pd.read_csv(root / path)
-        indices = [dataset.mapping.get(domain) for domain in df['domain']]
+        indices = [
+            dataset.mapping.get(reverse_domain(domain)) for domain in df['domain']
+        ]
         preds = all_preds[indices]
         accuracy = get_accuracy(preds, threshold=0.5)
         logging.info(f'Accuracy (%): {accuracy}')
