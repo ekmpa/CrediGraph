@@ -69,9 +69,8 @@ def run_weak_supervision_forward(
         for batch in inference_loader:
             batch = batch.to(device)
             preds = model(batch.x, batch.edge_index)
-            all_preds = [batch.n_id[: batch.batch_size]] = preds[
-                : batch.batch_size
-            ].cpu()
+            seed_nodes = batch.n_id[: batch.batch_size]
+            all_preds = [seed_nodes] = preds[: batch.batch_size].cpu()
 
     for dataset_name, path in phishing_dict.items():
         logging.info(f'Predictions of {dataset_name}')
