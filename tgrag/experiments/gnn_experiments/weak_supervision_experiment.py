@@ -5,6 +5,7 @@ from typing import Dict, cast
 
 import pandas as pd
 import torch
+from torch_geometric.loader import NeighborLoader
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
 from tgrag.gnn.model import Model
@@ -53,8 +54,24 @@ def run_weak_supervision_forward(
     model.load_state_dict(torch.load(weight_path, map_location=device))
     model.eval()
 
+    inference_loader = NeighborLoader(
+        data,
+        input_nodes=None,
+        num_neighbors=[30, 30, 30],
+        batch_size=1024,
+        shuffle=False,
+    )
+
+    num_nodes = data.num_nodes
+    all_preds = torch.zeros(num_nodes, 1)
+
     with torch.no_grad():
-        all_preds = model(data.x.to(device), data.edge_index.to(device))
+        for batch in inference_loader:
+            batch = batch.to(device)
+            preds = model(batch.x, batch.edge_index)
+            all_preds = [batch.n_id[: batch.batch_size]] = preds[
+                : batch.batch_size
+            ].cpu()
 
     for dataset_name, path in phishing_dict.items():
         logging.info(f'Predictions of {dataset_name}')
@@ -91,7 +108,7 @@ def main() -> None:
         target_file=cast(str, meta_args.target_file),
         seed=meta_args.global_seed,
         processed_dir=f'{scratch}/{meta_args.processed_location}',
-    )  # Map to .to_cpu()
+    )
     logging.info('In-Memory Dataset loaded.')
     weight_directory = root / cast(str, meta_args.weights_directory)
 
