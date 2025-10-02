@@ -46,6 +46,7 @@ def run_weak_supervision_forward(
     device = torch.device(device)
     logging.info(f'Device found: {device}')
     weight_path = weight_directory / f'{model_arguments.model}'
+    mapping = dataset.get_mapping()
     model = Model(
         model_name=model_arguments.model,
         normalization=model_arguments.normalization,
@@ -57,43 +58,54 @@ def run_weak_supervision_forward(
     ).to(device)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     model.eval()
-
-    inference_loader = NeighborLoader(
-        data,
-        input_nodes=None,
-        num_neighbors=[30, 30, 30],
-        batch_size=1024,
-        shuffle=False,
-    )
-    logging.info('Inference Neighbor Loader created.')
-
-    num_nodes = data.num_nodes
-    mapping = dataset.get_mapping()
-    all_preds = torch.zeros(num_nodes, 1)
-
-    with torch.no_grad():
-        for batch in tqdm(inference_loader, desc='batch'):
-            batch = batch.to(device)
-            preds = model(batch.x, batch.edge_index)
-            seed_nodes = batch.n_id[: batch.batch_size]
-            all_preds[seed_nodes] = preds[: batch.batch_size].cpu()
-
     for dataset_name, path in phishing_dict.items():
         logging.info(f'Predictions of {dataset_name}')
         df = pd.read_csv(root / path)
-        indices = [
+        phishing_indices = [
             mapping.get(reverse_domain(domain.strip())) for domain in df['domain']
         ]
-        preds = all_preds[indices]
-        accuracy = get_accuracy(preds, threshold=0.5)
-        logging.info(f'Accuracy (%): {accuracy}')
+        phishing_indices = [i for i in phishing_indices if i is not None]
+        phishing_indices = torch.tensor(phishing_indices, dtype=torch.long)
+
+        phishing_loader = NeighborLoader(
+            data,
+            input_nodes=phishing_indices,
+            num_neighbors=[30, 30, 30],
+            batch_size=1024,
+            shuffle=False,
+        )
+        logging.info(
+            f'{dataset_name}: loader  created for {len(phishing_indices)} nodes.'
+        )
+
+        num_nodes = data.num_nodes
+        all_preds = torch.zeros(num_nodes, 1)
+
+        with torch.no_grad():
+            for batch in tqdm(phishing_loader, desc=f'{dataset_name} batch'):
+                batch = batch.to(device)
+                preds = model(batch.x, batch.edge_index)
+                seed_nodes = batch.n_id[: batch.batch_size]
+                all_preds[seed_nodes] = preds[: batch.batch_size].cpu()
+
+        preds = all_preds[phishing_indices]
+        for threshold in [0.1, 0.3, 0.5]:
+            upper = dataset_name == 'IP2Location'
+            accuracy = get_accuracy(preds, threshold=threshold, upper=upper)
+            logging.info(
+                f'{dataset_name}--Accuracy (%): {accuracy} under threshold: {threshold}'
+            )
 
 
-def get_accuracy(predictions: torch.Tensor, threshold: float) -> float:
+def get_accuracy(
+    predictions: torch.Tensor, threshold: float, upper: bool = False
+) -> float:
     total_count = 0
     positive = 0
     for pred in predictions:
-        if pred <= threshold:
+        if not upper and pred <= threshold:
+            positive += 1
+        elif upper and pred >= threshold:
             positive += 1
         total_count += 1
     return positive / total_count
