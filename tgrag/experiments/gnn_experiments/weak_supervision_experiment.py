@@ -105,7 +105,7 @@ def get_accuracy(
     for pred in predictions:
         if not upper and pred <= threshold:
             positive += 1
-        elif upper and pred >= threshold:
+        elif upper and pred >= 1 - threshold:
             positive += 1
         total_count += 1
     return positive / total_count
