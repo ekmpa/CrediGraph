@@ -46,7 +46,6 @@ class TemporalDataset(InMemoryDataset):
         self.target_index_col = target_index_col
         self.encoding = encoding
         self.seed = seed
-        self.mapping: Optional[Dict[str, int]] = None
         self._custome_processed_dir = processed_dir
         super().__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
@@ -89,7 +88,6 @@ class TemporalDataset(InMemoryDataset):
             index_col=0,
             encoders=self.encoding,
         )
-        self.mapping = mapping
         logging.info('***Feature Matrix Done***')
 
         if x_full is None:
@@ -138,6 +136,7 @@ class TemporalDataset(InMemoryDataset):
         # adj_t = to_torch_csr_tensor(edge_index, size=(x_full.size(0), x_full.size(0)))
 
         data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr)
+        data.mapping = mapping
         # data.adj_t = adj_t
 
         data.labeled_mask = labeled_mask.detach().clone().bool()
