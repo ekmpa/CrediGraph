@@ -46,6 +46,7 @@ class TemporalDataset(InMemoryDataset):
         self.target_index_col = target_index_col
         self.encoding = encoding
         self.seed = seed
+        self.mapping: Optional[Dict[str, int]] = None
         self._custome_processed_dir = processed_dir
         super().__init__(root, transform, pre_transform)
         self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
@@ -189,3 +190,9 @@ class TemporalDataset(InMemoryDataset):
         if hasattr(data, 'idx_dict') and data.idx_dict is not None:
             return data.idx_dict
         raise TypeError('idx split is empty.')
+
+    def get_mapping(self) -> Dict:
+        data = self[0]
+        if hasattr(data, 'mapping') and data.mapping is not None:
+            return data.mapping
+        raise TypeError('Mapping is empty.')

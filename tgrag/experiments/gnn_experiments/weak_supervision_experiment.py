@@ -66,6 +66,7 @@ def run_weak_supervision_forward(
     logging.info('Inference Neighbor Loader created.')
 
     num_nodes = data.num_nodes
+    mapping = dataset.get_mapping()
     all_preds = torch.zeros(num_nodes, 1)
 
     with torch.no_grad():
@@ -78,9 +79,7 @@ def run_weak_supervision_forward(
     for dataset_name, path in phishing_dict.items():
         logging.info(f'Predictions of {dataset_name}')
         df = pd.read_csv(root / path)
-        indices = [
-            dataset.mapping.get(reverse_domain(domain)) for domain in df['domain']
-        ]
+        indices = [mapping.get(reverse_domain(domain)) for domain in df['domain']]
         preds = all_preds[indices]
         accuracy = get_accuracy(preds, threshold=0.5)
         logging.info(f'Accuracy (%): {accuracy}')
