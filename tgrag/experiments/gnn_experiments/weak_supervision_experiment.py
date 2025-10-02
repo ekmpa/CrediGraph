@@ -81,7 +81,9 @@ def run_weak_supervision_forward(
     for dataset_name, path in phishing_dict.items():
         logging.info(f'Predictions of {dataset_name}')
         df = pd.read_csv(root / path)
-        indices = [mapping.get(reverse_domain(domain)) for domain in df['domain']]
+        indices = [
+            mapping.get(reverse_domain(domain.strip())) for domain in df['domain']
+        ]
         preds = all_preds[indices]
         accuracy = get_accuracy(preds, threshold=0.5)
         logging.info(f'Accuracy (%): {accuracy}')
