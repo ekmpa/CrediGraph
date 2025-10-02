@@ -88,6 +88,7 @@ class TemporalDataset(InMemoryDataset):
             index_col=0,
             encoders=self.encoding,
         )
+        self.mapping = mapping
         logging.info('***Feature Matrix Done***')
 
         if x_full is None:
