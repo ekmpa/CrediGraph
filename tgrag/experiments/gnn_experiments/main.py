@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     '--config-file',
     type=str,
-    default='configs/gnn_rni/base.yaml',
+    default='configs/gnn/base.yaml',
     help='Path to yaml configuration file to use',
 )
 
