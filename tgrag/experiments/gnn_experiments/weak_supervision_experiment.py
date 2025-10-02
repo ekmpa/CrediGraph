@@ -6,6 +6,7 @@ from typing import Dict, cast
 import pandas as pd
 import torch
 from torch_geometric.loader import NeighborLoader
+from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
 from tgrag.gnn.model import Model
@@ -61,12 +62,13 @@ def run_weak_supervision_forward(
         batch_size=1024,
         shuffle=False,
     )
+    logging.info('Inference Neighbor Loader created.')
 
     num_nodes = data.num_nodes
     all_preds = torch.zeros(num_nodes, 1)
 
     with torch.no_grad():
-        for batch in inference_loader:
+        for batch in tqdm(inference_loader, desc='batch'):
             batch = batch.to(device)
             preds = model(batch.x, batch.edge_index)
             seed_nodes = batch.n_id[: batch.batch_size]
