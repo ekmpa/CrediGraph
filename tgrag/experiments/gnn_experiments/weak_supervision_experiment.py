@@ -93,7 +93,7 @@ def run_weak_supervision_forward(
             upper = dataset_name == 'IP2Location'
             accuracy = get_accuracy(preds, threshold=threshold, upper=upper)
             logging.info(
-                f'{dataset_name}--Accuracy (%): {accuracy} under threshold: {threshold}'
+                f'{dataset_name}--Accuracy (%): {accuracy} under threshold: {threshold if not upper else 1 - threshold}'
             )
 
 
