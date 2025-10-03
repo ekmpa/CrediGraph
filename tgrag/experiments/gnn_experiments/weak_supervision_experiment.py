@@ -45,8 +45,9 @@ def run_weak_supervision_forward(
     device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
     device = torch.device(device)
     logging.info(f'Device found: {device}')
-    weight_path = weight_directory / f'{model_arguments.model}'
+    weight_path = weight_directory / f'{model_arguments.model}' / 'best_model.pt'
     mapping = dataset.get_mapping()
+    logging.info('Mapping returned.')
     model = Model(
         model_name=model_arguments.model,
         normalization=model_arguments.normalization,
@@ -57,6 +58,7 @@ def run_weak_supervision_forward(
         dropout=model_arguments.dropout,
     ).to(device)
     model.load_state_dict(torch.load(weight_path, map_location=device))
+    logging.info('Model Loaded.')
     model.eval()
     for dataset_name, path in phishing_dict.items():
         logging.info(f'Predictions of {dataset_name}')
@@ -143,7 +145,9 @@ def main() -> None:
         processed_dir=f'{scratch}/{meta_args.processed_location}',
     )  # Map to .to_cpu()
     logging.info('In-Memory Dataset loaded.')
-    weight_directory = root / cast(str, meta_args.weights_directory)
+    weight_directory = (
+        root / cast(str, meta_args.weights_directory) / f'{meta_args.target_col}'
+    )
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
