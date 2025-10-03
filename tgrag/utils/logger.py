@@ -73,6 +73,9 @@ class Logger(object):
                 final_train = r[-1, 0].item()
                 final_valid = r[-1, 1].item()
                 final_test = r[-1, 2].item()
+                train_max = r[:, 0].max().item()
+                valid_max = r[:, 1].max().item()
+                test_max = r[:, 2].max().item()
                 best_results.append(
                     (
                         train,
@@ -84,6 +87,9 @@ class Logger(object):
                         final_train,
                         final_valid,
                         final_test,
+                        train_max,
+                        valid_max,
+                        test_max,
                     )
                 )
 
@@ -114,6 +120,13 @@ class Logger(object):
             lines.append(f'Final Valid Loss: {r.mean():.4f}')
             r = best_result[:, 8]
             lines.append(f'Final Test Loss: {r.mean():.4f}')
+
+            r = best_result[:, 9]
+            lines.append(f'Maximum Train Loss: {r.mean():.4f} ± {r.std():.4f}')
+            r = best_result[:, 10]
+            lines.append(f'Maximum Valid Loss: {r.mean():.4f} ± {r.std():.4f}')
+            r = best_result[:, 11]
+            lines.append(f'Maximum Test Loss: {r.mean():.4f} ± {r.std():.4f}')
 
         return '\n'.join(lines)
 
