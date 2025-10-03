@@ -260,6 +260,7 @@ def run_gnn_baseline(
         loss_tuple_run_r2.append(loss_tuple_epoch_r2)
 
     best_model_path = weight_directory / f'{model_arguments.model}'
+    best_model_path.mkdir(parents=True, exist_ok=True)
     torch.save(best_state_dict, best_model_path)
     logging.info(f'Model: {model_arguments} weights saved to: {best_model_path}')
     logging.info('*** Statistics ***')

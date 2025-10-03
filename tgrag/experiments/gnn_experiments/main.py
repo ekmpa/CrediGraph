@@ -77,7 +77,7 @@ def main() -> None:
         run_gnn_baseline(
             experiment_arg.data_args,
             experiment_arg.model_args,
-            root / cast(str, meta_args.weights_directory),
+            root / cast(str, meta_args.weights_directory) / f'{meta_args.target_col}',
             dataset,
         )
     results = load_all_loss_tuples()
