@@ -136,7 +136,6 @@ class TemporalDataset(InMemoryDataset):
         # adj_t = to_torch_csr_tensor(edge_index, size=(x_full.size(0), x_full.size(0)))
 
         data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr)
-        data.mapping = mapping
         # data.adj_t = adj_t
 
         data.labeled_mask = labeled_mask.detach().clone().bool()
@@ -182,6 +181,7 @@ class TemporalDataset(InMemoryDataset):
 
         assert data.edge_index.max() < data.x.size(0), 'edge_index out of bounds'
 
+        torch.save(mapping, self.processed_dir + '/mapping.pt')
         torch.save(self.collate([data]), self.processed_paths[0])
 
     def get_idx_split(self) -> Dict:
@@ -191,7 +191,6 @@ class TemporalDataset(InMemoryDataset):
         raise TypeError('idx split is empty.')
 
     def get_mapping(self) -> Dict:
-        data = self[0]
-        if hasattr(data, 'mapping') and data.mapping is not None:
-            return data.mapping
-        raise TypeError('Mapping is empty.')
+        if not hasattr(self, '_mapping'):
+            self._mapping = torch.load(self.processed_dir + '/mapping.pt')
+        return self._mapping
