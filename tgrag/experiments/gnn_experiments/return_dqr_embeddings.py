@@ -38,7 +38,7 @@ def run_forward_get_embeddings(
 ) -> None:
     root = get_root_dir()
     dqr_dict: Dict[str, str] = {
-        'DQR Nodes': 'data/dqr/domain_c1.csv',
+        'DQR Nodes': 'data/dqr/domain_pc1.csv',
     }
     data = dataset[0]
     device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
