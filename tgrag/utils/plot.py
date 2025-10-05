@@ -941,6 +941,7 @@ def plot_pred_target_distributions_histogram(
     preds: Tensor,
     targets: Tensor,
     model_name: str,
+    metric: str,
     title: str = 'True vs Predicted Distribution',
     save_filename: str = 'pred_target_distribution_histogram.pdf',
     bins: int = 50,
@@ -957,7 +958,7 @@ def plot_pred_target_distributions_histogram(
     hist_pred, _ = np.histogram(preds_flat, bins=bins, range=(0, 1))
     y_max = max(hist_true.max(), hist_pred.max())
 
-    plt.figure(figsize=(6, 4), dpi=120)
+    plt.figure(figsize=(5, 4))
     plt.hist(
         preds_flat,
         bins=bins,
@@ -965,7 +966,6 @@ def plot_pred_target_distributions_histogram(
         edgecolor='black',
         color='lightblue',
         label='Pred',
-        alpha=0.8,
     )
     plt.hist(
         targets_flat,
@@ -974,13 +974,13 @@ def plot_pred_target_distributions_histogram(
         edgecolor='black',
         color='orange',
         label='True',
-        alpha=0.4,
+        alpha=0.6,
     )
 
-    plt.rc('font', size=13)
-    plt.xticks(np.arange(0, 1.1, 0.2))
-    plt.yticks(np.arange(0, y_max + 200, 200))
-    plt.xlabel('Score')
+    plt.rc('font', size=15)
+    plt.xticks(np.arange(0, 1.1, 0.2), ha='right')
+    plt.yticks(np.arange(0, y_max + 50, 100), rotation=0, ha='right')
+    plt.xlabel(f'{metric}')
     plt.ylabel('Frequency')
     plt.legend()
     plt.tight_layout()
