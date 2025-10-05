@@ -91,6 +91,8 @@ def run_weak_supervision_forward(
                 all_preds[seed_nodes] = preds[: batch.batch_size].cpu()
 
         preds = all_preds[phishing_indices]
+        logging.info(f'Number of predictions: {preds.size()}')
+        logging.info(f'Predictions: {preds}')
         for threshold in [0.1, 0.3, 0.5]:
             upper = dataset_name == 'IP2Location'
             accuracy = get_accuracy(preds, threshold=threshold, upper=upper)
