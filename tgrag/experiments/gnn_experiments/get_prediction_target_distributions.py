@@ -83,6 +83,15 @@ def run_get_test_predictions(
             all_preds[seed_nodes] = preds[: batch.batch_size].cpu()
 
     test_predictions = all_preds[indices]
+
+    abs_errors = (test_predictions - test_targets).abs()
+
+    min_error = abs_errors.min().item()
+    max_error = abs_errors.max().item()
+
+    logging.info(f'Min Absolute Error: {min_error:.4f}')
+    logging.info(f'Max Absolute Error: {max_error:.4f}')
+
     plot_pred_target_distributions_histogram(
         preds=test_predictions,
         targets=test_targets,
