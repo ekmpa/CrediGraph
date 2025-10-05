@@ -980,7 +980,6 @@ def plot_pred_target_distributions_histogram(
     plt.rc('font', size=13)
     plt.xticks(np.arange(0, 1.1, 0.2))
     plt.yticks(np.arange(0, y_max + 200, 200))
-    plt.yscale('log')
     plt.xlabel('Score')
     plt.ylabel('Frequency')
     plt.legend()
