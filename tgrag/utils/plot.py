@@ -935,3 +935,55 @@ def plot_regression_scatter(
         bbox_inches='tight',
         pad_inches=0.1,
     )
+
+
+def plot_pred_target_distributions_histogram(
+    preds: Tensor,
+    targets: Tensor,
+    model_name: str,
+    title: str = 'True vs Predicted Distribution',
+    save_filename: str = 'pred_target_distribution_histogram.pdf',
+    bins: int = 50,
+) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / model_name / 'distribution'
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / save_filename
+
+    preds_flat = preds.detach().cpu().numpy().astype(float).flatten()
+    targets_flat = targets.detach().cpu().numpy().astype(float).flatten()
+
+    hist_true, _ = np.histogram(targets_flat, bins=bins, range=(0, 1))
+    hist_pred, _ = np.histogram(preds_flat, bins=bins, range=(0, 1))
+    y_max = max(hist_true.max(), hist_pred.max())
+
+    plt.figure(figsize=(6, 4), dpi=120)
+    plt.hist(
+        preds_flat,
+        bins=bins,
+        range=(0, 1),
+        edgecolor='black',
+        color='lightblue',
+        label='Pred',
+        alpha=0.8,
+    )
+    plt.hist(
+        targets_flat,
+        bins=bins,
+        range=(0, 1),
+        edgecolor='black',
+        color='orange',
+        label='True',
+        alpha=0.4,
+    )
+
+    plt.rc('font', size=13)
+    plt.xticks(np.arange(0, 1.1, 0.2))
+    plt.yticks(np.arange(0, y_max + 200, 200))
+    plt.yscale('log')
+    plt.xlabel('Score')
+    plt.ylabel('Frequency')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(save_path, bbox_inches='tight', pad_inches=0.1)
+    plt.close()
