@@ -34,6 +34,7 @@ def run_weak_supervision_forward(
     model_arguments: ModelArguments,
     dataset: TemporalDataset,
     weight_directory: Path,
+    seed: int,
 ) -> None:
     root = get_root_dir()
     phishing_dict: Dict[str, str] = {
@@ -75,6 +76,7 @@ def run_weak_supervision_forward(
             num_neighbors=[30, 30, 30],
             batch_size=1024,
             shuffle=False,
+            seed=seed,
         )
         logging.info(
             f'{dataset_name}: loader  created for {len(phishing_indices)} nodes.'
@@ -157,6 +159,7 @@ def main() -> None:
             experiment_arg.model_args,
             dataset,
             weight_directory,
+            seed=meta_args.global_seed,
         )
 
 
