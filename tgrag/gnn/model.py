@@ -96,4 +96,5 @@ class Model(torch.nn.Module):
                 x = re_module(x)
 
         x = self.output_normalization(x)
+        x = self.output_linear(x)
         return x
