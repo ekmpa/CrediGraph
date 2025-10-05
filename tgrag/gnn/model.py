@@ -83,3 +83,17 @@ class Model(torch.nn.Module):
         x = self.output_linear(x)
         x = self.node_predictor(x)
         return x
+
+    def get_embeddings(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
+        x = self.input_linear(x)
+        x = self.dropout(x)
+        x = self.act(x)
+
+        for re_module in self.re_modules:
+            if edge_index is not None:
+                x = re_module(x, edge_index)
+            else:
+                x = re_module(x)
+
+        x = self.output_normalization(x)
+        return x
