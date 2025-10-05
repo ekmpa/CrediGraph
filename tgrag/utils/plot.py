@@ -945,7 +945,7 @@ def plot_regression_scatter_tensor(
     save_filename: str = 'pred_target_scatterplot_regression.pdf',
 ) -> None:
     root = get_root_dir()
-    save_dir = root / 'results' / 'plots' / model_name / 'scatter'
+    save_dir = root / 'results' / 'plots' / model_name / 'scatter' / target
     save_dir.mkdir(parents=True, exist_ok=True)
     save_path = save_dir / save_filename
 
@@ -976,7 +976,7 @@ def plot_pred_target_distributions_histogram(
     bins: int = 50,
 ) -> None:
     root = get_root_dir()
-    save_dir = root / 'results' / 'plots' / model_name / 'distribution'
+    save_dir = root / 'results' / 'plots' / model_name / 'distribution' / target
     save_dir.mkdir(parents=True, exist_ok=True)
     save_path = save_dir / save_filename
 

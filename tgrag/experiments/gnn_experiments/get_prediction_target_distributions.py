@@ -86,13 +86,13 @@ def run_get_test_predictions(
     plot_pred_target_distributions_histogram(
         preds=test_predictions,
         targets=test_targets,
-        model_name='GATInference',
+        model_name=model_arguments.model,
         target=target,
     )
     plot_regression_scatter_tensor(
         preds=test_predictions,
         targets=test_targets,
-        model_name='GATInference',
+        model_name=model_arguments.model,
         target=target,
     )
 
