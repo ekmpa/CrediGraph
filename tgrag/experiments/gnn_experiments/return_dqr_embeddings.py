@@ -78,7 +78,7 @@ def run_forward_get_embeddings(
         logging.info(f'{dataset_name}: loader  created for {len(indices)} nodes.')
 
         num_nodes = data.num_nodes
-        all_preds_embeddings = torch.zeros(num_nodes, 64)
+        all_preds_embeddings = torch.zeros(num_nodes, 256)
 
         with torch.no_grad():
             for batch in tqdm(loader, desc=f'{dataset_name} batch'):
