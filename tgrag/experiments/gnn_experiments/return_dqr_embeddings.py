@@ -95,7 +95,7 @@ def run_forward_get_embeddings(
             if idx is not None:
                 domain_embeddings[dom] = all_preds_embeddings[idx].tolist()
 
-        save_path = root / 'results' / f'dqr_domain_rni_embeddings'
+        save_path = weight_directory / 'dqr_domain_rni_embeddings.pkl'
         save_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(save_path, 'wb') as f:
