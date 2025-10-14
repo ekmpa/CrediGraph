@@ -133,10 +133,7 @@ class TemporalDataset(InMemoryDataset):
         )
         logging.info('***Edge Matrix Constructed***')
 
-        # adj_t = to_torch_csr_tensor(edge_index, size=(x_full.size(0), x_full.size(0)))
-
         data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr)
-        # data.adj_t = adj_t
 
         data.labeled_mask = labeled_mask.detach().clone().bool()
 
