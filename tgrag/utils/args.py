@@ -36,6 +36,9 @@ class MetaArguments:
     processed_location: Union[str, List[str]] = field(
         metadata={'help': 'The location to save the processed feature matrix.'},
     )
+    weights_directory: Union[str, List[str]] = field(
+        metadata={'help': 'The location to save and load model weights.'},
+    )
     target_col: str = field(
         default='cr_score',
         metadata={'help': 'The target column name in the target csv file.'},
@@ -82,7 +85,6 @@ class MetaArguments:
     def __post_init__(self) -> None:
         # Select root directory
         root_dir = get_scratch() if self.is_scratch_location else get_root_dir()
-        print(f'root_dir: {root_dir}')
 
         def resolve_paths(files: Union[str, List[str]]) -> Union[str, List[str]]:
             def resolve(f: str) -> str:

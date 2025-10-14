@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from typing import List, Tuple
 
 import torch
@@ -147,6 +148,7 @@ def evaluate(
 def run_gnn_baseline(
     data_arguments: DataArguments,
     model_arguments: ModelArguments,
+    weight_directory: Path,
     dataset: TemporalDataset,
 ) -> None:
     data = dataset[0]
@@ -206,6 +208,8 @@ def run_gnn_baseline(
     loss_tuple_run_r2: List[List[Tuple[float, float, float]]] = []
     final_avg_preds: List[List[float]] = []
     final_avg_targets: List[List[float]] = []
+    global_best_val_loss = float('inf')
+    best_state_dict = None
     logging.info('*** Training ***')
     for run in tqdm(range(model_arguments.runs), desc='Runs'):
         model = Model(
@@ -246,12 +250,20 @@ def run_gnn_baseline(
             logger.add_result(
                 run, (train_loss, valid_loss, test_loss, valid_mean_baseline_loss)
             )
+            if valid_loss < global_best_val_loss:
+                global_best_val_loss = valid_loss
+                best_state_dict = model.state_dict()
 
         final_avg_preds.append(mean_across_lists(epoch_avg_preds))
         final_avg_targets.append(mean_across_lists(epoch_avg_targets))
         loss_tuple_run_mse.append(loss_tuple_epoch_mse)
         loss_tuple_run_r2.append(loss_tuple_epoch_r2)
 
+    best_model_dir = weight_directory / f'{model_arguments.model}'
+    best_model_dir.mkdir(parents=True, exist_ok=True)
+    best_model_path = best_model_dir / 'best_model.pt'
+    torch.save(best_state_dict, best_model_path)
+    logging.info(f'Model: {model_arguments} weights saved to: {best_model_path}')
     logging.info('*** Statistics ***')
     logging.info(logger.get_statistics())
     logging.info(logger.get_avg_statistics())

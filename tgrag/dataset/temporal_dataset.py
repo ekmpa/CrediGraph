@@ -10,6 +10,8 @@ from torch_geometric.data import Data, InMemoryDataset
 
 from tgrag.encoders.encoder import Encoder
 from tgrag.utils.dataset_loading import load_large_edge_csv, load_node_csv
+from tgrag.utils.load_labels import get_full_dict
+from tgrag.utils.target_generation import generate_exact_targets_csv
 
 
 class TemporalDataset(InMemoryDataset):
@@ -73,10 +75,17 @@ class TemporalDataset(InMemoryDataset):
         node_path = os.path.join(self.raw_dir, self.node_file)
         edge_path = os.path.join(self.raw_dir, self.edge_file)
         target_path = os.path.join(self.raw_dir, self.target_file)
+        if os.path.exists(target_path):
+            logging.info('Target file already exists.')
+        else:
+            logging.info('Generating target file.')
+            dqr = get_full_dict()
+            generate_exact_targets_csv(node_path, target_path, dqr)
+
         logging.info('***Constructing Feature Matrix***')
-        x_full, mapping = load_node_csv(
+        x_full, mapping, full_index = load_node_csv(
             path=node_path,
-            index_col=self.index_col,  # 'node_id'
+            index_col=0,
             encoders=self.encoding,
         )
         logging.info('***Feature Matrix Done***')
@@ -86,14 +95,18 @@ class TemporalDataset(InMemoryDataset):
 
         df_target = pd.read_csv(target_path)
         logging.info(f'Size of target dataframe: {df_target.shape}')
-        if self.target_index_col != 0:
-            print('Reindexing the target')
-        df_target = df_target.set_index(self.target_index_name)
 
-        mapping_index = pd.Index(list(mapping.keys()), name=self.target_index_name)
-        df_target = df_target.reindex(mapping_index)
+        mapping_index = [mapping[domain.strip()] for domain in df_target['domain']]
+        df_target.index = mapping_index
         logging.info(f'Size of mapped target dataframe: {df_target.shape}')
 
+        missing_idx = full_index.difference(mapping_index)
+        filler = pd.DataFrame(
+            {col: np.nan for col in df_target.columns}, index=missing_idx
+        )
+        df_target = pd.concat([df_target, filler])
+        df_target.sort_index(inplace=True)
+        logging.info(f'Size of filled target dataframe: {df_target.shape}')
         score = torch.tensor(
             df_target[self.target_col].astype('float32').fillna(-1).values,
             dtype=torch.float,
@@ -101,6 +114,14 @@ class TemporalDataset(InMemoryDataset):
         logging.info(f'Size of score vector: {score.size()}')
 
         labeled_mask = score != -1.0
+
+        labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
+        labeled_scores = score[labeled_idx].squeeze().numpy()
+
+        if labeled_scores.size == 0:
+            raise ValueError(
+                f"No labeled nodes found in target column '{self.target_col}'"
+            )
 
         logging.info('***Constructing Edge Matrix***')
         edge_index, edge_attr = load_large_edge_csv(
@@ -112,15 +133,9 @@ class TemporalDataset(InMemoryDataset):
         )
         logging.info('***Edge Matrix Constructed***')
 
-        # adj_t = to_torch_csr_tensor(edge_index, size=(x_full.size(0), x_full.size(0)))
-
         data = Data(x=x_full, y=score, edge_index=edge_index, edge_attr=edge_attr)
-        # data.adj_t = adj_t
 
         data.labeled_mask = labeled_mask.detach().clone().bool()
-
-        labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
-        labeled_scores = score[labeled_idx].squeeze().numpy()
 
         quantiles = np.quantile(labeled_scores, [1 / 3, 2 / 3])
         quartile_labels = np.digitize(labeled_scores, bins=quantiles)
@@ -163,6 +178,7 @@ class TemporalDataset(InMemoryDataset):
 
         assert data.edge_index.max() < data.x.size(0), 'edge_index out of bounds'
 
+        torch.save(mapping, self.processed_dir + '/mapping.pt')
         torch.save(self.collate([data]), self.processed_paths[0])
 
     def get_idx_split(self) -> Dict:
@@ -170,3 +186,8 @@ class TemporalDataset(InMemoryDataset):
         if hasattr(data, 'idx_dict') and data.idx_dict is not None:
             return data.idx_dict
         raise TypeError('idx split is empty.')
+
+    def get_mapping(self) -> Dict:
+        if not hasattr(self, '_mapping'):
+            self._mapping = torch.load(self.processed_dir + '/mapping.pt')
+        return self._mapping

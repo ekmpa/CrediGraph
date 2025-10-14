@@ -935,3 +935,83 @@ def plot_regression_scatter(
         bbox_inches='tight',
         pad_inches=0.1,
     )
+
+
+def plot_regression_scatter_tensor(
+    preds: Tensor,
+    targets: Tensor,
+    model_name: str,
+    target: str,
+    save_filename: str = 'pred_target_scatterplot_regression.pdf',
+) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / model_name / 'scatter' / target
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / save_filename
+
+    preds_flat = preds.detach().cpu().numpy().astype(float).flatten()
+    targets_flat = targets.detach().cpu().numpy().astype(float).flatten()
+
+    plt.figure(figsize=(5, 4))
+    plt.rc('font', size=16)
+    plt.scatter(targets_flat, preds_flat, alpha=0.7)
+    plt.plot([0, 1], [0, 1], color='red', linestyle='-', label='regression line')
+    plt.xticks(np.arange(0, 1.1, 0.2), rotation=0, ha='right')
+    plt.yticks(np.arange(0, 1.1, 0.2), rotation=0, ha='right')
+    plt.xlabel(target.upper().replace('_', '-'))
+    plt.ylabel(f'Predicted {target.upper().replace("_", "-")}')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(save_path, bbox_inches='tight', pad_inches=0.1)
+    plt.close()
+
+
+def plot_pred_target_distributions_histogram(
+    preds: Tensor,
+    targets: Tensor,
+    model_name: str,
+    target: str,
+    title: str = 'True vs Predicted Distribution',
+    save_filename: str = 'pred_target_distribution_histogram.pdf',
+    bins: int = 50,
+) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / model_name / 'distribution' / target
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / save_filename
+
+    preds_flat = preds.detach().cpu().numpy().astype(float).flatten()
+    targets_flat = targets.detach().cpu().numpy().astype(float).flatten()
+
+    hist_true, _ = np.histogram(targets_flat, bins=bins, range=(0, 1))
+    hist_pred, _ = np.histogram(preds_flat, bins=bins, range=(0, 1))
+    y_max = max(hist_true.max(), hist_pred.max())
+
+    plt.figure(figsize=(5, 4))
+    plt.hist(
+        preds_flat,
+        bins=bins,
+        range=(0, 1),
+        edgecolor='black',
+        color='lightblue',
+        label='Pred',
+    )
+    plt.hist(
+        targets_flat,
+        bins=bins,
+        range=(0, 1),
+        edgecolor='black',
+        color='orange',
+        label='True',
+        alpha=0.6,
+    )
+
+    plt.rc('font', size=15)
+    plt.xticks(np.arange(0, 1.1, 0.2), ha='right')
+    plt.yticks(np.arange(0, y_max + 50, 100), rotation=0, ha='right')
+    plt.xlabel(f'{target}')
+    plt.ylabel('Frequency')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(save_path, bbox_inches='tight', pad_inches=0.1)
+    plt.close()
