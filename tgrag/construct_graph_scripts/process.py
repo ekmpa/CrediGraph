@@ -4,7 +4,6 @@
 # - And newly-isolated nodes
 # - Add timestamps to vertices and edges (outputs in csv.gz)
 
-import argparse
 import gzip
 import os
 import subprocess
@@ -409,12 +408,11 @@ def process_graph(
     graph: str,
     slice_str: str,
     min_deg: int,
-    *,
-    sort_cmd: str = 'sort',
     mem: str = '60%',
 ) -> None:
     graph_path = Path(graph)
     e_gz = graph_path / 'edges.txt.gz'
+    sort_cmd = 'sort'
 
     ts = iso_week_to_timestamp(slice_str)  # e.g., CC-MAIN-2024-18 -> 20240429
 
@@ -523,29 +521,3 @@ def process_graph(
 
         print(f'[DONE] edges -> {edges_csv_gz}')
         print(f'[DONE] vertices -> {vertices_csv_gz}')
-
-
-if __name__ == '__main__':
-    ap = argparse.ArgumentParser(
-        description='Domain-only graph filter with slice-based timestamps + stats'
-    )
-    ap.add_argument(
-        '--graph-path',
-        required=True,
-        help='Folder containing edges.txt.gz (+ optional vertices.txt[.gz])',
-    )
-    ap.add_argument('--slice', required=True, help='Crawl slice like CC-MAIN-YYYY-WW')
-    ap.add_argument(
-        '--min-deg',
-        type=int,
-        required=True,
-        help='Keep nodes with degree ≥ K (pre-filter)',
-    )
-    ap.add_argument(
-        '--sort-cmd', default='sort', help='External sort binary (default: sort)'
-    )
-    ap.add_argument('--mem', default='60%', help='Sort memory (default: 60%)')
-    args = ap.parse_args()
-    process_graph(
-        args.graph_path, args.slice, args.min_deg, sort_cmd=args.sort_cmd, mem=args.mem
-    )
