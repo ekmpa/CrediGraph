@@ -143,10 +143,12 @@ ______________________________________________________________________
 ### Citation
 
 ```
-@article{,
-  title={CrediBench: Building Web-Scale Network Datasets for Information Integrity},
-  author={},
-  journal={},
-  year={2025}
+@article{kondrupsabry2025credibench,
+  title={{CrediBench: Building Web-Scale Network Datasets for Information Integrity}},
+  author={Kondrup, Emma and Sabry, Sebastian and Abdallah, Hussein and Yang, Zachary and Zhou, James and Pelrine, Kellin and Godbout, Jean-Fran{\c{c}}ois and Bronstein, Michael and Rabbany, Reihaneh and Huang, Shenyang},
+  journal={arXiv preprint arXiv:2509.23340},
+  year={2025},
+  note={New Perspectives in Graph Machine Learning Workshop @ NeurIPS 2025},
+  url={https://arxiv.org/abs/2509.23340}
 }
 ```
