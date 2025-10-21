@@ -105,9 +105,9 @@ def run_weak_supervision_forward(
             model_name=model_arguments.model,
             target=target,
         )
+        logging.info(f'Saving distribution of {dataset_name}')
         preds = all_preds[phishing_indices]
         logging.info(f'Number of predictions: {preds.size()}')
-        logging.info(f'Predictions: {preds}')
         for threshold in [0.1, 0.3, 0.5]:
             upper = dataset_name == 'IP2Location'
             accuracy = get_accuracy(preds, threshold=threshold, upper=upper)
