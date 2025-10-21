@@ -16,6 +16,7 @@ from tgrag.utils.args import ModelArguments, parse_args
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.matching import reverse_domain
 from tgrag.utils.path import get_root_dir, get_scratch
+from tgrag.utils.plot import plot_neighbor_distribution
 from tgrag.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
@@ -34,6 +35,7 @@ def run_weak_supervision_forward(
     model_arguments: ModelArguments,
     dataset: TemporalDataset,
     weight_directory: Path,
+    target: str,
 ) -> None:
     root = get_root_dir()
     phishing_dict: Dict[str, str] = {
@@ -72,8 +74,8 @@ def run_weak_supervision_forward(
         phishing_loader = NeighborLoader(
             data,
             input_nodes=phishing_indices,
-            num_neighbors=[30, 30, 30],
-            batch_size=1024,
+            num_neighbors=model_arguments.num_neighbors,
+            batch_size=model_arguments.batch_size,
             shuffle=False,
         )
         logging.info(
@@ -82,14 +84,27 @@ def run_weak_supervision_forward(
 
         num_nodes = data.num_nodes
         all_preds = torch.zeros(num_nodes, 1)
+        neighbor_preds = []
 
         with torch.no_grad():
             for batch in tqdm(phishing_loader, desc=f'{dataset_name} batch'):
                 batch = batch.to(device)
                 preds = model(batch.x, batch.edge_index)
                 seed_nodes = batch.n_id[: batch.batch_size]
+
+                pred_neighbors = preds[batch.batch_size :]
+                neighbor_preds.append(pred_neighbors.cpu())
+
                 all_preds[seed_nodes] = preds[: batch.batch_size].cpu()
 
+        neighbor_preds = torch.cat(neighbor_preds, dim=0)
+
+        plot_neighbor_distribution(
+            neighbor_preds=neighbor_preds,
+            dataset_name=dataset_name,
+            model_name=model_arguments.model,
+            target=target,
+        )
         preds = all_preds[phishing_indices]
         logging.info(f'Number of predictions: {preds.size()}')
         logging.info(f'Predictions: {preds}')
@@ -145,7 +160,7 @@ def main() -> None:
         encoding=encoding_dict,
         seed=meta_args.global_seed,
         processed_dir=f'{scratch}/{meta_args.processed_location}',
-    )  # Map to .to_cpu()
+    )
     logging.info('In-Memory Dataset loaded.')
     weight_directory = (
         root / cast(str, meta_args.weights_directory) / f'{meta_args.target_col}'
@@ -157,6 +172,7 @@ def main() -> None:
             experiment_arg.model_args,
             dataset,
             weight_directory,
+            target=meta_args.target_col,
         )
 
 
