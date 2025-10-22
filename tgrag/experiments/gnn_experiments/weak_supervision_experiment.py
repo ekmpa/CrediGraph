@@ -6,6 +6,7 @@ from typing import Dict, cast
 import pandas as pd
 import torch
 from torch_geometric.loader import NeighborLoader
+from torch_geometric.utils import degree
 from tqdm import tqdm
 
 from tgrag.dataset.temporal_dataset import TemporalDataset
@@ -16,7 +17,10 @@ from tgrag.utils.args import ModelArguments, parse_args
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.matching import reverse_domain
 from tgrag.utils.path import get_root_dir, get_scratch
-from tgrag.utils.plot import plot_neighbor_distribution
+from tgrag.utils.plot import (
+    plot_neighbor_degree_distribution,
+    plot_neighbor_distribution,
+)
 from tgrag.utils.seed import seed_everything
 
 parser = argparse.ArgumentParser(
@@ -44,6 +48,13 @@ def run_weak_supervision_forward(
         'PhishTank': 'data/phishing_data/cc_dec_2024_phishtank_domains.csv',
     }
     data = dataset[0]
+
+    src, dst = data.edge_index
+    logging.info(f'Src, dst degrees loaded.')
+
+    out_degree = degree(src, num_nodes=data.num_nodes)
+    in_degree = degree(dst, num_nodes=data.num_nodes)
+
     device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
     device = torch.device(device)
     logging.info(f'Device found: {device}')
@@ -85,6 +96,7 @@ def run_weak_supervision_forward(
         num_nodes = data.num_nodes
         all_preds = torch.zeros(num_nodes, 1)
         neighbor_preds = []
+        neighbor_nodes = set()
 
         with torch.no_grad():
             for batch in tqdm(phishing_loader, desc=f'{dataset_name} batch'):
@@ -94,16 +106,35 @@ def run_weak_supervision_forward(
 
                 pred_neighbors = preds[batch.batch_size :]
                 neighbor_preds.append(pred_neighbors.cpu())
+                neighbor_nodes.update(batch.n_id[batch.batch_size :].tolist())
 
                 all_preds[seed_nodes] = preds[: batch.batch_size].cpu()
 
         neighbor_preds = torch.cat(neighbor_preds, dim=0)
+        neighbor_nodes = torch.tensor(list(neighbor_nodes), dtype=torch.long)
+
+        neighbor_in_degree = in_degree[neighbor_nodes]
+        neighbor_out_degree = out_degree[neighbor_nodes]
 
         plot_neighbor_distribution(
             neighbor_preds=neighbor_preds,
             dataset_name=dataset_name,
             model_name=model_arguments.model,
             target=target,
+        )
+        plot_neighbor_degree_distribution(
+            neighbor_degree=neighbor_in_degree,
+            dataset_name=dataset_name,
+            model_name=model_arguments.model,
+            target=target,
+            degree='In-degree',
+        )
+        plot_neighbor_degree_distribution(
+            neighbor_degree=neighbor_out_degree,
+            dataset_name=dataset_name,
+            model_name=model_arguments.model,
+            target=target,
+            degree='Out-degree',
         )
         logging.info(f'Saving distribution of {dataset_name}')
         preds = all_preds[phishing_indices]

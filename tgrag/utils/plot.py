@@ -1033,3 +1033,25 @@ def plot_neighbor_distribution(
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
+
+
+def plot_neighbor_degree_distribution(
+    neighbor_degree: Tensor,
+    dataset_name: str,
+    model_name: str,
+    target: str,
+    degree: str,
+) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / model_name / 'distribution' / target
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / f'{dataset_name}_neighbor_{degree}_degree_distribution.png'
+    plt.figure(figsize=(6, 4))
+    plt.hist(neighbor_degree.numpy(), bins=20, range=(0, 1), edgecolor='black')
+    plt.title(f'{degree} Distribution (Neighbors) — {dataset_name}')
+    plt.xlabel(f'{degree}')
+    plt.ylabel('Frequency')
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
