@@ -1050,12 +1050,19 @@ def plot_neighbor_degree_distribution(
 
     deg = neighbor_degree.numpy()
     deg = deg[deg > 0]
-    bins = np.logspace(np.log10(deg.min()), np.log10(deg.max()), 50)
+
+    unique_deg, counts = torch.unique(deg, return_counts=True)
+
+    sorted_idx = torch.argsort(unique_deg)
+    unique_deg = unique_deg[sorted_idx]
+    counts = counts[sorted_idx]
+
     plt.hist(
-        deg,
-        bins=bins,
+        unique_deg.numpy(),
+        counts.numpy(),
+        width=0.8,
         edgecolor='black',
-        align='left',
+        align='center',
     )
     plt.title(f'{degree} Distribution (Neighbors) — {dataset_name}')
     plt.xlabel(f'{degree}')
