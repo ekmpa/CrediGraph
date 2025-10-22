@@ -1047,9 +1047,13 @@ def plot_neighbor_degree_distribution(
     save_dir.mkdir(parents=True, exist_ok=True)
     save_path = save_dir / f'{dataset_name}_neighbor_{degree}_degree_distribution.png'
     plt.figure(figsize=(6, 4))
+
+    deg = neighbor_degree.numpy()
+    deg = deg[deg > 0]
+    bins = np.logspace(np.log10(deg.min()), np.log10(deg.max()), 50)
     plt.hist(
-        neighbor_degree.numpy(),
-        bins=range(int(neighbor_degree.max() + 2)),
+        deg,
+        bins=bins,
         edgecolor='black',
         align='left',
     )
