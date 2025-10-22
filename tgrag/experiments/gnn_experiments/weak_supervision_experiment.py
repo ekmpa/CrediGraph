@@ -115,8 +115,10 @@ def run_weak_supervision_forward(
 
         neighbor_in_degree = in_degree[neighbor_nodes]
         logging.info(f'Size of in-degree tensor: {neighbor_in_degree.size()}')
+        logging.info(f'Sample of in-degree: {neighbor_in_degree[:10]}')
         neighbor_out_degree = out_degree[neighbor_nodes]
         logging.info(f'Size of out-degree tensor: {neighbor_out_degree.size()}')
+        logging.info(f'Sample of out-degree: {neighbor_out_degree[:10]}')
 
         plot_neighbor_distribution(
             neighbor_preds=neighbor_preds,
