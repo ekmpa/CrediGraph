@@ -52,8 +52,8 @@ def run_weak_supervision_forward(
     src, dst = data.edge_index
     logging.info(f'Src, dst degrees loaded.')
 
-    out_degree = degree(src, num_nodes=data.num_nodes)
-    in_degree = degree(dst, num_nodes=data.num_nodes)
+    out_degree = degree(src, num_nodes=data.num_nodes, dtype=torch.long)
+    in_degree = degree(dst, num_nodes=data.num_nodes, dtype=torch.long)
 
     device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
     device = torch.device(device)
