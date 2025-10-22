@@ -1048,7 +1048,7 @@ def plot_neighbor_degree_distribution(
     save_path = save_dir / f'{dataset_name}_neighbor_{degree}_degree_distribution.png'
     plt.figure(figsize=(6, 4))
 
-    deg = neighbor_degree.numpy()
+    deg = neighbor_degree
     deg = deg[deg > 0]
 
     unique_deg, counts = torch.unique(deg, return_counts=True)
