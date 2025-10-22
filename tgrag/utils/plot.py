@@ -1057,7 +1057,7 @@ def plot_neighbor_degree_distribution(
     unique_deg = unique_deg[sorted_idx]
     counts = counts[sorted_idx]
 
-    plt.hist(
+    plt.bar(
         unique_deg.numpy(),
         counts.numpy(),
         width=0.8,
