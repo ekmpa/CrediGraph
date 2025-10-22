@@ -114,7 +114,9 @@ def run_weak_supervision_forward(
         neighbor_nodes = torch.tensor(list(neighbor_nodes), dtype=torch.long)
 
         neighbor_in_degree = in_degree[neighbor_nodes]
+        logging.info(f'Size of in-degree tensor: {neighbor_in_degree.size()}')
         neighbor_out_degree = out_degree[neighbor_nodes]
+        logging.info(f'Size of out-degree tensor: {neighbor_out_degree.size()}')
 
         plot_neighbor_distribution(
             neighbor_preds=neighbor_preds,
