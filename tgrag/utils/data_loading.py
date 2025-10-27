@@ -41,11 +41,8 @@ def month_to_CC_slice(month_str: str) -> str:
 
 def interval_to_CC_slices(start_month: str, end_month: str) -> List[str]:
     """Get list of CC slice names for months in [start_month, end_month]."""
-    if start_month == end_month:
-        return [month_to_CC_slice(start_month)]
-
-    start_dt = datetime.strptime(start_month, '%Y-%m')
-    end_dt = datetime.strptime(end_month, '%Y-%m')
+    start_dt = datetime.strptime(start_month, '%B %Y')
+    end_dt = datetime.strptime(end_month, '%B %Y')
 
     slices = []
     current_dt = start_dt
