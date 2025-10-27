@@ -1,9 +1,10 @@
 import gzip
 import subprocess
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import IO, Callable, Dict, Iterator, List, Set, Tuple
 
+import requests
 from tqdm import tqdm
 
 
@@ -17,6 +18,46 @@ def iso_week_to_timestamp(iso_week_str: str) -> str:
     # ISO week: Monday is day 1
     monday_date = date.fromisocalendar(year, week, 1)
     return monday_date.strftime('%Y%m%d')
+
+
+def month_to_CC_slice(month_str: str) -> str:
+    """Convert YYYY-MM to CC slice name: CC-MAIN-YYYY-WW."""
+    url = 'https://index.commoncrawl.org/collinfo.json'
+    response = requests.get(url)
+    response.raise_for_status()
+    indices = response.json()
+
+    dt = datetime.strptime(month_str, '%Y-%m')
+    month_name = dt.strftime('%B')
+    year = str(dt.year)
+
+    for index in indices:
+        name = index['name']
+        if month_name in name and year in name:
+            return index['id']
+
+    raise ValueError(f'No CC slice found for month {month_str}')
+
+
+def interval_to_CC_slices(start_month: str, end_month: str) -> List[str]:
+    """Get list of CC slice names for months in [start_month, end_month]."""
+    if start_month == end_month:
+        return [month_to_CC_slice(start_month)]
+
+    start_dt = datetime.strptime(start_month, '%Y-%m')
+    end_dt = datetime.strptime(end_month, '%Y-%m')
+
+    slices = []
+    current_dt = start_dt
+    while current_dt <= end_dt:
+        month_str = current_dt.strftime('%Y-%m')
+        cc_slice = month_to_CC_slice(month_str)
+        slices.append(cc_slice)
+        if current_dt.month == 12:
+            current_dt = current_dt.replace(year=current_dt.year + 1, month=1)
+        else:
+            current_dt = current_dt.replace(month=current_dt.month + 1)
+    return slices
 
 
 def run(cmd: List[str], check: bool = True) -> subprocess.CompletedProcess[str]:
