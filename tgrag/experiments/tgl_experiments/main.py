@@ -86,8 +86,11 @@ def main() -> None:
     print('=== Example edge records ===')
     print(edge_df.head())
     feature_store, graph_store = db.get_torch_geometric_remote_backend()
-    logging.info(f'Feature size: {feature_store.size()}')
-    logging.info(f'Graph size: {graph_store.size()}')
+    x = feature_store[('node', 'x')]
+    print('x:', x.shape)
+
+    logging.info(f'Feature store keys: {feature_store.get_all_tensor_attrs()}')
+    logging.info(f'Graph store keys: {graph_store.get_all_edge_attrs()}')
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
 
