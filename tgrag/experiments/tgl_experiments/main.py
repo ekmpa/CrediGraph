@@ -33,7 +33,7 @@ def initialize_graph_db(
     conn.execute(
         'CREATE NODE TABLE node(domain STRING, ts INT64, PRIMARY KEY(domain));'
     )
-    conn.execute('CREATE REL TABLE edge(FROM node TO node, ts INT64) MANY_MANY;')
+    conn.execute('CREATE REL TABLE edge(FROM node TO node, MANY_MANY, ts INT64);')
     conn.execute(f'COPY node FROM "{nodes_csv}" (domain, ts);')
     conn.execute(f'COPY edge FROM "{edges_csv}" (src, dst, ts);')
     logging.info('Graph database initialized')
