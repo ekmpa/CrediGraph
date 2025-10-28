@@ -41,17 +41,17 @@ echo "Running CrediBench on CC slices: $CRAWL_INDICES"
 if [ -z "$SCRATCH" ]; then
     DATA_DIR="$PROJECT_ROOT/data"
 else
-    DATA_DIR="$SCRATCH/crawl-data"
+    DATA_DIR="$SCRATCH"
 fi
 
 
 process_crawl() {
     local CRAWL=$1
     echo "[INFO] Starting crawl: $CRAWL"
-    mkdir -p "$DATA_DIR/$CRAWL"
+    mkdir -p "$DATA_DIR/crawl-data/$CRAWL"
 
-    mkdir -p "$DATA_DIR/$CRAWL/output"
-    rm -rf "$DATA_DIR/$CRAWL/output"/*
+    mkdir -p "$DATA_DIR/crawl-data/$CRAWL/output"
+    rm -rf "$DATA_DIR/crawl-data/$CRAWL/output"/*
 
     wget -q "$BASE_URL/crawl-data/$CRAWL/wat.paths.gz" -O /tmp/wat.paths.gz
     TOTAL_FILES=$(gzip -dc /tmp/wat.paths.gz | wc -l)
@@ -64,8 +64,8 @@ process_crawl() {
         (
             SUBFOLDER_ID=$((i + 1))
             SUBFOLDER_NAME="bash_scripts$SUBFOLDER_ID"
-            OUTPUT_DIR="$DATA_DIR/$CRAWL/output$SUBFOLDER_ID"
-            SEGMENT_DIR="$DATA_DIR/$CRAWL/segments$SUBFOLDER_ID"
+            OUTPUT_DIR="$DATA_DIR/crawl-data/$CRAWL/output$SUBFOLDER_ID"
+            SEGMENT_DIR="$DATA_DIR/crawl-data/$CRAWL/segments$SUBFOLDER_ID"
             TARGET_SCRIPTS="$CONSTRUCTION_DIR/$SUBFOLDER_NAME"
             if [ ! -d "$TARGET_SCRIPTS" ]; then
                 echo "[INFO] Creating $TARGET_SCRIPTS from template"
@@ -112,4 +112,6 @@ for CRAWL in $CRAWL_INDICES; do
 done
 
 wait
+
+# TODO : remove each subfolder here.
 echo "All crawls completed."
