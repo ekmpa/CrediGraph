@@ -66,7 +66,7 @@ def initialize_graph_db(
     )
     conn.execute('CREATE REL TABLE link(FROM domain TO domain, ts INT64, MANY_MANY);')
     conn.execute(
-        f'COPY domain FROM "({db_path}/domains.npy, {db_path}/x.npy, {db_path}/ts.npy, {db_path}/y.npy)" BY COLUMN;'
+        f'COPY domain FROM ("{db_path}/domains.npy", "{db_path}/x.npy", "{db_path}/ts.npy", "{db_path}/y.npy") BY COLUMN;'
     )
     conn.execute(f'COPY link FROM "{edges_csv}" (HEADER=true);')
     logging.info('Graph database initialized')
