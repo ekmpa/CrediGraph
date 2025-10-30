@@ -98,8 +98,8 @@ def main() -> None:
 
     node_df = conn.execute(
         """
-        MATCH (n:node)
-        RETURN n.domain AS domain, n.ts AS ts
+        MATCH (n:domain)
+        RETURN n.name AS domain, n.ts AS ts
         LIMIT 5
     """
     ).get_as_df()
@@ -109,8 +109,8 @@ def main() -> None:
 
     edge_df = conn.execute(
         """
-        MATCH (a:node)-[r:edge]->(b:node)
-        RETURN a.domain AS src, b.domain AS dst, r.ts AS ts
+        MATCH (a:domain)-[r:link]->(b:domain)
+        RETURN a.name AS src, b.name AS dst, r.ts AS ts
         LIMIT 5
     """
     ).get_as_df()
