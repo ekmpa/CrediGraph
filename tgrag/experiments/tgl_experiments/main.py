@@ -41,7 +41,7 @@ def build_feature_and_label_arrays(
 
     np.save(db_path / 'domains.npy', nodes['domain'].values)
     np.save(db_path / 'x.npy', x)
-    np.save(db_path / 'y.npy', nodes['score'].astype(np.float32).values)
+    np.save(db_path / 'y.npy', nodes['pc1'].astype(np.float32).values)
     np.save(db_path / 'ts.npy', nodes['ts'].astype(np.int64).values)
 
     logging.info(f'Saved: x[{x.shape}], y[{nodes.shape[0]}]')
