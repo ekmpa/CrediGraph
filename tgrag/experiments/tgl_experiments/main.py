@@ -33,7 +33,7 @@ def build_feature_and_label_arrays(
     dqr = pd.read_csv(dqr_csv)
 
     nodes = nodes.merge(dqr, on='domain', how='left')
-    nodes['score'].fillna(-1.0, inplace=True)
+    nodes['pc1'].fillna(-1.0, inplace=True)
 
     logging.info('Generating random features...')
     rng = np.random.default_rng(seed=seed)
