@@ -54,7 +54,7 @@ def initialize_graph_db(
 
     if db_path.exists():
         logging.info(f'Existing database found at {db_path}, skipping initalization.')
-        db = kuzu.Database(db_path, buffer_pool_size=buffer * 1024**3)
+        db = kuzu.Database(db_path / 'graphdb', buffer_pool_size=buffer * 1024**3)
         conn = kuzu.Connection(db, num_threads=cpu_count())
         return db, conn
 
@@ -93,7 +93,7 @@ def main() -> None:
     )
 
     db, conn = initialize_graph_db(
-        db_path=db_path / 'graphdb', nodes_csv=node_path, edges_csv=edge_path
+        db_path=db_path, nodes_csv=node_path, edges_csv=edge_path
     )
 
     node_df = conn.execute(
