@@ -87,7 +87,9 @@ def main() -> None:
     edge_path = scratch / cast(str, meta_args.edge_file)
 
     build_feature_and_label_arrays(
-        db_path=db_path, node_csv=node_path, dqr_csv=root / 'data' / 'domain_pc1.csv'
+        db_path=db_path,
+        node_csv=node_path,
+        dqr_csv=root / 'data' / 'dqr' / 'domain_pc1.csv',
     )
 
     db, conn = initialize_graph_db(
