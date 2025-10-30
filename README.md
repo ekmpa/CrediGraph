@@ -127,13 +127,13 @@ For information on installations of these additional libraries see [pyg-lib](htt
 To run our baseline static experimentation:
 
 ```sh
-uv run tgrag/experiments/main.py
+uv run tgrag/experiments/gnn_experiments/main.py
 ```
 
 Alternatively, you can design your own configuration, updating the model parameters:
 
 ```sh
-uv run tgrag/experiments/main.py --config configs/your_config.yaml
+uv run tgrag/experiments/gnn_experiments/main.py --config configs/your_config.yaml
 ```
 
 To learn more about making a contribution to CrediGraph see our [contribution guide](./.github/CONTRIBUTION.md)
