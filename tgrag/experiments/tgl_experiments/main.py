@@ -97,8 +97,8 @@ def main() -> None:
     )
 
     try:
-        df = conn.execute('MATCH (n:domain) RETURN COUNT(n) AS num_nodes').get_as_df()
-        print(df)
+        df = conn.execute('MATCH (n:domain) RETURN n LIMIT 5').get_as_df()
+        print(df.head())
     except RuntimeError as e:
         print('No domain table found:', e)
 
