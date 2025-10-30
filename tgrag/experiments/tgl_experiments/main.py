@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Tuple, cast
 
 import kuzu
+import numpy as np
+import pandas as pd
 
 from tgrag.utils.args import parse_args
 from tgrag.utils.logger import setup_logging
@@ -23,6 +25,28 @@ parser.add_argument(
 )
 
 
+def build_feature_and_label_arrays(
+    db_path: Path, node_csv: Path, dqr_csv: Path, seed: int = 42, D: int = 128
+) -> None:
+    logging.info('Loading vertex and DQR data...')
+    nodes = pd.read_csv(node_csv)
+    dqr = pd.read_csv(dqr_csv)
+
+    nodes = nodes.merge(dqr, on='domain', how='left')
+    nodes['score'].fillna(-1.0, inplace=True)
+
+    logging.info('Generating random features...')
+    rng = np.random.default_rng(seed=seed)
+    x = rng.normal(size=(len(nodes), D)).astype(np.float32)
+
+    np.save(db_path / 'domains.npy', nodes['domain'].values)
+    np.save(db_path / 'x.npy', x)
+    np.save(db_path / 'y.npy', nodes['score'].astype(np.float32).values)
+    np.save(db_path / 'ts.npy', nodes['ts'].astype(np.int64).values)
+
+    logging.info(f'Saved: x[{x.shape}], y[{nodes.shape[0]}]')
+
+
 def initialize_graph_db(
     db_path: Path, nodes_csv: Path, edges_csv: Path, buffer: int = 40
 ) -> Tuple[kuzu.Database, kuzu.Connection]:
@@ -38,11 +62,13 @@ def initialize_graph_db(
     conn = kuzu.Connection(db, num_threads=cpu_count())
 
     conn.execute(
-        'CREATE NODE TABLE node(domain STRING, ts INT64, PRIMARY KEY(domain));'
+        f'CREATE NODE TABLE domain(name STRING, x FLOAT[128], ts INT64, y FLOAT, PRIMARY KEY(name));'
     )
-    conn.execute('CREATE REL TABLE edge(FROM node TO node, ts INT64, MANY_MANY);')
-    conn.execute(f'COPY node FROM "{nodes_csv}" (HEADER=true);')
-    conn.execute(f'COPY edge FROM "{edges_csv}" (HEADER=true);')
+    conn.execute('CREATE REL TABLE link(FROM domain TO domain, ts INT64, MANY_MANY);')
+    conn.execute(
+        f'COPY domain FROM "({db_path}/domains.npy, {db_path}/x.npy, {db_path}/ts.npy, {db_path}/y.npy)" BY COLUMN;'
+    )
+    conn.execute(f'COPY link FROM "{edges_csv}" (HEADER=true);')
     logging.info('Graph database initialized')
     return db, conn
 
@@ -56,12 +82,16 @@ def main() -> None:
     setup_logging(meta_args.log_file_path)
     seed_everything(meta_args.global_seed)
 
-    db_path = scratch / cast(str, meta_args.database_folder) / 'graphdb'
+    db_path = scratch / cast(str, meta_args.database_folder)
     node_path = scratch / cast(str, meta_args.node_file)
     edge_path = scratch / cast(str, meta_args.edge_file)
 
+    build_feature_and_label_arrays(
+        db_path=db_path, node_csv=node_path, dqr_csv=root / 'data' / 'domain_pc1.csv'
+    )
+
     db, conn = initialize_graph_db(
-        db_path=db_path, nodes_csv=node_path, edges_csv=edge_path
+        db_path=db_path / 'graphdb', nodes_csv=node_path, edges_csv=edge_path
     )
 
     node_df = conn.execute(
