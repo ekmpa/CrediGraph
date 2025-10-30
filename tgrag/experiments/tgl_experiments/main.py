@@ -39,14 +39,8 @@ def build_feature_and_label_arrays(
     rng = np.random.default_rng(seed=seed)
     x = rng.normal(size=(len(nodes), D)).astype(np.float32)
 
-    domains = np.array(nodes['domain'].to_list(), dtype='U256')
-
-    np.save(db_path / 'domains.npy', domains)
-    arr = np.load(db_path / 'domains.npy')
-    logging.info(f'Dtype check: {arr.dtype}')
     np.save(db_path / 'x.npy', x)
     np.save(db_path / 'y.npy', nodes['pc1'].astype(np.float32).values)
-    np.save(db_path / 'ts.npy', nodes['ts'].astype(np.int64).values)
 
     logging.info(f'Saved: x[{x.shape}], y[{nodes.shape[0]}]')
 
@@ -67,11 +61,11 @@ def initialize_graph_db(
     conn = kuzu.Connection(db, num_threads=cpu_count())
 
     conn.execute(
-        'CREATE NODE TABLE domain(name STRING, x FLOAT[128], ts INT64, y FLOAT, PRIMARY KEY(name));'
+        'CREATE NODE TABLE domain(domain STRING, x FLOAT[128], ts INT64, y FLOAT, PRIMARY KEY(domain));'
     )
     conn.execute('CREATE REL TABLE link(FROM domain TO domain, ts INT64, MANY_MANY);')
     conn.execute(
-        f'COPY domain FROM ("{db_path}/domains.npy", "{db_path}/x.npy", "{db_path}/ts.npy", "{db_path}/y.npy") BY COLUMN;'
+        f'COPY domain FROM ("{nodes_csv}", "{db_path}/x.npy", "{db_path}/y.npy") BY COLUMN;'
     )
     conn.execute(f'COPY link FROM "{edges_csv}" (HEADER=true);')
     logging.info('Graph database initialized')
