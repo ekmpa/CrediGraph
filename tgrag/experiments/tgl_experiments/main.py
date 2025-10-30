@@ -96,9 +96,11 @@ def main() -> None:
         db_path=db_path, nodes_csv=node_path, edges_csv=edge_path
     )
 
-    show_df = conn.execute('SHOW TABLES;').get_as_df()
-
-    print(show_df.head(), '\n')
+    try:
+        df = conn.execute('MATCH (n:domain) RETURN COUNT(n) AS num_nodes').get_as_df()
+        print(df)
+    except RuntimeError as e:
+        print('No domain table found:', e)
 
     node_df = conn.execute(
         """
