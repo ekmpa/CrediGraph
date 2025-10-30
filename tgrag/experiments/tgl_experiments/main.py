@@ -39,7 +39,7 @@ def build_feature_and_label_arrays(
     rng = np.random.default_rng(seed=seed)
     x = rng.normal(size=(len(nodes), D)).astype(np.float32)
 
-    np.save(db_path / 'domains.npy', nodes['domain'].values)
+    np.save(db_path / 'domains.npy', nodes['domain'].astype('U256').values)
     np.save(db_path / 'x.npy', x)
     np.save(db_path / 'y.npy', nodes['pc1'].astype(np.float32).values)
     np.save(db_path / 'ts.npy', nodes['ts'].astype(np.int64).values)
@@ -63,7 +63,7 @@ def initialize_graph_db(
     conn = kuzu.Connection(db, num_threads=cpu_count())
 
     conn.execute(
-        f'CREATE NODE TABLE domain(name STRING, x FLOAT[128], ts INT64, y FLOAT, PRIMARY KEY(name));'
+        'CREATE NODE TABLE domain(name STRING, x FLOAT[128], ts INT64, y FLOAT, PRIMARY KEY(name));'
     )
     conn.execute('CREATE REL TABLE link(FROM domain TO domain, ts INT64, MANY_MANY);')
     conn.execute(
