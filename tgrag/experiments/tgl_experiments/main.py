@@ -43,12 +43,16 @@ def construct_kuzu_format(
     y_list = []
     ts_list = []
 
-    logging.info(f'Processing {node_csv} in chunks of {chunk_size:,} rows...')
     x_path = db_path / 'x.npy'
     y_path = db_path / 'y.npy'
     ts_path = db_path / 'ts.npy'
 
     if x_path.exists() and y_path.exists() and ts_path.exists():
+        y = np.load(y_path, mmap_mode='r')
+        x = np.load(x_path, mmap_mode='r')
+        ts = np.load(ts_path, mmap_mode='r')
+        logging.info(x.shape, x.dtype, y.shape, y.dtype, ts.shape, ts.dtype)
+
         assert (
             np.load(x_path).dtype == np.float32
         ), f'x.npy has wrong dtype: {np.load(x_path).dtype}'
@@ -61,6 +65,7 @@ def construct_kuzu_format(
         logging.info(f'x.npy, y.npy and ts.npy at {db_path} already exists, returning.')
         return
 
+    logging.info(f'Processing {node_csv} in chunks of {chunk_size:,} rows...')
     for chunk in tqdm(
         pd.read_csv(node_csv, chunksize=chunk_size),
         desc='Reading vertices',
