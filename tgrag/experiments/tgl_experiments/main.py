@@ -49,6 +49,15 @@ def construct_kuzu_format(
     ts_path = db_path / 'ts.npy'
 
     if x_path.exists() and y_path.exists() and ts_path.exists():
+        assert (
+            np.load(x_path).dtype == np.float32
+        ), f'x.npy has wrong dtype: {np.load(x_path).dtype}'
+        assert (
+            np.load(y_path).dtype == np.float32
+        ), f'y.npy has wrong dtype: {np.load(y_path).dtype}'
+        assert (
+            np.load(ts_path).dtype == np.int64
+        ), f'ts.npy has wrong dtype: {np.load(ts_path).dtype}'
         logging.info(f'x.npy, y.npy and ts.npy at {db_path} already exists, returning.')
         return
 
