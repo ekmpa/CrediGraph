@@ -227,6 +227,8 @@ def main() -> None:
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
 
+    logging.info('Completed.')
+
 
 if __name__ == '__main__':
     main()
