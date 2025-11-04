@@ -1,4 +1,5 @@
 import argparse
+import faulthandler
 import logging
 import pickle
 from multiprocessing import cpu_count
@@ -164,6 +165,7 @@ def initialize_graph_db(
 
 
 def main() -> None:
+    faulthandler.enable()
     root = get_root_dir()
     scratch = get_scratch()
     args = parser.parse_args()
