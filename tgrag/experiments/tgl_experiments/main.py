@@ -219,7 +219,7 @@ def main() -> None:
     y_subset = feature_store.get_tensor(
         TensorAttr(group_name='domain', attr_name='y', index=[0, 1, 2, 3])
     )
-    print(type(y_subset))
+    logging.info(type(y_subset))
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
