@@ -215,8 +215,8 @@ def main() -> None:
     logging.info(f'Graph store keys: {graph_store.get_all_edge_attrs()}')
 
     logging.info('View of feature and graph store:')
-    y_vals = feature_store.get_tensor(('domain', 'y'))
-    print(y_vals[:10])
+    y_vals = feature_store.get_tensor(('domain', 'y'), index=[0, 1, 5, 100])
+    print(y_vals)
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
