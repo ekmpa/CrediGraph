@@ -97,7 +97,6 @@ def build_domain_id_mapping(
     domain_list = []
 
     if not (nid_array_path.exists() and nid_map_path.exists()):
-        logging.info(f'nid.npy, nid_map.pklalready exists at {out_dir}, returning.')
         for chunk in tqdm(
             pd.read_csv(node_csv, chunksize=chunk_size),
             desc='Reading vertices',
@@ -157,7 +156,7 @@ def initialize_graph_db(
     )
     conn.execute('CREATE REL TABLE link(FROM domain TO domain, ts INT64, MANY_MANY);')
     conn.execute(
-        f'COPY domain FROM ("{db_path / "nid.npy"}", "{db_path / "x.npy"}", "{db_path / "y.npy"}") BY COLUMN;'
+        f'COPY domain FROM ("{db_path / "nid.npy"}", "{db_path / "x.npy"}", "{db_path / "ts.npy"}", "{db_path / "y.npy"}") BY COLUMN;'
     )
     conn.execute(f'COPY link FROM "{edges_csv}" (HEADER=true);')
     logging.info('Graph database initialized')
