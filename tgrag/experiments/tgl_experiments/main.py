@@ -43,6 +43,13 @@ def construct_kuzu_format(
     ts_list = []
 
     logging.info(f'Processing {node_csv} in chunks of {chunk_size:,} rows...')
+    x_path = db_path / 'x.npy'
+    y_path = db_path / 'y.npy'
+    ts_path = db_path / 'ts.npy'
+
+    if x_path.exists() and y_path.exists() and ts_path.exists():
+        logging.info(f'x.npy, y.npy and ts.npy at {db_path} already exists, returning.')
+        return
 
     for chunk in tqdm(
         pd.read_csv(node_csv, chunksize=chunk_size),
@@ -63,9 +70,9 @@ def construct_kuzu_format(
     ts = np.concatenate(ts_list)
 
     logging.info(f'Saving arrays to {db_path}...')
-    np.save(db_path / 'x.npy', x)
-    np.save(db_path / 'y.npy', y)
-    np.save(db_path / 'ts.npy', ts)
+    np.save(x_path, x)
+    np.save(y_path, y)
+    np.save(ts_path, ts)
 
     logging.info(f'Saved x{list(x.shape)}, y[{y.shape[0]}]')
 
@@ -77,6 +84,12 @@ def build_domain_id_mapping(
     nid_map_path = out_dir / 'nid_map.pkl'
     nid_array_path = out_dir / 'nid.npy'
     edges_out_path = out_dir / 'edges_with_id.csv'
+
+    if edges_out_path.exists() and nid_array_path.exists() and nid_map_path.exists():
+        logging.info(
+            f'nid.npy, nid_map.pkl and edges with IDs already exists at {out_dir}, returning.'
+        )
+        return
 
     logging.info(f'Building domain to id mapping from {node_csv}...')
     domain_to_id = {}
