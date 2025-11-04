@@ -85,7 +85,7 @@ def build_domain_id_mapping(
     nid_array_path = out_dir / 'nid.npy'
     edges_out_path = out_dir / 'edges_with_id.csv'
 
-    if edges_out_path.exists() and nid_array_path.exists() and nid_map_path.exists():
+    if nid_array_path.exists() and nid_map_path.exists() and edges_out_path.exists():
         logging.info(
             f'nid.npy, nid_map.pkl and edges with IDs already exists at {out_dir}, returning.'
         )
@@ -96,37 +96,40 @@ def build_domain_id_mapping(
     next_id = 0
     domain_list = []
 
-    for chunk in tqdm(
-        pd.read_csv(node_csv, chunksize=chunk_size),
-        desc='Reading vertices',
-        unit='chunk',
-    ):
-        for domain in chunk['domain'].astype(str):
-            if domain not in domain_to_id:
-                domain_to_id[domain] = next_id
-                domain_list.append(domain)
-                next_id += 1
-
-    logging.info(f'Total unique domains: {len(domain_to_id):,}')
-    np.save(nid_array_path, np.array(domain_list))
-    with open(nid_map_path, 'wb') as f:
-        pickle.dump(domain_to_id, f)
-
-    logging.info(f'Rewriting {edge_csv} to {edges_out_path} with ID mapping...')
-    with open(edges_out_path, 'w') as fout:
-        fout.write('src_id,dst_id,ts\n')
-
+    if not (nid_array_path.exists() and nid_map_path.exists()):
+        logging.info(f'nid.npy, nid_map.pklalready exists at {out_dir}, returning.')
         for chunk in tqdm(
-            pd.read_csv(edge_csv, chunksize=chunk_size),
-            desc='Rewriting edges',
+            pd.read_csv(node_csv, chunksize=chunk_size),
+            desc='Reading vertices',
             unit='chunk',
         ):
-            chunk['src_id'] = chunk['src'].map(domain_to_id)
-            chunk['dst_id'] = chunk['dst'].map(domain_to_id)
+            for domain in chunk['domain'].astype(str):
+                if domain not in domain_to_id:
+                    domain_to_id[domain] = next_id
+                    domain_list.append(domain)
+                    next_id += 1
 
-            chunk[['src_id', 'dst_id', 'ts']].astype(
-                {'src_id': 'int64', 'dst_id': 'int64'}
-            ).to_csv(fout, header=False, index=False)
+        logging.info(f'Total unique domains: {len(domain_to_id):,}')
+        np.save(nid_array_path, np.arange(len(domain_list), dtype=np.int64))
+        with open(nid_map_path, 'wb') as f:
+            pickle.dump(domain_to_id, f)
+
+    if not edges_out_path.exists():
+        logging.info(f'Rewriting {edge_csv} to {edges_out_path} with ID mapping...')
+        with open(edges_out_path, 'w') as fout:
+            fout.write('src_id,dst_id,ts\n')
+
+            for chunk in tqdm(
+                pd.read_csv(edge_csv, chunksize=chunk_size),
+                desc='Rewriting edges',
+                unit='chunk',
+            ):
+                chunk['src_id'] = chunk['src'].map(domain_to_id)
+                chunk['dst_id'] = chunk['dst'].map(domain_to_id)
+
+                chunk[['src_id', 'dst_id', 'ts']].astype(
+                    {'src_id': 'int64', 'dst_id': 'int64'}
+                ).to_csv(fout, header=False, index=False)
 
     logging.info(
         f'Finished. Saved nid_map.pkl, nid.npy, and edges_with_id.csv to {out_dir}'
