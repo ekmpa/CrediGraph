@@ -8,6 +8,7 @@ from typing import Tuple, cast
 import kuzu
 import numpy as np
 import pandas as pd
+from torch_geometric.data import TensorAttr
 from tqdm import tqdm
 
 from tgrag.utils.args import parse_args
@@ -215,8 +216,10 @@ def main() -> None:
     logging.info(f'Graph store keys: {graph_store.get_all_edge_attrs()}')
 
     logging.info('View of feature and graph store:')
-    y_vals = feature_store.get_tensor(('domain', 'y'), index=[0, 1, 5, 100])
-    print(y_vals)
+    y_subset = feature_store.get_tensor(
+        TensorAttr(group_name='domain', attr_name='y', index=[0, 1, 2, 3])
+    )
+    print(y_subset)
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
