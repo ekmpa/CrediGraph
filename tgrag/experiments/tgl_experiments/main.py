@@ -227,17 +227,29 @@ def main() -> None:
 
     print('=== Example edge records ===')
     print(edge_df.head())
-    feature_store, graph_store = db.get_torch_geometric_remote_backend()
 
-    logging.info(f'Feature store keys: {feature_store.get_all_tensor_attrs()}')
-    logging.info(f'Graph store keys: {graph_store.get_all_edge_attrs()}')
+    result = conn.execute(
+        """
+        MATCH (a:domain)-[r:link]->(b:domain)
+        RETURN a, r, b
+    """
+    )
+
+    pyg_data, _, _, _ = result.get_as_torch_geometric()
+
+    print(pyg_data)
+
+    # feature_store, graph_store = db.get_torch_geometric_remote_backend()
+    #
+    # logging.info(f'Feature store keys: {feature_store.get_all_tensor_attrs()}')
+    # logging.info(f'Graph store keys: {graph_store.get_all_edge_attrs()}')
 
     logging.info('View of feature and graph store:')
-    try:
-        y_subset = feature_store['domain', 'nid', 0]
-        logging.info(type(y_subset))
-    except Exception as e:
-        logging.exception(f'Error accessing feature store {e}')
+    # try:
+    #     y_subset = feature_store['domain', 'nid', 0]
+    #     logging.info(type(y_subset))
+    # except Exception as e:
+    #     logging.exception(f'Error accessing feature store {e}')
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
