@@ -191,7 +191,7 @@ def main() -> None:
     node_df = conn.execute(
         """
         MATCH (n:domain)
-        RETURN n.nid AS domain, n.ts AS ts
+        RETURN n.nid AS domain, n.ts AS ts, n.x as RNI
         LIMIT 5
     """
     ).get_as_df()
