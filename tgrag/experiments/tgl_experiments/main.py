@@ -51,7 +51,9 @@ def construct_kuzu_format(
         y = np.load(y_path, mmap_mode='r')
         x = np.load(x_path, mmap_mode='r')
         ts = np.load(ts_path, mmap_mode='r')
-        logging.info(x.shape, x.dtype, y.shape, y.dtype, ts.shape, ts.dtype)
+        logging.info(
+            f'x: {x.shape}, {x.dtype}; y: {y.shape}, {y.dtype}; ts: {ts.shape}, {ts.dtype}'
+        )
 
         assert (
             np.load(x_path).dtype == np.float32
