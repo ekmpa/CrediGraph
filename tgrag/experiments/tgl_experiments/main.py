@@ -216,10 +216,13 @@ def main() -> None:
     logging.info(f'Graph store keys: {graph_store.get_all_edge_attrs()}')
 
     logging.info('View of feature and graph store:')
-    y_subset = feature_store.get_tensor(
-        TensorAttr(group_name='domain', attr_name='y', index=[0, 1, 2, 3])
-    )
-    logging.info(type(y_subset))
+    try:
+        y_subset = feature_store.get_tensor(
+            TensorAttr(group_name='domain', attr_name='y', index=[0, 1, 2, 3])
+        )
+        logging.info(type(y_subset))
+    except Exception as e:
+        logging.exception(f'Error accessing feature store {e}')
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
