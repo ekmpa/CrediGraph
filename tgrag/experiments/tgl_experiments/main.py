@@ -8,7 +8,6 @@ from typing import Tuple, cast
 import kuzu
 import numpy as np
 import pandas as pd
-from torch_geometric.data import TensorAttr
 from tqdm import tqdm
 
 from tgrag.utils.args import parse_args
@@ -217,9 +216,7 @@ def main() -> None:
 
     logging.info('View of feature and graph store:')
     try:
-        y_subset = feature_store.get_tensor(
-            TensorAttr(group_name='domain', attr_name='y', index=[0, 1, 2, 3])
-        )
+        y_subset = feature_store['domain', 'y', 0]
         logging.info(type(y_subset))
     except Exception as e:
         logging.exception(f'Error accessing feature store {e}')
