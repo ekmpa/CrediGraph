@@ -213,6 +213,15 @@ def main() -> None:
 
     logging.info(f'Feature store keys: {feature_store.get_all_tensor_attrs()}')
     logging.info(f'Graph store keys: {graph_store.get_all_edge_attrs()}')
+
+    print(feature_store['domain', 'id', [2, 4, 5, 100]])
+
+    print(feature_store['domain', 'y', [2, 4, 5, 100]])
+
+    print(feature_store['domain', 'y', 0:100])
+
+    print(graph_store[('domain', 'link', 'domain'), 'coo'])
+
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
 
