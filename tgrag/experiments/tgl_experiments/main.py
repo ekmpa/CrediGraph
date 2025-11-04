@@ -234,7 +234,7 @@ def main() -> None:
 
     logging.info('View of feature and graph store:')
     try:
-        y_subset = feature_store['domain', 'y', 0]
+        y_subset = feature_store['domain', 'nid', 0]
         logging.info(type(y_subset))
     except Exception as e:
         logging.exception(f'Error accessing feature store {e}')
