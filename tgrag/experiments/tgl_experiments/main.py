@@ -214,7 +214,7 @@ def main() -> None:
     logging.info(f'Feature store keys: {feature_store.get_all_tensor_attrs()}')
     logging.info(f'Graph store keys: {graph_store.get_all_edge_attrs()}')
 
-    print(feature_store['domain', 'id', [2, 4, 5, 100]])
+    print(feature_store['domain', 'nid', [2, 4, 5, 100]])
 
     print(feature_store['domain', 'y', [2, 4, 5, 100]])
 
