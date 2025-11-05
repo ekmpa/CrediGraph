@@ -9,9 +9,12 @@ from typing import Tuple, cast
 import kuzu
 import numpy as np
 import pandas as pd
+import torch
+from torch_geometric.data import FeatureStore, GraphStore
+from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
-from tgrag.utils.args import parse_args
+from tgrag.utils.args import DataArguments, ModelArguments, parse_args
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.path import get_root_dir, get_scratch
 from tgrag.utils.seed import seed_everything
@@ -180,6 +183,74 @@ def initialize_graph_db(
     return db, conn
 
 
+def construct_dataset(conn: kuzu.connection) -> Tuple[torch.Tensor, torch.Tensor]:
+    count_result = conn.execute(
+        """
+        MATCH (d:domain) RETURN count(*);
+    """
+    )
+    count = count_result.get_next()[0]
+
+    train_count = int(0.6 * count)
+    test_count = int(0.4 * count)
+
+    train_ids, test_ids = torch.utils.data.random_split(
+        range(count),
+        (train_count, test_count),
+        generator=torch.Generator().manual_seed(42),
+    )
+
+    train_mask = torch.zeros(count, dtype=torch.bool)
+    test_mask = torch.zeros(count, dtype=torch.bool)
+
+    train_mask.index_fill(0, torch.LongTensor(train_ids), True)
+    test_mask.index_fill(0, torch.LongTensor(test_ids), True)
+
+    return train_mask, test_mask
+
+
+def run_scalable_gnn(
+    data_arguments: DataArguments,
+    model_arguments: ModelArguments,
+    train_mask: torch.Tensor,
+    test_mask: torch.Tensor,
+    feature_store: FeatureStore,
+    graph_store: GraphStore,
+) -> None:
+    loader = NeighborLoader(
+        data=(feature_store, graph_store),
+        input_nodes=('domain', train_mask),
+        num_neighbors={('domain', 'link', 'domain'): model_arguments.num_neighbors},
+        batch_size=model_arguments.batch_size,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True,
+    )
+    logging.info('Train loader created')
+
+    next_data = next(iter(loader))
+    logging.info(f'{next_data}')
+
+    # logging.info('*** Training ***')
+    # for run in tqdm(range(model_arguments.runs), desc='Runs'):
+    #     model = Model(
+    #         model_name=model_arguments.model,
+    #         normalization=model_arguments.normalization,
+    #         in_channels=data.x.shape[1],
+    #         hidden_channels=model_arguments.hidden_channels,
+    #         out_channels=model_arguments.embedding_dimension,
+    #         num_layers=model_arguments.num_layers,
+    #         dropout=model_arguments.dropout,
+    #     ).to(device)
+    #     optimizer = torch.optim.AdamW(
+    #         model.parameters(), lr=model_arguments.lr, weight_decay=5e-4
+    #     )
+    #     for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
+    #         pass
+    #
+
+
 def main() -> None:
     faulthandler.enable()
     root = get_root_dir()
@@ -200,33 +271,33 @@ def main() -> None:
 
     db, conn = initialize_graph_db(db_path=db_path)
 
-    try:
-        df = conn.execute('MATCH (n:domain) RETURN n LIMIT 5').get_as_df()
-        print(df.head())
-    except RuntimeError as e:
-        print('No domain table found:', e)
+    # try:
+    #     df = conn.execute('MATCH (n:domain) RETURN n LIMIT 5').get_as_df()
+    #     print(df.head())
+    # except RuntimeError as e:
+    #     print('No domain table found:', e)
+    #
+    # node_df = conn.execute(
+    #     """
+    #     MATCH (n:domain)
+    #     RETURN n.nid AS domain, n.ts AS ts, n.x as RNI
+    #     LIMIT 5
+    # """
+    # ).get_as_df()
+    #
+    # print('=== Example node records ===')
+    # print(node_df.head(), '\n')
+    #
+    # edge_df = conn.execute(
+    #     """
+    #     MATCH (a:domain)-[r:link]->(b:domain)
+    #     RETURN a.nid AS src, b.nid AS dst, r.ts AS ts
+    #     LIMIT 5
+    # """
+    # ).get_as_df()
 
-    node_df = conn.execute(
-        """
-        MATCH (n:domain)
-        RETURN n.nid AS domain, n.ts AS ts, n.x as RNI
-        LIMIT 5
-    """
-    ).get_as_df()
-
-    print('=== Example node records ===')
-    print(node_df.head(), '\n')
-
-    edge_df = conn.execute(
-        """
-        MATCH (a:domain)-[r:link]->(b:domain)
-        RETURN a.nid AS src, b.nid AS dst, r.ts AS ts
-        LIMIT 5
-    """
-    ).get_as_df()
-
-    print('=== Example edge records ===')
-    print(edge_df.head())
+    # print('=== Example edge records ===')
+    # print(edge_df.head())
 
     feature_store, graph_store = db.get_torch_geometric_remote_backend()
 
@@ -240,8 +311,17 @@ def main() -> None:
     except Exception as e:
         logging.exception(f'Error accessing feature store {e}')
 
+    train_mask, test_mask = construct_dataset(conn=conn)
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
+        run_scalable_gnn(
+            data_arguments=experiment_arg.data_args,
+            model_arguments=experiment_arg.model_args,
+            train_mask=train_mask,
+            test_mask=test_mask,
+            feature_store=feature_store,
+            graph_store=graph_store,
+        )
 
     logging.info('Completed.')
 
