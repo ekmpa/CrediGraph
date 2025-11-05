@@ -30,6 +30,7 @@ dependencies = [
     "torch-geometric>=2.6.1",
     "torchvision==0.15.2",
     "torchaudio==2.0.2",
+    "numpy>=2.0.2",
 ]
 
 [tool.flit.module]
