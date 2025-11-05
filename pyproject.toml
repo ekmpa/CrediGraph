@@ -26,7 +26,7 @@ dependencies = [
     "cloudscraper>=1.2.71",
     "BeautifulSoup4>=4.13.0",
     "jsonpath-ng>=1.7.0",
-    "kuzu==0.0.7",
+    "kuzu==0.11.3",
     "torch-geometric>=2.6.1",
 ]
 
