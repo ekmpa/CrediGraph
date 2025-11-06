@@ -190,6 +190,7 @@ def construct_dataset(conn: kuzu.connection) -> Tuple[torch.Tensor, torch.Tensor
     """
     )
     count = count_result.get_next()[0]
+    logging.info(f'Match (d:domain) RETURN count(*) -> {count}')
 
     train_count = int(0.6 * count)
     test_count = count - train_count
