@@ -193,20 +193,17 @@ def construct_dataset(conn: kuzu.connection) -> Tuple[torch.Tensor, torch.Tensor
     logging.info(f'Match (d:domain) RETURN count(*) -> {count}')
 
     train_count = int(0.6 * count)
-    test_count = count - train_count
+    count - train_count
 
-    train_ids, test_ids = torch.utils.data.random_split(
-        range(count),
-        (train_count, test_count),
-        generator=torch.Generator().manual_seed(42),
-    )
+    indices = torch.randperm(count)
+    train_ids = indices[:train_count]
+    test_ids = indices[train_count:]
 
     train_mask = torch.zeros(count, dtype=torch.bool)
     test_mask = torch.zeros(count, dtype=torch.bool)
 
-    train_mask.index_fill(0, torch.LongTensor(train_ids), True)
-    test_mask.index_fill(0, torch.LongTensor(test_ids), True)
-
+    train_mask[train_ids] = True
+    test_mask[test_ids] = True
     return train_mask, test_mask
 
 
