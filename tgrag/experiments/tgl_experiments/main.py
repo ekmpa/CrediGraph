@@ -312,6 +312,8 @@ def main() -> None:
         logging.exception(f'Error accessing feature store {e}')
 
     train_mask, test_mask = construct_dataset(conn=conn)
+    logging.info(f'Train_mask size: {train_mask.size()}')
+    logging.info(f'Test_mask size: {test_mask.size()}')
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
         run_scalable_gnn(
