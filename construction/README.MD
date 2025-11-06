@@ -2,19 +2,28 @@
 
 ## Usage
 
-### Build Custom Graph
+### Building Temporal Graphs
 
 ```sh
-./pipeline.sh file.txt [--keep idx]
+bash pipeline.sh <start_month> <end_month> <number of subfolders>
+# e.g,
+bash pipeline.sh 'January 2020' 'February 2020' 3
 ```
 
-where `file.txt` contains 1 crawl ID per line, and `idx` is an optional index on which to resume construction from.
+where the format `<month name YYYY>` must be respected, and the number of subfolders designated the extent of parallelization of the graph construction. Note that not parallelizing the construction means a graph takes up to 600 hours to be processed and produced, whereas high level of parallelization can take this down to ... ?
+
+> ***Note:***
+>
+> At times out of our control, the Common Crawl connection may be down. The CrediBench pipeline has safeguards against this (retries and wait periods), but in some cases, the server is just offline for a short amount of time. In the pipeline, this will appear most often as a `RuntimeError` in the high-level pipeline (before going into data download) that indicates the fetch from `https://index.commoncrawl.org/collinfo.json` failed.
 
 #### (one batch)
 
+TODO: add updated low-level run commands.
+
+<!--
 ```sh
 ./end-to-end.sh ['COMMON-CRAWL-DATES', ...] start_idx end_idx [wat]
-```
+``` -->
 
 ### Extract Wet Content
 

@@ -1,22 +1,20 @@
 #!/bin/bash
-# set -e
 set -euo pipefail
 
-# TODOS
-# clean the logging
-# and use logger?
-
-if [ $# -lt 2 ]; then # TODO: make the Jan/Feb default values? So users could launch without an interval to get an example 2-month graph?
+if [ $# -lt 2 ]; then
     echo "Usage: $0 <start-month> <end-month> [num-subfolders]"
     echo "e.g.: $0 'January 2025' 'February 2025' 9"
     exit 1
 fi
 
+# TODO:
+# comments
+# fallback for fetch error ?
+
 START_MONTH="$1"
 END_MONTH="$2"
-NUM_SUBFOLDERS="${3:-9}"  # default to 9 (latest crawls have 90K files -> 10K each)
+NUM_SUBFOLDERS="${3:-9}"
 
-# Set up env & paths, using scratch if possible (running on a cluster is indeed recommended)
 export PYTHONPATH="$(pwd)/.."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -25,40 +23,64 @@ TEMPLATE_SCRIPTS="$CONSTRUCTION_DIR/bash_scripts"
 BASE_URL=https://data.commoncrawl.org
 mkdir -p "$CONSTRUCTION_DIR/logs"
 
-
 get_cc_indices() {
     uv run python -c "
 from tgrag.utils.data_loading import interval_to_CC_slices
 indices = interval_to_CC_slices(\"$1\", \"$2\")
 print(' '.join(indices))
-" #"$1" "$2"
+"
 }
 
 CRAWL_INDICES=$(get_cc_indices "$START_MONTH" "$END_MONTH")
 
-echo "Running CrediBench on CC slices: $CRAWL_INDICES"
-
-if [ -z "$SCRATCH" ]; then
+if [ -z "${SCRATCH:-}" ]; then
     DATA_DIR="$PROJECT_ROOT/data"
 else
     DATA_DIR="$SCRATCH"
 fi
 
-
 process_crawl() {
     local CRAWL=$1
     echo "[INFO] Starting crawl: $CRAWL"
-    mkdir -p "$DATA_DIR/crawl-data/$CRAWL"
 
+    mkdir -p "$DATA_DIR/crawl-data/$CRAWL"
     mkdir -p "$DATA_DIR/crawl-data/$CRAWL/output"
     rm -rf "$DATA_DIR/crawl-data/$CRAWL/output"/*
 
-    wget -q "$BASE_URL/crawl-data/$CRAWL/wat.paths.gz" -O /tmp/wat.paths.gz
-    TOTAL_FILES=$(gzip -dc /tmp/wat.paths.gz | wc -l)
+    WAT_PATHS_FILE=$(mktemp /tmp/wat.paths.XXXXXX.gz)
+    MAX_RETRIES=3
+    SUCCESS=0
+
+    for attempt in $(seq 1 $MAX_RETRIES); do
+        echo "[INFO] Attempt $attempt downloading WAT paths for $CRAWL..."
+        wget -q "$BASE_URL/crawl-data/$CRAWL/wat.paths.gz" -O "$WAT_PATHS_FILE"
+
+        if gzip -t "$WAT_PATHS_FILE"; then
+            echo "[INFO] Valid WAT file downloaded."
+            SUCCESS=1
+            break
+        else
+            echo "[WARN] Corrupted WAT file (attempt $attempt), retrying..."
+            rm -f "$WAT_PATHS_FILE"
+            sleep 2
+        fi
+    done
+
+    if [[ "$SUCCESS" -ne 1 ]]; then
+        echo "[ERROR] Failed to get valid WAT paths file for $CRAWL after $MAX_RETRIES attempts" >&2
+        return 1
+    fi
+
+    TOTAL_FILES=$(gzip -dc "$WAT_PATHS_FILE" | wc -l)
     echo "[INFO] Total WAT files: $TOTAL_FILES"
 
     FILES_PER_SUBSET=$(( (TOTAL_FILES + NUM_SUBFOLDERS - 1) / NUM_SUBFOLDERS ))
     echo "[INFO] Splitting into $NUM_SUBFOLDERS subsets, ~$FILES_PER_SUBSET files each"
+
+    CRAWL_DIR="$CONSTRUCTION_DIR/$CRAWL"
+    mkdir -p "$CRAWL_DIR"
+
+    pids=()
 
     for (( i=0; i<NUM_SUBFOLDERS; i++ )); do
         (
@@ -66,7 +88,8 @@ process_crawl() {
             SUBFOLDER_NAME="bash_scripts$SUBFOLDER_ID"
             OUTPUT_DIR="$DATA_DIR/crawl-data/$CRAWL/output$SUBFOLDER_ID"
             SEGMENT_DIR="$DATA_DIR/crawl-data/$CRAWL/segments$SUBFOLDER_ID"
-            TARGET_SCRIPTS="$CONSTRUCTION_DIR/$SUBFOLDER_NAME"
+            TARGET_SCRIPTS="$CRAWL_DIR/$SUBFOLDER_NAME"
+
             if [ ! -d "$TARGET_SCRIPTS" ]; then
                 echo "[INFO] Creating $TARGET_SCRIPTS from template"
                 cp -r "$TEMPLATE_SCRIPTS" "$TARGET_SCRIPTS"
@@ -88,13 +111,18 @@ process_crawl() {
                 rm -rf "$SEGMENT_DIR"/*
                 bash "$TARGET_SCRIPTS/end-to-end.sh" "$CRAWL" "$batch_start" "$batch_end" "$SUBFOLDER_ID"
             done
-        ) > "$CONSTRUCTION_DIR/logs/${CRAWL}_sub$((i+1)).log" 2>&1 &
+        ) >"$CONSTRUCTION_DIR/logs/${CRAWL}_sub$((i+1))_out.log" \
+          2>"$CONSTRUCTION_DIR/logs/${CRAWL}_sub$((i+1))_err.log" &
+
+        pids+=($!)
     done
 
-    wait
+    for pid in "${pids[@]}"; do
+        wait "$pid"
+    done
+
     echo "[INFO][$CRAWL] All subsets done. Starting merge..."
 
-    # Merge outputs pairwise
     local merged_output="$DATA_DIR/$CRAWL/output1"
     for (( i=2; i<=NUM_SUBFOLDERS; i++ )); do
         local src="$DATA_DIR/$CRAWL/output$i"
@@ -106,12 +134,22 @@ process_crawl() {
     echo "[INFO][$CRAWL] Final merged output: $merged_output"
 }
 
-# Launch each crawl in parallel
+# Launches each crawl in parallel with stdout and stderr logs.
 for CRAWL in $CRAWL_INDICES; do
-    process_crawl "$CRAWL" > "$CONSTRUCTION_DIR/logs/${CRAWL}.log" 2>&1 &
+    process_crawl "$CRAWL" \
+      >"$CONSTRUCTION_DIR/logs/${CRAWL}_main_out.log" \
+      2>"$CONSTRUCTION_DIR/logs/${CRAWL}_main_err.log" &
 done
 
 wait
 
-# TODO : remove each subfolder here.
+# Clean out subfolders
+for dir in "$CONSTRUCTION_DIR"/CC-*; do
+    if [ -d "$dir" ]; then
+        rm -rf "$dir"
+    fi
+done
+
+echo "[INFO] Cleanup done."
+
 echo "All crawls completed."

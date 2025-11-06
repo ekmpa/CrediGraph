@@ -13,7 +13,8 @@ end_idx="$3"
 subfolder_id="$4"
 data_type="${5:-wat}"
 spark_table_name="${6:-content_table}"
-subfolder_name="bash_scripts${subfolder_id}"
+#subfolder_name="bash_scripts${subfolder_id}"
+subfolder_name="$(basename "$(dirname "${BASH_SOURCE[0]}")")"  # auto-detect parent dir
 
 # set paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -13,6 +13,4 @@ module load python/3.10
 source ~/CGfullgraph/.venv/bin/activate
 export JAVA_HOME="$HOME/java/jdk-17"
 
-# bash pipeline.sh CC-Crawls/CC-2024-nov.txt --keep 45300 #15900 --exclusive
-
-bash pipeline.sh 'January 2020' 'February 2020' 2
+bash pipeline.sh 'January 2020' 'February 2020' 3
