@@ -314,7 +314,9 @@ def main() -> None:
 
     train_mask, test_mask = construct_dataset(conn=conn)
     logging.info(f'Train_mask size: {train_mask.size()}')
+    logging.info(f'Sample of train mask: {train_mask[0:5]}')
     logging.info(f'Test_mask size: {test_mask.size()}')
+    logging.info(f'Sample of test mask: {test_mask[0:5]}')
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
         run_scalable_gnn(
