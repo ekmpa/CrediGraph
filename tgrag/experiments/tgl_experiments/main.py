@@ -192,7 +192,7 @@ def construct_dataset(conn: kuzu.connection) -> Tuple[torch.Tensor, torch.Tensor
     count = count_result.get_next()[0]
 
     train_count = int(0.6 * count)
-    test_count = int(0.4 * count)
+    test_count = count - train_count
 
     train_ids, test_ids = torch.utils.data.random_split(
         range(count),
