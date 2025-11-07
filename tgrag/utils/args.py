@@ -33,6 +33,9 @@ class MetaArguments:
     target_file: Union[str, List[str]] = field(
         metadata={'help': 'A csv or list of csv files containing the targets.'},
     )
+    database_folder: Union[str, List[str]] = field(
+        metadata={'help': 'The folder containing the relational database.'},
+    )
     processed_location: Union[str, List[str]] = field(
         metadata={'help': 'The location to save the processed feature matrix.'},
     )
@@ -98,6 +101,7 @@ class MetaArguments:
         self.node_file = resolve_paths(self.node_file)
         self.edge_file = resolve_paths(self.edge_file)
         self.target_file = resolve_paths(self.target_file)
+        self.database_folder = resolve_paths(self.database_folder)
         self.processed_location = resolve_paths(self.processed_location)
 
         if self.log_file_path is not None:
