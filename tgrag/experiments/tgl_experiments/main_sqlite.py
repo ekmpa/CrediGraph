@@ -59,7 +59,7 @@ def construct_formatted_data(
 
             x_chunk = rng.normal(size=(len(chunk), D)).astype(np.float32)
 
-            for i, (_, row) in enumerate(chunk.iterrows()):
+            for i, (_, row) in tqdm(enumerate(chunk.iterrows()), desc='Reading Chunk'):
                 record = {
                     'domain': row['domain'],
                     'ts': int(row['ts']),
