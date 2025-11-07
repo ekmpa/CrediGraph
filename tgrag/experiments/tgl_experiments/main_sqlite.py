@@ -136,10 +136,10 @@ def initialize_graph_db(db_path: Path) -> sqlite3.Connection:
 
     if graph_db_path.exists():
         logging.info(f'Existing database found at {db_path}, skipping initalization.')
-        con = sqlite3.connect(f'file:{graph_db_path}?mode=rw', uri=True)
+        con = sqlite3.connect(f'{graph_db_path}')
         return con
 
-    con = sqlite3.connect(f'file:{graph_db_path}?mode=rw', uri=True)
+    con = sqlite3.connect(f'{graph_db_path}')
     cur = con.cursor()
     cur.execute(
         'CREATE TABLE domain(nid INTEGER PRIMARY KEY, ts INTEGER, x BLOB , y REAL)'
