@@ -61,7 +61,7 @@ def construct_formatted_data(
 
             for i, (_, row) in tqdm(enumerate(chunk.iterrows()), desc='Reading Chunk'):
                 record = {
-                    'domain': row['domain'],
+                    'nid': row['domain'],
                     'ts': int(row['ts']),
                     'y': float(row['pc1']),
                     'x': x_chunk[i].tolist(),
@@ -151,12 +151,13 @@ def initialize_graph_db(db_path: Path) -> sqlite3.Connection:
 
 def populate_from_json(con: sqlite3.Connection, json_path: Path) -> None:
     with open(json_path, 'r') as f:
-        data = json.load(f)
-
-    rows = []
-    for d in tqdm(data, desc='Reading JSON'):
-        x = np.array(d['x'], dtype=torch.float32).tobytes()
-        rows.append((d['nid'], d['ts'], x, d['y']))
+        rows = []
+        for line in f:
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            x = np.array(record['x'], dtype=torch.float32).tobytes()
+            rows.append((record['nid'], record['ts'], x, record['y']))
 
     con.executemany('INSERT INTO domain VALUES (?, ?, ?, ?)', rows)
     logging.info('Database populated')
