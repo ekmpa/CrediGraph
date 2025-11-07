@@ -160,7 +160,11 @@ def populate_from_json(con: sqlite3.Connection, json_path: Path) -> None:
             rows.append(
                 (str(record['domain']), int(record['ts']), x, float(record['y']))
             )
-
+            logging.info(f'Type of x: {type(x)}')
+            con.execute(
+                'INSERT INTO domain VALUES (?, ?, ?, ?)',
+                (str(record['domain']), int(record['ts']), x, float(record['y'])),
+            )
     con.executemany('INSERT INTO domain VALUES (?, ?, ?, ?)', rows)
     logging.info('Database populated')
     con.commit()
