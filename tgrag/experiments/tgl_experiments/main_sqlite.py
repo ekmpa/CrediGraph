@@ -156,7 +156,7 @@ def populate_from_json(con: sqlite3.Connection, json_path: Path) -> None:
             if not line.strip():
                 continue
             record = json.loads(line)
-            x = np.array(record['x'], dtype=torch.float32).tobytes()
+            x = np.array(record['x'], dtype=np.float32).tobytes()
             rows.append((record['nid'], record['ts'], x, record['y']))
 
     con.executemany('INSERT INTO domain VALUES (?, ?, ?, ?)', rows)
