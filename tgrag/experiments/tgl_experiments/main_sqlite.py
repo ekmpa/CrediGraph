@@ -156,20 +156,6 @@ def populate_from_json(con: sqlite3.Connection, json_path: Path) -> None:
             if not line.strip():
                 continue
             record = json.loads(line)
-            logging.warning(
-                {
-                    'domain': record['domain'],
-                    'domain_type': type(record['domain']),
-                    'ts': record['ts'],
-                    'ts_type': type(record['ts']),
-                    'y': record['y'],
-                    'y_type': type(record['y']),
-                    'x_type': type(record['x']),
-                    'first_few_x': (
-                        record['x'][:5] if isinstance(record['x'], list) else None
-                    ),
-                }
-            )
 
             x = np.array(record['x'], dtype=np.float32).tobytes()
             rows.append(
@@ -180,7 +166,6 @@ def populate_from_json(con: sqlite3.Connection, json_path: Path) -> None:
                 'INSERT INTO domain VALUES (?, ?, ?, ?)',
                 (str(record['domain']), int(record['ts']), x, float(record['y'])),
             )
-    con.executemany('INSERT INTO domain VALUES (?, ?, ?, ?)', rows)
     logging.info('Database populated')
     con.commit()
 
