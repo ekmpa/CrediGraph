@@ -142,7 +142,7 @@ def initialize_graph_db(db_path: Path) -> sqlite3.Connection:
     con = sqlite3.connect(f'{graph_db_path}')
     cur = con.cursor()
     cur.execute(
-        'CREATE TABLE domain(nid INTEGER PRIMARY KEY, ts INTEGER, x BLOB , y REAL)'
+        'CREATE TABLE domain(name TEXT PRIMARY KEY, ts INTEGER, x BLOB , y REAL)'
     )
     con.commit()
     logging.info('Graph database initialized')
@@ -157,7 +157,7 @@ def populate_from_json(con: sqlite3.Connection, json_path: Path) -> None:
                 continue
             record = json.loads(line)
             x = np.array(record['x'], dtype=np.float32).tobytes()
-            rows.append((record['nid'], record['ts'], x, record['y']))
+            rows.append((record['domain'], record['ts'], x, record['y']))
 
     con.executemany('INSERT INTO domain VALUES (?, ?, ?, ?)', rows)
     logging.info('Database populated')
