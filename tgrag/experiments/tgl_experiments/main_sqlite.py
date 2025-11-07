@@ -140,11 +140,27 @@ def initialize_graph_db(db_path: Path) -> sqlite3.Connection:
         return con
 
     con = sqlite3.connect(f'file:{graph_db_path}?mode=rw', uri=True)
-    con.execute(
+    cur = con.cursor()
+    cur.execute(
         'CREATE TABLE domain(nid INTEGER PRIMARY KEY, ts INTEGER, x BLOB , y REAL)'
     )
+    con.commit()
     logging.info('Graph database initialized')
     return con
+
+
+def populate_from_json(con: sqlite3.Connection, json_path: Path) -> None:
+    with open(json_path, 'r') as f:
+        data = json.load(f)
+
+    rows = []
+    for d in tqdm(data, desc='Reading JSON'):
+        x = np.array(d['x'], dtype=torch.float32).tobytes()
+        rows.append((d['nid'], d['ts'], x, d['y']))
+
+    con.executemany('INSERT INTO domain VALUES (?, ?, ?, ?)', rows)
+    logging.info('Database populated')
+    con.commit()
 
 
 def run_scalable_gnn(
@@ -188,6 +204,8 @@ def main() -> None:
 
     # build_domain_id_mapping(node_csv=node_path, edge_csv=edge_path, out_dir=db_path)
     construct_formatted_data(db_path=db_path, node_csv=node_path, dqr_csv=dqr_path)
+    con = initialize_graph_db(db_path=db_path)
+    populate_from_json(con=con, json_path=db_path / 'features.json')
 
     logging.info('View of feature and graph store:')
 
