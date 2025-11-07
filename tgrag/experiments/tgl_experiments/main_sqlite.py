@@ -61,7 +61,7 @@ def construct_formatted_data(
 
             for i, (_, row) in tqdm(enumerate(chunk.iterrows()), desc='Reading Chunk'):
                 record = {
-                    'nid': row['domain'],
+                    'domain': row['domain'],
                     'ts': int(row['ts']),
                     'y': float(row['pc1']),
                     'x': x_chunk[i].tolist(),
@@ -152,7 +152,7 @@ def initialize_graph_db(db_path: Path) -> sqlite3.Connection:
 def populate_from_json(con: sqlite3.Connection, json_path: Path) -> None:
     with open(json_path, 'r') as f:
         rows = []
-        for line in f:
+        for line in tqdm(f, desc='Populating relational database with JSON'):
             if not line.strip():
                 continue
             record = json.loads(line)
