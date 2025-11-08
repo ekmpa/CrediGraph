@@ -122,15 +122,15 @@ def build_domain_id_mapping(
         with open(nodes_out_path, 'w') as fout:
             fout.write('id,ts\n')
 
-        for chunk in tqdm(
-            pd.read_csv(node_csv, chunksize=chunk_size),
-            desc='Rewriting vertices',
-            unit='chunk',
-        ):
-            chunk['id'] = chunk['domain'].map(domain_to_id)
-            chunk[['id', 'ts']].astype({'id': 'int64'}).to_csv(
-                fout, header=False, index=False
-            )
+            for chunk in tqdm(
+                pd.read_csv(node_csv, chunksize=chunk_size),
+                desc='Rewriting vertices',
+                unit='chunk',
+            ):
+                chunk['id'] = chunk['domain'].map(domain_to_id)
+                chunk[['id', 'ts']].astype({'id': 'int64'}).to_csv(
+                    fout, header=False, index=False
+                )
 
     if not edges_out_path.exists():
         logging.info(f'Rewriting {edge_csv} to {edges_out_path} with ID mapping...')
