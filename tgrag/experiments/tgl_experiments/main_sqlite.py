@@ -14,6 +14,7 @@ from torch_geometric.data import FeatureStore, GraphStore
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
+from tgrag.dataset.torch_geometric_feature_store import SQLiteFeatureStore
 from tgrag.utils.args import DataArguments, ModelArguments, parse_args
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.path import get_root_dir, get_scratch
@@ -253,6 +254,11 @@ def main() -> None:
     )
 
     logging.info('View of feature and graph store:')
+
+    feature_store = SQLiteFeatureStore(db_path=db_path)
+    logging.info(f'Feature store attributes: {feature_store.get_all_tensor_attrs()}')
+
+    logging.info(f'Get the first tensor: {feature_store["domain", "x", 0]}')
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
