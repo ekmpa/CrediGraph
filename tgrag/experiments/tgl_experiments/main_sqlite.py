@@ -178,30 +178,47 @@ def initialize_graph_db(db_path: Path) -> sqlite3.Connection:
 def populate_from_json(
     con: sqlite3.Connection, nid_map_path: Path, json_path: Path
 ) -> None:
-    with open(nid_map_path, 'rb') as f:
-        domain_to_id = pickle.load(f)
-    logging.info(f'Loaded {len(domain_to_id):,} domain-id mappings')
+    if not is_db_empty(con=con):
+        with open(nid_map_path, 'rb') as f:
+            domain_to_id = pickle.load(f)
+        logging.info(f'Loaded {len(domain_to_id):,} domain-id mappings')
 
-    with open(json_path, 'r') as f:
-        for line in tqdm(f, desc='Populating relational database with JSON'):
-            if not line.strip():
-                continue
-            record = json.loads(line)
+        with open(json_path, 'r') as f:
+            for line in tqdm(f, desc='Populating relational database with JSON'):
+                if not line.strip():
+                    continue
+                record = json.loads(line)
 
-            domain = str(record['domain'])
-            if domain not in domain_to_id:
-                logging.warning(f'Domain {domain} not found in mapping; skipping.')
-                continue
+                domain = str(record['domain'])
+                if domain not in domain_to_id:
+                    logging.warning(f'Domain {domain} not found in mapping; skipping.')
+                    continue
 
-            id = int(domain_to_id[domain])
+                id = int(domain_to_id[domain])
 
-            x = np.array(record['x'], dtype=np.float32).tobytes()
-            con.execute(
-                'INSERT INTO domain VALUES (?, ?, ?, ?)',
-                (id, int(record['ts']), x, float(record['y'])),
-            )
-    logging.info('Database populated')
-    con.commit()
+                x = np.array(record['x'], dtype=np.float32).tobytes()
+                con.execute(
+                    'INSERT INTO domain VALUES (?, ?, ?, ?)',
+                    (id, int(record['ts']), x, float(record['y'])),
+                )
+        logging.info('Database populated')
+        con.commit()
+        con.close()
+    else:
+        logging.info(f'Database populated skipping...')
+
+
+def is_db_empty(con: sqlite3.Connection) -> bool:
+    try:
+        cursor = con.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = cursor.fetchall()
+        con.close()
+
+        return len(tables) == 0
+    except sqlite3.Error as e:
+        print(f'Error connectiong to or querying database: {e}')
+        return False
 
 
 def run_scalable_gnn(
