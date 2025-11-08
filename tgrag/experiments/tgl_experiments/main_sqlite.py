@@ -80,7 +80,12 @@ def build_domain_id_mapping(
     edges_out_path = out_dir / 'edges_with_id.csv'
     nodes_out_path = out_dir / 'vertices_with_id.csv'
 
-    if nid_array_path.exists() and nid_map_path.exists() and edges_out_path.exists():
+    if (
+        nid_array_path.exists()
+        and nid_map_path.exists()
+        and edges_out_path.exists()
+        and nodes_out_path.exists()
+    ):
         logging.info(
             f'nid.npy, nid_map.pkl and edges with IDs already exists at {out_dir}, returning.'
         )
