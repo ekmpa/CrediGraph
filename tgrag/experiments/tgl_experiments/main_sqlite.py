@@ -178,7 +178,7 @@ def initialize_graph_db(db_path: Path) -> sqlite3.Connection:
 def populate_from_json(
     con: sqlite3.Connection, nid_map_path: Path, json_path: Path
 ) -> None:
-    if not is_db_empty(con=con):
+    if is_db_empty(con=con):
         with open(nid_map_path, 'rb') as f:
             domain_to_id = pickle.load(f)
         logging.info(f'Loaded {len(domain_to_id):,} domain-id mappings')
