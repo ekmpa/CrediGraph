@@ -213,7 +213,6 @@ def is_db_empty(con: sqlite3.Connection) -> bool:
         cursor = con.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = cursor.fetchall()
-        con.close()
 
         return len(tables) == 0
     except sqlite3.Error as e:
