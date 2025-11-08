@@ -114,12 +114,13 @@ def build_domain_id_mapping(
             pickle.dump(domain_to_id, f)
     else:
         with open(nid_map_path, 'rb') as f:
+            logging.info('Loading domain-id mapping')
             domain_to_id = pickle.load(f)
 
     if not nodes_out_path.exists():
         logging.info(f'Rewriting {node_csv} to {nodes_out_path} with ID mapping...')
         with open(nodes_out_path, 'w') as fout:
-            fout.write('nid,ts\n')
+            fout.write('id,ts\n')
 
         for chunk in tqdm(
             pd.read_csv(node_csv, chunksize=chunk_size),
