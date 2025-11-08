@@ -274,7 +274,9 @@ def main() -> None:
     feature_store = SQLiteFeatureStore(db_path=db_path / 'graph.db')
     logging.info(f'Feature store attributes: {feature_store.get_all_tensor_attrs()}')
 
-    logging.info(f'Get the first tensor: {feature_store["domain", "x", 0]}')
+    logging.info(
+        f'Get the first tensor: {feature_store["domain", "x", [0, 3, 5, 100]]}'
+    )
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
