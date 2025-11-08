@@ -122,7 +122,7 @@ def build_domain_id_mapping(
             fout.write('nid,ts\n')
 
         for chunk in tqdm(
-            pd.read_csv(node_csv, chunk_size=chunk_size),
+            pd.read_csv(node_csv, chunksize=chunk_size),
             desc='Rewriting vertices',
             unit='chunk',
         ):
