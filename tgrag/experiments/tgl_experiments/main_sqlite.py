@@ -61,7 +61,7 @@ def construct_formatted_data(
 
             for i, (_, row) in tqdm(enumerate(chunk.iterrows()), desc='Reading Chunk'):
                 record = {
-                    'domain': row['domain'],
+                    'id': row['id'],
                     'ts': int(row['ts']),
                     'y': float(row['pc1']),
                     'x': x_chunk[i].tolist(),
@@ -78,6 +78,7 @@ def build_domain_id_mapping(
     nid_map_path = out_dir / 'nid_map.pkl'
     nid_array_path = out_dir / 'nid.npy'
     edges_out_path = out_dir / 'edges_with_id.csv'
+    nodes_out_path = out_dir / 'vertices_with_id.csv'
 
     if nid_array_path.exists() and nid_map_path.exists() and edges_out_path.exists():
         logging.info(
@@ -106,6 +107,24 @@ def build_domain_id_mapping(
         np.save(nid_array_path, np.arange(len(domain_list), dtype=np.int64))
         with open(nid_map_path, 'wb') as f:
             pickle.dump(domain_to_id, f)
+    else:
+        with open(nid_map_path, 'rb') as f:
+            domain_to_id = pickle.load(f)
+
+    if not nodes_out_path.exists():
+        logging.info(f'Rewriting {node_csv} to {nodes_out_path} with ID mapping...')
+        with open(nodes_out_path, 'w') as fout:
+            fout.write('nid,ts\n')
+
+        for chunk in tqdm(
+            pd.read_csv(node_csv, chunk_size=chunk_size),
+            desc='Rewriting vertices',
+            unit='chunk',
+        ):
+            chunk['id'] = chunk['domain'].map(domain_to_id)
+            chunk[['id', 'ts']].astype({'id': 'int64'}).to_csv(
+                fout, header=False, index=False
+            )
 
     if not edges_out_path.exists():
         logging.info(f'Rewriting {edge_csv} to {edges_out_path} with ID mapping...')
@@ -142,7 +161,7 @@ def initialize_graph_db(db_path: Path) -> sqlite3.Connection:
     con = sqlite3.connect(f'{graph_db_path}')
     cur = con.cursor()
     cur.execute(
-        'CREATE TABLE domain(name TEXT PRIMARY KEY, ts INTEGER, x BLOB , y REAL)'
+        'CREATE TABLE domain(id INTEGER PRIMARY KEY, ts INTEGER, x BLOB , y REAL)'
     )
     con.commit()
     logging.info('Graph database initialized')
@@ -158,12 +177,10 @@ def populate_from_json(con: sqlite3.Connection, json_path: Path) -> None:
             record = json.loads(line)
 
             x = np.array(record['x'], dtype=np.float32).tobytes()
-            rows.append(
-                (str(record['domain']), int(record['ts']), x, float(record['y']))
-            )
+            rows.append((int(record['id']), int(record['ts']), x, float(record['y'])))
             con.execute(
                 'INSERT INTO domain VALUES (?, ?, ?, ?)',
-                (str(record['domain']), int(record['ts']), x, float(record['y'])),
+                (int(record['id']), int(record['ts']), x, float(record['y'])),
             )
     logging.info('Database populated')
     con.commit()
@@ -205,11 +222,14 @@ def main() -> None:
 
     db_path = scratch / cast(str, meta_args.database_folder)
     node_path = scratch / cast(str, meta_args.node_file)
+    edge_path = scratch / cast(str, meta_args.edge_file)
     scratch / cast(str, meta_args.edge_file)
     dqr_path = root / 'data' / 'dqr' / 'domain_pc1.csv'
 
-    # build_domain_id_mapping(node_csv=node_path, edge_csv=edge_path, out_dir=db_path)
-    construct_formatted_data(db_path=db_path, node_csv=node_path, dqr_csv=dqr_path)
+    build_domain_id_mapping(node_csv=node_path, edge_csv=edge_path, out_dir=db_path)
+    construct_formatted_data(
+        db_path=db_path, node_csv=db_path / 'vertices_with_id.csv', dqr_csv=dqr_path
+    )
     con = initialize_graph_db(db_path=db_path)
     populate_from_json(con=con, json_path=db_path / 'features.json')
 
