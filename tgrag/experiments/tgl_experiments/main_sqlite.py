@@ -61,7 +61,7 @@ def construct_formatted_data(
 
             for i, (_, row) in tqdm(enumerate(chunk.iterrows()), desc='Reading Chunk'):
                 record = {
-                    'id': row['id'],
+                    'domain': row['domain'],
                     'ts': int(row['ts']),
                     'y': float(row['pc1']),
                     'x': x_chunk[i].tolist(),
