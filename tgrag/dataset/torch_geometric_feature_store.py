@@ -61,7 +61,6 @@ class SQLiteFeatureStore(FeatureStore):
 
         self.cursor.execute(q, params)
         rows = [r[0] for r in self.cursor.fetchall()]
-        print(rows)
         tensors = [self._deserialize(r) for r in rows]
         if not tensors:
             return None
