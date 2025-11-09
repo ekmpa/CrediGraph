@@ -99,6 +99,9 @@ addopts = [
     "--color=yes",
     "-vvv",
 ]
+markers = [
+    "integration: marks integration tests (deselect with '-m \"not integration\"')"
+]
 
 
 [tool.coverage.run]
