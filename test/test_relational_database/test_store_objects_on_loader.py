@@ -79,7 +79,7 @@ def test_correct_next_iter(sqlite_graph_and_feature_store) -> None:
         batch_size=1,
         input_nodes=('domain', torch.arange(2)),
         input_time=None,
-        num_workers=0,
+        num_workers=4,
     )
 
     for batch in loader:
