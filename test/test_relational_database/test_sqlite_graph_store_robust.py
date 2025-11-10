@@ -1,0 +1,102 @@
+import sqlite3
+import time
+from typing import Tuple
+
+import numpy as np
+import pytest
+import torch
+from torch_geometric.data import TensorAttr
+from torch_geometric.typing import EdgeType
+
+from tgrag.dataset.torch_geometric_graph_store import (
+    EdgeAttr,
+    EdgeLayout,
+    Rel,
+    SQLiteGraphStore,
+)
+
+
+@pytest.fixture(scope="module")
+def sqlite_graph_store(tmp_path_factory):
+    """Creates a more realistic and heterogeneous edges table for testing."""
+
+    np.random.seed(42)
+    db_path = tmp_path_factory.mktemp("data") / "test_graph.db"
+    con = sqlite3.connect(db_path)
+    cur = con.cursor()
+
+
+    # Define schema
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS edges (
+            src_id INTEGER,
+            dst_id INTEGER,
+            relation TEXT,
+            ts INTEGER
+        )
+    """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_edges_relation ON edges(relation)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_edges_src ON edges(src_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_edges_dst ON edges(dst_id)")
+
+    # --- RELATION 1: LINKS_TO ---
+    # Non-contiguous src/dst IDs and sparse nodes
+    for i in range(0, 50_000, 2):
+        src = i * 2 + 10  # start at 10, skip every other ID
+        dst = src + np.random.randint(1, 5)
+        con.execute(
+            "INSERT INTO edges VALUES (?, ?, ?, ?)",
+            (src, dst, "LINKS_TO", 20240505),
+        )
+
+    con.commit()
+    return SQLiteGraphStore(db_path=db_path)
+
+
+def test_initialization(sqlite_graph_store) -> None:
+    s = sqlite_graph_store
+
+
+def test_get_size(sqlite_graph_store) -> None:
+    size = sqlite_graph_store._get_size(relation="LINKS_TO")
+    assert size == (25000, 25000)
+
+
+def test_populate_edge_attrs(sqlite_graph_store) -> None:
+    sqlite_graph_store._populate_edge_attrs()
+    s = sqlite_graph_store.store
+    for key, value in s.items():
+        key == (("domain", "LINKS_TO", "domain"), "coo", True)
+        value == Rel(
+            ("domain", "LINKS_TO", "domain"),
+            EdgeLayout.COO,
+            True,
+            (25000, 25000),
+            False,
+            None,
+        )
+
+
+def test_get_edge_index(sqlite_graph_store) -> None:
+    t = sqlite_graph_store[("domain", "LINKS_TO", "domain"), "coo"]
+    assert isinstance(t, tuple)
+    assert len(t) == 2
+    assert all(isinstance(x, torch.Tensor) for x in t)
+    assert t[0].size() == torch.Size([25000])
+    assert t[1].size() == torch.Size([25000])
+
+
+def test_get_all_edge_attrs(sqlite_graph_store) -> None:
+    edge_attributes = sqlite_graph_store.get_all_edge_attrs()
+    assert len(edge_attributes) == 1
+    edge_attribute = edge_attributes[0]
+    assert isinstance(edge_attribute.edge_type, tuple)
+    assert edge_attribute.edge_type == ("domain", "LINKS_TO", "domain")
+
+    assert edge_attribute.layout == EdgeLayout.COO
+
+    assert edge_attribute.is_sorted == True
+
+    assert edge_attribute.size == (25000, 25000)
