@@ -1,4 +1,5 @@
 import argparse
+import csv
 import faulthandler
 import json
 import logging
@@ -15,6 +16,7 @@ from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
 from tgrag.dataset.torch_geometric_feature_store import SQLiteFeatureStore
+from tgrag.dataset.torch_geometric_graph_store import SQLiteGraphStore
 from tgrag.utils.args import DataArguments, ModelArguments, parse_args
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.path import get_root_dir, get_scratch
@@ -158,18 +160,28 @@ def build_domain_id_mapping(
 def initialize_graph_db(db_path: Path) -> sqlite3.Connection:
     logging.info('Connecting graph storage backend')
     graph_db_path = db_path / 'graph.db'
-    db_path / 'edges_with_id.csv'
-
-    if graph_db_path.exists():
-        logging.info(f'Existing database found at {db_path}, skipping initalization.')
-        con = sqlite3.connect(f'{graph_db_path}')
-        return con
 
     con = sqlite3.connect(f'{graph_db_path}')
     cur = con.cursor()
     cur.execute(
-        'CREATE TABLE domain(id INTEGER PRIMARY KEY, ts INTEGER, x BLOB , y REAL)'
+        'CREATE TABLE IF NOT EXISTS domain(id INTEGER PRIMARY KEY, ts INTEGER, x BLOB , y REAL)'
     )
+
+    cur.execute(
+        """
+    CREATE TABLE IF NOT EXISTS edges (
+        src_id INTEGER,
+        dst_id INTEGER,
+        relation TEXT,
+        ts INTEGER
+    )
+    """
+    )
+
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_edges_relation ON edges(relation)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_edges_src ON edges(src_id)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_edges_dst ON edges(dst_id)')
+
     con.commit()
     logging.info('Graph database initialized')
     return con
@@ -203,9 +215,20 @@ def populate_from_json(
                 )
         logging.info('Database populated')
         con.commit()
-        con.close()
     else:
         logging.info(f'Database populated skipping...')
+
+
+def populate_edges(con: sqlite3.Connection, edges_path: Path) -> None:
+    edges_path_str = str(edges_path)
+    with open(edges_path_str, mode='r', newline='') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            con.execute(
+                'INSERT INTO edges VALUES (?, ?, ?, ?)',
+                (int(row['src']), int(row['dst']), 'LINKS_TO', int(row['ts'])),
+            )
+    con.commit()
 
 
 def is_db_empty(con: sqlite3.Connection) -> bool:
@@ -268,14 +291,20 @@ def main() -> None:
         nid_map_path=db_path / 'nid_map.pkl',
         json_path=db_path / 'features.json',
     )
+    populate_edges(con=con, edges_path=db_path / 'edges_with_id.csv')
 
     logging.info('View of feature and graph store:')
 
     feature_store = SQLiteFeatureStore(db_path=db_path / 'graph.db')
+    graph_store = SQLiteGraphStore(db_path=db_path / 'graph.db')
     logging.info(f'Feature store attributes: {feature_store.get_all_tensor_attrs()}')
 
     logging.info(
         f'Get the first tensor: {feature_store["domain", "x", [0, 3, 5, 100]]}'
+    )
+
+    logging.info(
+        f'Getting coo format of graph store: {graph_store[("domain", "LINKS_TO", "domain"), "coo"]}'
     )
 
     for experiment, experiment_arg in experiment_args.exp_args.items():

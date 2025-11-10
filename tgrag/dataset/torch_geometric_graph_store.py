@@ -94,10 +94,8 @@ class SQLiteGraphStore(GraphStore):
             # edge_index = torch.from_numpy(data.T)  # shape (2, num_edges)
             src = torch.from_numpy(data[:, 0].copy()).long().contiguous()
             dst = torch.from_numpy(data[:, 1].copy()).long().contiguous()
-            edge_index = torch.stack([src, dst], dim=0).contiguous()
 
-            # rel.edge_index = (src, dst)
-            rel.edge_index = edge_index
+            rel.edge_index = (src, dst)
             rel.materialized = True
 
         return rel.edge_index
