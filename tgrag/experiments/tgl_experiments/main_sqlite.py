@@ -223,7 +223,7 @@ def populate_edges(con: sqlite3.Connection, edges_path: Path) -> None:
     edges_path_str = str(edges_path)
     with open(edges_path_str, mode='r', newline='') as f:
         reader = csv.DictReader(f)
-        for row in reader:
+        for row in tqdm(reader, desc='Populating many-to-many relationship with CSV'):
             con.execute(
                 'INSERT INTO edges VALUES (?, ?, ?, ?)',
                 (int(row['src_id']), int(row['dst_id']), 'LINKS_TO', int(row['ts'])),
