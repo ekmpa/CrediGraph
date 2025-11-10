@@ -226,7 +226,7 @@ def populate_edges(con: sqlite3.Connection, edges_path: Path) -> None:
         for row in reader:
             con.execute(
                 'INSERT INTO edges VALUES (?, ?, ?, ?)',
-                (int(row['src']), int(row['dst']), 'LINKS_TO', int(row['ts'])),
+                (int(row['src_id']), int(row['dst_id']), 'LINKS_TO', int(row['ts'])),
             )
     con.commit()
 
