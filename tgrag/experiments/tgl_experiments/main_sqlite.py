@@ -1,5 +1,4 @@
 import argparse
-import csv
 import faulthandler
 import json
 import logging
@@ -219,16 +218,24 @@ def populate_from_json(
         logging.info(f'Database populated skipping...')
 
 
-def populate_edges(con: sqlite3.Connection, edges_path: Path) -> None:
-    edges_path_str = str(edges_path)
-    with open(edges_path_str, mode='r', newline='') as f:
-        reader = csv.DictReader(f)
-        for row in tqdm(reader, desc='Populating many-to-many relationship with CSV'):
-            con.execute(
-                'INSERT INTO edges VALUES (?, ?, ?, ?)',
-                (int(row['src_id']), int(row['dst_id']), 'LINKS_TO', int(row['ts'])),
-            )
-    con.commit()
+def populate_edges(
+    con: sqlite3.Connection, edges_path: Path, chunk_size: int = 1_000_000
+) -> None:
+    logging.info(f'Populating edges from {edges_path} using pandas chunks...')
+    for chunk in tqdm(
+        pd.read_csv(edges_path, chunksize=chunk_size),
+        desc='Populating edges',
+        unit='chunk',
+    ):
+        chunk['relation'] = 'LINKS_TO'
+        data = (
+            chunk[['src_id', 'dst_id', 'relation', 'ts']]
+            .astype({'src_id': 'int64', 'dst_id': 'int64', 'ts': 'int64'})
+            .to_records(index=False)
+            .tolist()
+        )
+        con.executemany('INSERT INTO edges VALUES (?, ?, ?, ?)', data)
+        con.commit()
 
 
 def is_db_empty(con: sqlite3.Connection) -> bool:
