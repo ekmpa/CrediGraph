@@ -5,7 +5,7 @@ import logging
 import pickle
 import sqlite3
 from pathlib import Path
-from typing import cast
+from typing import Optional, cast
 
 import numpy as np
 import pandas as pd
@@ -266,15 +266,15 @@ def edge_table_exists(con: sqlite3.Connection) -> bool:
 def run_scalable_gnn(
     data_arguments: DataArguments,
     model_arguments: ModelArguments,
-    train_mask: torch.Tensor,
-    test_mask: torch.Tensor,
+    train_mask: Optional[torch.Tensor],
+    test_mask: Optional[torch.Tensor],
     feature_store: FeatureStore,
     graph_store: GraphStore,
 ) -> None:
     loader = NeighborLoader(
         data=(feature_store, graph_store),
-        input_nodes=('domain', train_mask),
-        num_neighbors={('domain', 'link', 'domain'): model_arguments.num_neighbors},
+        input_nodes=('domain', torch.arange(100)),
+        num_neighbors={('domain', 'LINKS_TO', 'domain'): model_arguments.num_neighbors},
         batch_size=model_arguments.batch_size,
         shuffle=True,
         num_workers=4,
@@ -330,6 +330,14 @@ def main() -> None:
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
+        run_scalable_gnn(
+            data_arguments=experiment_arg.data_args,
+            model_arguments=experiment_arg.model_args,
+            train_mask=None,
+            test_mask=None,
+            feature_store=feature_store,
+            graph_store=graph_store,
+        )
 
     logging.info('Completed.')
 
