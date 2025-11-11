@@ -221,21 +221,22 @@ def populate_from_json(
 def populate_edges(
     con: sqlite3.Connection, edges_path: Path, chunk_size: int = 1_000_000
 ) -> None:
-    logging.info(f'Populating edges from {edges_path} using pandas chunks...')
-    for chunk in tqdm(
-        pd.read_csv(edges_path, chunksize=chunk_size),
-        desc='Populating edges',
-        unit='chunk',
-    ):
-        chunk['relation'] = 'LINKS_TO'
-        data = (
-            chunk[['src_id', 'dst_id', 'relation', 'ts']]
-            .astype({'src_id': 'int64', 'dst_id': 'int64', 'ts': 'int64'})
-            .to_records(index=False)
-            .tolist()
-        )
-        con.executemany('INSERT INTO edges VALUES (?, ?, ?, ?)', data)
-        con.commit()
+    if edge_table_exists(con=con):
+        logging.info(f'Populating edges from {edges_path} using pandas chunks...')
+        for chunk in tqdm(
+            pd.read_csv(edges_path, chunksize=chunk_size),
+            desc='Populating edges',
+            unit='chunk',
+        ):
+            chunk['relation'] = 'LINKS_TO'
+            data = (
+                chunk[['src_id', 'dst_id', 'relation', 'ts']]
+                .astype({'src_id': 'int64', 'dst_id': 'int64', 'ts': 'int64'})
+                .to_records(index=False)
+                .tolist()
+            )
+            con.executemany('INSERT INTO edges VALUES (?, ?, ?, ?)', data)
+            con.commit()
 
 
 def is_db_empty(con: sqlite3.Connection) -> bool:
@@ -245,6 +246,18 @@ def is_db_empty(con: sqlite3.Connection) -> bool:
         tables = cursor.fetchall()
 
         return len(tables) == 0
+    except sqlite3.Error as e:
+        print(f'Error connectiong to or querying database: {e}')
+        return False
+
+
+def edge_table_exists(con: sqlite3.Connection) -> bool:
+    try:
+        cursor = con.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = cursor.fetchall()
+
+        return len(tables) == 2
     except sqlite3.Error as e:
         print(f'Error connectiong to or querying database: {e}')
         return False
@@ -310,6 +323,7 @@ def main() -> None:
         f'Get the first tensor: {feature_store["domain", "x", [0, 3, 5, 100]]}'
     )
 
+    # TODO: Test the speed of this get_tensor and compare with other implementations
     logging.info(
         f'Getting coo format of graph store: {graph_store[("domain", "LINKS_TO", "domain"), "coo"]}'
     )
