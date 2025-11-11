@@ -221,7 +221,7 @@ def populate_from_json(
 def populate_edges(
     con: sqlite3.Connection, edges_path: Path, chunk_size: int = 1_000_000
 ) -> None:
-    if edge_table_exists(con=con):
+    if edge_table_populated(con=con):
         logging.info(f'Populating edges from {edges_path} using pandas chunks...')
         for chunk in tqdm(
             pd.read_csv(edges_path, chunksize=chunk_size),
@@ -251,15 +251,24 @@ def is_db_empty(con: sqlite3.Connection) -> bool:
         return False
 
 
-def edge_table_exists(con: sqlite3.Connection) -> bool:
+def edge_table_populated(con: sqlite3.Connection) -> bool:
+    """Return True if the edges table exists and has rows."""
     try:
-        cursor = con.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = cursor.fetchall()
+        cur = con.cursor()
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='edges'"
+        )
+        if not cur.fetchone():
+            logging.warning("No table named 'edges' found.")
+            return False
 
-        return len(tables) == 2
+        cur.execute('SELECT COUNT(*) FROM edges LIMIT 1')
+        count = cur.fetchone()[0]
+        logging.info(f"'edges' table contains {count:,} rows.")
+        return count > 0
+
     except sqlite3.Error as e:
-        print(f'Error connectiong to or querying database: {e}')
+        logging.error(f'Error checking edges table: {e}')
         return False
 
 
