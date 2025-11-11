@@ -74,14 +74,14 @@ def main() -> None:
     logging.info(f'Elapsed time graph store: {elapsed_2}')
     logging.info(f'Feature store attributes: {feature_store.get_all_tensor_attrs()}')
 
-    logging.info(
-        f'Get the first tensor: {feature_store["domain", "x", [0, 3, 5, 100]]}'
-    )
+    logging.info(f'Get the first tensor: {feature_store["domain", "x", [0]]}')
 
     # TODO: Test the speed of this get_tensor and compare with other implementations
     logging.info(
         f'Getting coo format of graph store: {graph_store[("domain", "LINKS_TO", "domain"), "coo"]}'
     )
+    elapsed_3 = time.perf_counter() - elapsed_2
+    logging.info(f'Elapsed time getting COO: {elapsed_3}')
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
