@@ -39,11 +39,9 @@ def run_scalable_gnn(
         data=(feature_store, graph_store),
         input_nodes=('domain', torch.arange(100)),
         num_neighbors={('domain', 'LINKS_TO', 'domain'): model_arguments.num_neighbors},
-        batch_size=model_arguments.batch_size,
+        batch_size=32,
         shuffle=True,
         num_workers=4,
-        pin_memory=True,
-        persistent_workers=True,
     )
     logging.info('Train loader created')
 
