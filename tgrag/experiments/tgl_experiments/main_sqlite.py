@@ -1,6 +1,7 @@
 import argparse
 import faulthandler
 import logging
+import time
 from typing import Optional, cast
 
 import torch
@@ -64,8 +65,13 @@ def main() -> None:
 
     logging.info('View of feature and graph store:')
 
+    start = time.perf_counter()
     feature_store = SQLiteFeatureStore(db_path=db_path / 'graph.db')
+    elapsed_1 = time.perf_counter() - start
+    logging.info(f'Elapsed time accessing feature store: {elapsed_1}')
     graph_store = SQLiteGraphStore(db_path=db_path / 'graph.db')
+    elapsed_2 = time.perf_counter() - elapsed_1
+    logging.info(f'Elapsed time graph store: {elapsed_2}')
     logging.info(f'Feature store attributes: {feature_store.get_all_tensor_attrs()}')
 
     logging.info(
