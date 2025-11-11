@@ -238,6 +238,9 @@ def populate_edges(
             con.executemany('INSERT INTO edges VALUES (?, ?, ?, ?)', data)
             con.commit()
 
+    else:
+        logging.info('Edges table populated skipping...')
+
 
 def is_db_empty(con: sqlite3.Connection) -> bool:
     try:
