@@ -221,7 +221,7 @@ def populate_from_json(
 def populate_edges(
     con: sqlite3.Connection, edges_path: Path, chunk_size: int = 1_000_000
 ) -> None:
-    if edge_table_populated(con=con):
+    if edge_table_has_data(con=con):
         logging.info(f'Populating edges from {edges_path} using pandas chunks...')
         for chunk in tqdm(
             pd.read_csv(edges_path, chunksize=chunk_size),
@@ -272,6 +272,16 @@ def edge_table_populated(con: sqlite3.Connection) -> bool:
 
     except sqlite3.Error as e:
         logging.error(f'Error checking edges table: {e}')
+        return False
+
+
+def edge_table_has_data(con: sqlite3.Connection) -> bool:
+    """Fast O(1) check whether 'edges' table has at least one row."""
+    try:
+        cur = con.execute('SELECT EXISTS(SELECT 1 FROM edges LIMIT 1)')
+        return bool(cur.fetchone()[0])
+    except sqlite3.Error as e:
+        logging.error(f'Failed to check edge table: {e}')
         return False
 
 
