@@ -65,9 +65,9 @@ def run_scalable_gnn(
     logging.info(f'Feature size: {feature_store.get_tensor_size()}')
     loader = NeighborLoader(
         data=(feature_store, graph_store),
-        input_nodes=('domain', torch.arange(100)),
-        num_neighbors={('domain', 'LINKS_TO', 'domain'): model_arguments.num_neighbors},
-        batch_size=32,
+        input_nodes=('domain', torch.arange(1000)),
+        num_neighbors={('domain', 'LINKS_TO', 'domain'): [10]},
+        batch_size=10,
         shuffle=True,
         num_workers=4,
     )
@@ -111,19 +111,19 @@ def main() -> None:
     start = time.perf_counter()
     logging.info(f'Elapsed time accessing feature store: {elapsed_1}')
     graph_store = SQLiteGraphStore(db_path=db_path / 'graph.db')
-    elapsed_2 = time.perf_counter() - start
-    logging.info(f'Elapsed time graph store: {elapsed_2}')
-    logging.info(f'Feature store attributes: {feature_store.get_all_tensor_attrs()}')
-
-    logging.info(f'Get the first tensor: {feature_store["domain", "x", [0]]}')
-
-    start = time.perf_counter()
-    # TODO: Test the speed of this get_tensor and compare with other implementations
-    logging.info(
-        f'Getting coo format of graph store: {graph_store[("domain", "LINKS_TO", "domain"), "coo"]}'
-    )
-    elapsed_3 = time.perf_counter() - start
-    logging.info(f'Elapsed time getting COO: {elapsed_3}')
+    # elapsed_2 = time.perf_counter() - start
+    # logging.info(f'Elapsed time graph store: {elapsed_2}')
+    # logging.info(f'Feature store attributes: {feature_store.get_all_tensor_attrs()}')
+    #
+    # logging.info(f'Get the first tensor: {feature_store["domain", "x", [0]]}')
+    #
+    # start = time.perf_counter()
+    # # TODO: Test the speed of this get_tensor and compare with other implementations
+    # logging.info(
+    #     f'Getting coo format of graph store: {graph_store[("domain", "LINKS_TO", "domain"), "coo"]}'
+    # )
+    # elapsed_3 = time.perf_counter() - start
+    # logging.info(f'Elapsed time getting COO: {elapsed_3}')
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
