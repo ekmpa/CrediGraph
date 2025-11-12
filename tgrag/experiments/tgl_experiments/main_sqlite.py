@@ -5,11 +5,14 @@ import time
 from typing import Optional, cast
 
 import torch
+import torch.nn.functional as F
 from torch_geometric.data import FeatureStore, GraphStore
 from torch_geometric.loader import NeighborLoader
+from tqdm import tqdm
 
 from tgrag.dataset.torch_geometric_feature_store import SQLiteFeatureStore
 from tgrag.dataset.torch_geometric_graph_store import SQLiteGraphStore
+from tgrag.gnn.model import Model
 from tgrag.utils.args import DataArguments, ModelArguments, parse_args
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.path import get_root_dir, get_scratch
@@ -27,6 +30,27 @@ parser.add_argument(
 )
 
 
+def train_(
+    model: torch.nn.Module,
+    train_loader: NeighborLoader,
+    optimizer: torch.optim.AdamW,
+) -> None:
+    model.train()
+    device = next(model.parameters()).device
+    total_loss = 0
+    total_batches = 0
+    for batch in tqdm(train_loader, desc='Batchs', leave=False):
+        optimizer.zero_grad()
+        batch = batch.to(device)
+        preds = model(batch.x, batch.edge_index).squeeze()
+        targets = batch.y
+        loss = F.l1_loss(preds, targets)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+        total_batches += 1
+
+
 def run_scalable_gnn(
     data_arguments: DataArguments,
     model_arguments: ModelArguments,
@@ -35,6 +59,10 @@ def run_scalable_gnn(
     feature_store: FeatureStore,
     graph_store: GraphStore,
 ) -> None:
+    device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
+    device = torch.device(device)
+
+    logging.info(f'Feature size: {feature_store.get_tensor_size()}')
     loader = NeighborLoader(
         data=(feature_store, graph_store),
         input_nodes=('domain', torch.arange(100)),
@@ -47,6 +75,20 @@ def run_scalable_gnn(
 
     next_data = next(iter(loader))
     logging.info(f'{next_data}')
+
+    for run in tqdm(range(model_arguments.runs), desc='Runs'):
+        model = Model(
+            model_name=model_arguments.model,
+            normalization=model_arguments.normalization,
+            in_channels=128,
+            hidden_channels=model_arguments.hidden_channels,
+            out_channels=model_arguments.embedding_dimension,
+            num_layers=model_arguments.num_layers,
+            dropout=model_arguments.dropout,
+        )
+        optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
+        for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
+            train_(model=model, train_loader=loader, optimizer=optimizer)
 
 
 def main() -> None:
