@@ -62,7 +62,6 @@ def run_scalable_gnn(
     device = f'cuda:{model_arguments.device}' if torch.cuda.is_available() else 'cpu'
     device = torch.device(device)
 
-    logging.info(f"Feature size: {feature_store.get_tensor_size(['domain', 'x'])}")
     loader = NeighborLoader(
         data=(feature_store, graph_store),
         input_nodes=('domain', torch.arange(1000)),
