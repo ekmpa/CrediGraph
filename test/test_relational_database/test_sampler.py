@@ -3,8 +3,9 @@ import sqlite3
 import numpy as np
 import pytest
 import torch
-from torch_geometric.loader import NeighborLoader
+from torch_geometric.loader import NodeLoader
 
+from tgrag.dataset.sampler import SQLiteNeighborSampler
 from tgrag.dataset.torch_geometric_feature_store import SQLiteFeatureStore
 from tgrag.dataset.torch_geometric_graph_store import SQLiteGraphStore
 
@@ -64,23 +65,19 @@ def sqlite_graph_and_feature_store(tmp_path_factory):
 
 def test_initialization(sqlite_graph_and_feature_store) -> None:
     g, f = sqlite_graph_and_feature_store
-    
 
 
-@pytest.mark.integration
-def test_correct_next_iter(sqlite_graph_and_feature_store) -> None:
-    torch.manual_seed(0)
-    np.random.seed(0)
+def test_sampler(sqlite_graph_and_feature_store) -> None:
     graph_store, feature_store = sqlite_graph_and_feature_store
-    num_neighbors = {key.edge_type: [1] for key in graph_store.get_all_edge_attrs()}
-    print(f'num_neighbors: {num_neighbors}')
-    loader = NeighborLoader(
+    sampler = SQLiteNeighborSampler(
+        graph_store, num_neighbors={('domain', 'LINKS_TO', 'domain'): [1]}
+    )
+
+    loader = NodeLoader(
         data=(feature_store, graph_store),
-        num_neighbors={key.edge_type: [1, 1, 1] for key in graph_store.get_all_edge_attrs()},
+        node_sampler=sampler,
         batch_size=1,
-        input_nodes=('domain', torch.arange(2)),
-        input_time=None,
-        num_workers=4,
+        input_nodes=('domain', torch.arange(3)),
     )
 
     for batch in loader:
