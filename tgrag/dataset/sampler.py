@@ -47,7 +47,9 @@ class SQLiteNeighborSampler(BaseSampler):
         src = torch.tensor(src_nodes, dtype=torch.long)
         dst = torch.tensor(dst_nodes, dtype=torch.long)
 
-        n_id = torch.unique(torch.cat([src, dst]))
+        n_id = torch.unique(
+            torch.cat([seed_nodes, src, dst])
+        )  # This is needed in the case src, dst == []
 
         node_map = {nid: i for i, nid in enumerate(n_id.tolist())}
         row = torch.tensor([node_map[s.item()] for s in src], dtype=torch.long)
