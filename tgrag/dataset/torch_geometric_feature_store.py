@@ -33,7 +33,6 @@ class SQLiteFeatureStore(FeatureStore):
         except Exception:
             return np.frombuffer(blob, dtype=np.float32)
 
-    ##Required Feature Store Methods:
     def _put_tensor(self, tensor: FeatureTensorType, attr: TensorAttr) -> bool:
         raise NotImplementedError('Writing not yet supported.')
 
