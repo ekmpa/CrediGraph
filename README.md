@@ -2,6 +2,7 @@
 
 <img src="img/logo_silver.png" alt="CrediGraph Logo" style="width: 300px; height: auto;" />
 
+
 ## Getting Started
 
 ### Prerequisites
