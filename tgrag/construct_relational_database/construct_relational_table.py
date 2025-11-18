@@ -122,38 +122,40 @@ def initialize_graph_db(db_path: Path) -> sqlite3.Connection:
 def populate_from_json(
     con: sqlite3.Connection, nid_map_path: Path, json_path: Path
 ) -> None:
-    if is_db_empty(con=con):
-        with open(nid_map_path, 'rb') as f:
-            domain_to_id = pickle.load(f)
-        logging.info(f'Loaded {len(domain_to_id):,} domain-id mappings')
+    with open(nid_map_path, 'rb') as f:
+        domain_to_id = pickle.load(f)
+    logging.info(f'Loaded {len(domain_to_id):,} domain-id mappings')
 
-        with open(json_path, 'r') as f:
-            for line in tqdm(f, desc='Populating relational database with JSON'):
-                if not line.strip():
-                    continue
-                record = json.loads(line)
+    with open(json_path, 'r') as f:
+        for line in tqdm(f, desc='Populating relational database with JSON'):
+            if not line.strip():
+                continue
+            record = json.loads(line)
 
-                domain = str(record['domain'])
-                if domain not in domain_to_id:
-                    logging.warning(f'Domain {domain} not found in mapping; skipping.')
-                    continue
+            domain = str(record['domain'])
+            if domain not in domain_to_id:
+                logging.warning(f'Domain {domain} not found in mapping; skipping.')
+                continue
 
-                id = int(domain_to_id[domain])
+            id = int(domain_to_id[domain])
 
-                x = np.array(record['x'], dtype=np.float32).tobytes()
-                con.execute(
-                    'INSERT INTO domain VALUES (?, ?, ?, ?)',
-                    (id, int(record['ts']), x, float(record['y'])),
-                )
-        logging.info('Database populated')
-        con.commit()
-    else:
-        logging.info(f'Database populated skipping...')
+            x = np.array(record['x'], dtype=np.float32).tobytes()
+            con.execute(
+                'INSERT INTO domain VALUES (?, ?, ?, ?)',
+                (id, int(record['ts']), x, float(record['y'])),
+            )
+    logging.info('Database populated')
+    con.commit()
 
 
 def construct_masks_from_json(
-    nid_map_path: Path, json_path: Path, seed: int = 0
+    nid_map_path: Path, json_path: Path, db_path: Path, seed: int = 0
 ) -> None:
+    output_path = db_path / 'split_idx.pt'
+    if output_path.exists():
+        logging.info(f'{output_path} already exists, returning.')
+        return
+
     with open(nid_map_path, 'rb') as f:
         domain_to_id = pickle.load(f)
     labeled_idx = []
@@ -214,9 +216,7 @@ def construct_masks_from_json(
     logging.info(f'Valid size: {valid_idx.size(0)}')
     logging.info(f'Test size: {test_idx.size(0)}')
 
-    torch.save(
-        {'train': train_idx, 'valid': valid_idx, 'test': test_idx}, 'split_idx.pt'
-    )
+    torch.save({'train': train_idx, 'valid': valid_idx, 'test': test_idx}, output_path)
 
 
 def populate_edges(
@@ -304,6 +304,7 @@ def main() -> None:
     construct_masks_from_json(
         nid_map_path=db_path / 'nid_map.pkl',
         json_path=db_path / 'features.json',
+        db_path=db_path,
         seed=meta_args.global_seed,
     )
     con = initialize_graph_db(db_path=db_path)
