@@ -217,6 +217,7 @@ def construct_masks_from_json(
     logging.info(f'Test size: {test_idx.size(0)}')
 
     torch.save({'train': train_idx, 'valid': valid_idx, 'test': test_idx}, output_path)
+    logging.info(f'Saved splits at {output_path}')
 
 
 def populate_edges(
