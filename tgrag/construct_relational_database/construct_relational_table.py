@@ -63,7 +63,9 @@ def construct_formatted_data(
         ):
             x_chunk = rng.normal(size=(len(chunk), D)).astype(np.float32)
 
-            for i, (_, row) in enumerate(chunk.iterrows()):
+            for i, (_, row) in tqdm(
+                enumerate(chunk.iterrows()), desc='Iterating chunk'
+            ):
                 raw_domain = str(row['domain']).strip()
 
                 etld1 = strict_exact_etld1_match(raw_domain, dqr_domains)
@@ -299,6 +301,11 @@ def main() -> None:
     dqr_path = root / 'data' / 'dqr' / 'domain_pc1.csv'
 
     construct_formatted_data(db_path=db_path, node_csv=node_path, dqr_csv=dqr_path)
+    construct_masks_from_json(
+        nid_map_path=db_path / 'nid_map.pkl',
+        json_path=db_path / 'features.json',
+        seed=meta_args.global_seed,
+    )
     con = initialize_graph_db(db_path=db_path)
     populate_from_json(
         con=con,
@@ -306,11 +313,6 @@ def main() -> None:
         json_path=db_path / 'features.json',
     )
     populate_edges(con=con, edges_path=db_path / 'edges_with_id.csv')
-    construct_masks_from_json(
-        nid_map_path=db_path / 'nid_map.pkl',
-        json_path=db_path / 'features.json',
-        seed=meta_args.global_seed,
-    )
     logging.info('Completed.')
 
 
