@@ -195,7 +195,7 @@ def construct_masks_from_json(
 def populate_edges(
     con: sqlite3.Connection, edges_path: Path, chunk_size: int = 1_000_000
 ) -> None:
-    if table_has_data(con=con, table='edges'):
+    if not table_has_data(con=con, table='edges'):
         logging.info(f'Populating edges from {edges_path} using pandas chunks...')
         for chunk in tqdm(
             pd.read_csv(edges_path, chunksize=chunk_size),
@@ -218,7 +218,7 @@ def populate_edges(
 def populate_from_json(
     con: sqlite3.Connection, nid_map_path: Path, json_path: Path
 ) -> None:
-    if table_has_data(con=con, table='domain'):
+    if not table_has_data(con=con, table='domain'):
         with open(nid_map_path, 'rb') as f:
             domain_to_id = pickle.load(f)
         logging.info(f'Loaded {len(domain_to_id):,} domain-id mappings')
