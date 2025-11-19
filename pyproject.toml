@@ -3,7 +3,7 @@ name = "tgrag"
 version = "0.1.0"
 description = "Temporal Graph Analysis on Large-Scale Web Data"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
 ]
 dependencies = [
@@ -19,14 +19,18 @@ dependencies = [
     "scipy>=1.13.1",
     "sentence-transformers>=5.0.0",
     "tldextract>=5.3.0",
-    "torch>=2.7.1",
-    "torch-geometric>=2.6.1",
+    "torch==2.0.1",
     "torcheval>=0.0.7",
     "ujson>=5.10.0",
     "warcio>=1.7.5",
     "cloudscraper>=1.2.71",
     "BeautifulSoup4>=4.13.0",
     "jsonpath-ng>=1.7.0",
+    "kuzu==0.0.7",
+    "torch-geometric>=2.6.1",
+    "torchvision==0.15.2",
+    "torchaudio==2.0.2",
+    "numpy>=2.0.2",
 ]
 
 [tool.flit.module]
@@ -112,3 +116,6 @@ exclude_lines = [
     "register_parameter",
     "torch.cuda.is_available",
 ]
+
+[tool.uv.sources]
+torch-geometric = { git = "https://github.com/pyg-team/pytorch_geometric.git" }
