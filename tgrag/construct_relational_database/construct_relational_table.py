@@ -16,6 +16,7 @@ from tqdm import tqdm
 from tgrag.utils.args import parse_args
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.path import get_root_dir, get_scratch
+from tgrag.utils.rd_utils import table_has_data
 from tgrag.utils.seed import seed_everything
 from tgrag.utils.target_generation import strict_exact_etld1_match
 
@@ -119,35 +120,6 @@ def initialize_graph_db(db_path: Path) -> sqlite3.Connection:
     return con
 
 
-def populate_from_json(
-    con: sqlite3.Connection, nid_map_path: Path, json_path: Path
-) -> None:
-    with open(nid_map_path, 'rb') as f:
-        domain_to_id = pickle.load(f)
-    logging.info(f'Loaded {len(domain_to_id):,} domain-id mappings')
-
-    with open(json_path, 'r') as f:
-        for line in tqdm(f, desc='Populating relational database with JSON'):
-            if not line.strip():
-                continue
-            record = json.loads(line)
-
-            domain = str(record['domain'])
-            if domain not in domain_to_id:
-                logging.warning(f'Domain {domain} not found in mapping; skipping.')
-                continue
-
-            id = int(domain_to_id[domain])
-
-            x = np.array(record['x'], dtype=np.float32).tobytes()
-            con.execute(
-                'INSERT INTO domain VALUES (?, ?, ?, ?)',
-                (id, int(record['ts']), x, float(record['y'])),
-            )
-    logging.info('Database populated')
-    con.commit()
-
-
 def construct_masks_from_json(
     nid_map_path: Path, json_path: Path, db_path: Path, seed: int = 0
 ) -> None:
@@ -223,64 +195,56 @@ def construct_masks_from_json(
 def populate_edges(
     con: sqlite3.Connection, edges_path: Path, chunk_size: int = 1_000_000
 ) -> None:
-    logging.info(f'Populating edges from {edges_path} using pandas chunks...')
-    for chunk in tqdm(
-        pd.read_csv(edges_path, chunksize=chunk_size),
-        desc='Populating edges',
-        unit='chunk',
-    ):
-        chunk['relation'] = 'LINKS_TO'
-        data = (
-            chunk[['src_id', 'dst_id', 'relation', 'ts']]
-            .astype({'src_id': 'int64', 'dst_id': 'int64', 'ts': 'int64'})
-            .to_records(index=False)
-            .tolist()
-        )
-        con.executemany('INSERT INTO edges VALUES (?, ?, ?, ?)', data)
+    if table_has_data(con=con, table='edges'):
+        logging.info(f'Populating edges from {edges_path} using pandas chunks...')
+        for chunk in tqdm(
+            pd.read_csv(edges_path, chunksize=chunk_size),
+            desc='Populating edges',
+            unit='chunk',
+        ):
+            chunk['relation'] = 'LINKS_TO'
+            data = (
+                chunk[['src_id', 'dst_id', 'relation', 'ts']]
+                .astype({'src_id': 'int64', 'dst_id': 'int64', 'ts': 'int64'})
+                .to_records(index=False)
+                .tolist()
+            )
+            con.executemany('INSERT INTO edges VALUES (?, ?, ?, ?)', data)
+            con.commit()
+    else:
+        logging.info('Edge table already populated skipping...')
+
+
+def populate_from_json(
+    con: sqlite3.Connection, nid_map_path: Path, json_path: Path
+) -> None:
+    if table_has_data(con=con, table='domain'):
+        with open(nid_map_path, 'rb') as f:
+            domain_to_id = pickle.load(f)
+        logging.info(f'Loaded {len(domain_to_id):,} domain-id mappings')
+
+        with open(json_path, 'r') as f:
+            for line in tqdm(f, desc='Populating relational database with JSON'):
+                if not line.strip():
+                    continue
+                record = json.loads(line)
+
+                domain = str(record['domain'])
+                if domain not in domain_to_id:
+                    logging.warning(f'Domain {domain} not found in mapping; skipping.')
+                    continue
+
+                id = int(domain_to_id[domain])
+
+                x = np.array(record['x'], dtype=np.float32).tobytes()
+                con.execute(
+                    'INSERT INTO domain VALUES (?, ?, ?, ?)',
+                    (id, int(record['ts']), x, float(record['y'])),
+                )
+        logging.info('Database populated')
         con.commit()
-
-
-def is_db_empty(con: sqlite3.Connection) -> bool:
-    try:
-        cursor = con.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = cursor.fetchall()
-
-        return len(tables) == 0
-    except sqlite3.Error as e:
-        print(f'Error connectiong to or querying database: {e}')
-        return False
-
-
-def edge_table_populated(con: sqlite3.Connection) -> bool:
-    """Return True if the edges table exists and has rows."""
-    try:
-        cur = con.cursor()
-        cur.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='edges'"
-        )
-        if not cur.fetchone():
-            logging.warning("No table named 'edges' found.")
-            return False
-
-        cur.execute('SELECT COUNT(*) FROM edges LIMIT 1')
-        count = cur.fetchone()[0]
-        logging.info(f"'edges' table contains {count:,} rows.")
-        return count > 0
-
-    except sqlite3.Error as e:
-        logging.error(f'Error checking edges table: {e}')
-        return False
-
-
-def edge_table_has_data(con: sqlite3.Connection) -> bool:
-    """Fast O(1) check whether 'edges' table has at least one row."""
-    try:
-        cur = con.execute('SELECT EXISTS(SELECT 1 FROM edges LIMIT 1)')
-        return bool(cur.fetchone()[0])
-    except sqlite3.Error as e:
-        logging.error(f'Failed to check edge table: {e}')
-        return False
+    else:
+        logging.info('Domain table is already populated skipping...')
 
 
 def main() -> None:
