@@ -80,6 +80,9 @@ def test_sampler(sqlite_graph_and_feature_store) -> None:
         input_nodes=('domain', torch.arange(3)),
     )
 
-    for batch in loader:
-        print(batch)
+    print(next(iter(loader)))
 
+    for batch in loader:
+        print(
+            f'Edge index -- Batch: {batch["domain", "LINKS_TO", "domain"].edge_index}'
+        )

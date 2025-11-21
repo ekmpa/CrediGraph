@@ -73,8 +73,5 @@ def test_get_table_columns(db_path) -> None:
 
 def test_get_tensor(db_path) -> None:
     feature_store = SQLiteFeatureStore(db_path=db_path)
-    x_features = feature_store['domain', 'x', 0]
 
-
-
-
+    feature_store['domain', 'x', 0]
