@@ -1,9 +1,11 @@
 import logging
 import pickle
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
+import numpy as np
 import pandas as pd
 import torch
+import zarr
 from torch import Tensor
 from tqdm import tqdm
 
@@ -151,3 +153,73 @@ def get_seed_embeddings() -> Dict[str, torch.Tensor]:
     }
 
     return embeddings_lookup
+
+
+def get_mapping(path: str, index_col: int, chunk_size: int = 500_000) -> Dict:
+    dfs = []
+    total_rows = sum(1 for _ in open(path)) - 1
+    with pd.read_csv(path, index_col=index_col, chunksize=chunk_size) as reader:
+        for chunk in tqdm(
+            reader, total=total_rows // chunk_size + 1, desc='Reading node CSV'
+        ):
+            dfs.append(chunk)
+
+    df = pd.concat(dfs, axis=0)
+    mapping = {
+        index: i for i, index in tqdm(enumerate(df.index.unique()), desc='Indexing')
+    }
+
+    return mapping
+
+
+def construct_zarr_rni_backend(
+    path: str,
+    zarr_storage: zarr.DirectoryStore,
+    index_col: int,
+    chunk_size: int = 500_000,
+) -> Tuple[dict, pd.Index]:
+    total_rows = sum(1 for _ in open(path)) - 1
+
+    z_embeddings = zarr.open_array(
+        store=zarr_storage,
+        mode='w',
+        shape=(total_rows, 64),
+        chunks=(1024, 64),
+        dtype='float32',
+    )
+
+    mapping = {}
+    current_row = 0
+
+    reader = pd.read_csv(path, index_col=index_col, chunksize=chunk_size)
+
+    for chunk in tqdm(
+        reader, total=total_rows // chunk_size + 1, desc='Populating Zarr storage'
+    ):
+        num_rows = len(chunk)
+
+        domains = chunk.index.to_numpy()
+        start = current_row
+        end = current_row + num_rows
+
+        mapping.update({domain: i for domain, i in zip(domains, range(start, end))})
+
+        random_vecs = np.random.normal(0.0, 1.0, size=(num_rows, 64)).astype('float32')
+
+        z_embeddings[start:end, :] = random_vecs
+
+        current_row += num_rows
+
+    return mapping, pd.RangeIndex(len(mapping))
+
+
+def extract_text_from_row(txt_list: List[str], k: int = 5) -> str:
+    if not isinstance(txt_list, list) or len(txt_list) == 0:
+        return ''
+
+    if len(txt_list) <= k:
+        chosen = txt_list
+    else:
+        chosen = np.random.choice(txt_list, size=k, replace=False)
+
+    return '\n'.join(chosen)
