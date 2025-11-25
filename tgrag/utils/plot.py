@@ -1015,3 +1015,59 @@ def plot_pred_target_distributions_histogram(
     plt.tight_layout()
     plt.savefig(save_path, bbox_inches='tight', pad_inches=0.1)
     plt.close()
+
+
+def plot_neighbor_distribution(
+    neighbor_preds: Tensor, dataset_name: str, model_name: str, target: str
+) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / model_name / 'distribution' / target
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / f'{dataset_name}_neighbor_pred_distribution.png'
+    plt.figure(figsize=(6, 4))
+    plt.hist(neighbor_preds.numpy(), bins=20, range=(0, 1), edgecolor='black')
+    plt.title(f'Predicted Label Distribution (Neighbors) — {dataset_name}')
+    plt.xlabel('Predicted label (0, 1)')
+    plt.ylabel('Frequency')
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_neighbor_degree_distribution(
+    neighbor_degree: Tensor,
+    dataset_name: str,
+    model_name: str,
+    target: str,
+    degree: str,
+) -> None:
+    root = get_root_dir()
+    save_dir = root / 'results' / 'plots' / model_name / 'distribution' / target
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_path = save_dir / f'{dataset_name}_neighbor_{degree}_degree_distribution.png'
+    plt.figure(figsize=(6, 4))
+
+    deg = neighbor_degree
+    deg = deg[deg > 0]
+
+    unique_deg, counts = torch.unique(deg, return_counts=True)
+
+    sorted_idx = torch.argsort(unique_deg)
+    unique_deg = unique_deg[sorted_idx]
+    counts = counts[sorted_idx]
+
+    plt.bar(
+        unique_deg.numpy(),
+        counts.numpy(),
+        width=0.8,
+        edgecolor='black',
+        align='center',
+    )
+    plt.title(f'{degree} Distribution (Neighbors) — {dataset_name}')
+    plt.xlabel(f'{degree}')
+    plt.ylabel('Frequency')
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
