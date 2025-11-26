@@ -82,27 +82,6 @@ def train(
         all_preds.append(preds[train_mask])
         all_targets.append(targets[train_mask])
 
-        # Per-batch logging
-        logging.info(
-            f'[Batch] ZARR: {zarr_time:.6f}s  '
-            f'NUMPY->TENSOR: {to_tensor_time:.6f}s  '
-            f'PRED: {forward_time:.6f}s'
-        )
-
-    # Aggregate logging
-    logging.info(f'Total ZARR read time: {total_zarr_time:.4f}s')
-    logging.info(f'Total NumPy→Tensor time: {total_to_tensor_time:.4f}s')
-    logging.info(f'Total forward pass time: {total_forward_time:.4f}s')
-    logging.info(
-        f'Avg ZARR read per batch: {total_zarr_time / max(total_batches, 1):.6f}s'
-    )
-    logging.info(
-        f'Avg NumPy→Tensor per batch: {total_to_tensor_time / max(total_batches, 1):.6f}s'
-    )
-    logging.info(
-        f'Avg forward per batch: {total_forward_time / max(total_batches, 1):.6f}s'
-    )
-
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
     avg_preds = ragged_mean_by_index(all_preds)
     avg_targets = ragged_mean_by_index(all_targets)
@@ -167,26 +146,6 @@ def train_(
         for targ in targets[train_mask]:
             target_scores.append(targ.item())
 
-        # Per-batch logging
-        logging.info(
-            f'[Batch] ZARR: {zarr_time:.6f}s  '
-            f'NUMPY->TENSOR: {to_tensor_time:.6f}s  '
-            f'PRED: {forward_time:.6f}s'
-        )
-
-    # Aggregate logging
-    logging.info(f'Total ZARR read time: {total_zarr_time:.4f}s')
-    logging.info(f'Total NumPy→Tensor time: {total_to_tensor_time:.4f}s')
-    logging.info(f'Total forward pass time: {total_forward_time:.4f}s')
-    logging.info(
-        f'Avg ZARR read per batch: {total_zarr_time / max(total_batches, 1):.6f}s'
-    )
-    logging.info(
-        f'Avg NumPy→Tensor per batch: {total_to_tensor_time / max(total_batches, 1):.6f}s'
-    )
-    logging.info(
-        f'Avg forward per batch: {total_forward_time / max(total_batches, 1):.6f}s'
-    )
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
     ragged_mean_by_index(all_preds)
     ragged_mean_by_index(all_targets)
