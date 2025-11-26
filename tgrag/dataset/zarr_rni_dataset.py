@@ -17,6 +17,8 @@ from tgrag.utils.dataset_loading import (
 from tgrag.utils.load_labels import get_full_dict
 from tgrag.utils.target_generation import generate_exact_targets_csv
 
+EMB_DIM = 64
+
 
 class ZarrDataset(InMemoryDataset):
     def __init__(
@@ -87,6 +89,7 @@ class ZarrDataset(InMemoryDataset):
             generate_exact_targets_csv(node_path, target_path, dqr)
 
         # IF we use domains as our unique ID then we can construct the zarr database in a seperate script
+
         zarr_path = Path(self.database_folder) / 'embeddings.zarr'
         zarr_path.parent.mkdir(parents=True, exist_ok=True)
         zarr_storage = zarr.DirectoryStore(str(zarr_path))
@@ -140,6 +143,7 @@ class ZarrDataset(InMemoryDataset):
 
         data = Data(y=score, edge_index=edge_index, edge_attr=edge_attr)
         data.num_nodes = len(mapping)
+        data.num_features = 65
 
         data.labeled_mask = labeled_mask.detach().clone().bool()
 
