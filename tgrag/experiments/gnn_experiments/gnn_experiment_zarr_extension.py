@@ -237,7 +237,7 @@ def run_gnn_baseline_zarr_backend(
         model = Model(
             model_name=model_arguments.model,
             normalization=model_arguments.normalization,
-            in_channels=data.num_features,
+            in_channels=embeddings.shape[1],
             hidden_channels=model_arguments.hidden_channels,
             out_channels=model_arguments.embedding_dimension,
             num_layers=model_arguments.num_layers,
