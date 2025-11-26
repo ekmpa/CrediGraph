@@ -50,11 +50,12 @@ def main() -> None:
         edge_dst_col=meta_args.edge_dst_col,
         index_col=meta_args.index_col,
         seed=meta_args.global_seed,
-        processed_dir=f'{scratch}/{meta_args.processed_location}',
-        database_folder=f'{scratch}/{meta_args.database_folder}',
+        processed_dir=cast(str, meta_args.processed_location),
+        database_folder=cast(str, meta_args.database_folder),
     )
     logging.info('In-Memory Zarr Dataset loaded.')
     zarr_path = scratch / cast(str, meta_args.database_folder) / 'embeddings.zarr'
+    logging.info(f'Scratch Location: {scratch}')
     logging.info(f'Reading Zarr storage from: {zarr_path}')
     embeddings = zarr.open_array(str(zarr_path))
 
