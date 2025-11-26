@@ -155,7 +155,9 @@ def get_seed_embeddings() -> Dict[str, torch.Tensor]:
     return embeddings_lookup
 
 
-def get_mapping(path: str, index_col: int, chunk_size: int = 500_000) -> Dict:
+def get_mapping(
+    path: str, index_col: int, chunk_size: int = 500_000
+) -> Tuple[Dict, pd.Index]:
     dfs = []
     total_rows = sum(1 for _ in open(path)) - 1
     with pd.read_csv(path, index_col=index_col, chunksize=chunk_size) as reader:
@@ -169,7 +171,7 @@ def get_mapping(path: str, index_col: int, chunk_size: int = 500_000) -> Dict:
         index: i for i, index in tqdm(enumerate(df.index.unique()), desc='Indexing')
     }
 
-    return mapping
+    return mapping, pd.RangeIndex(len(mapping))
 
 
 def construct_zarr_rni_backend(
@@ -213,13 +215,13 @@ def construct_zarr_rni_backend(
     return mapping, pd.RangeIndex(len(mapping))
 
 
-def extract_text_from_row(txt_list: List[str], k: int = 5) -> str:
+def extract_text_from_row(txt_list: List[str], k: int = 5) -> List[str]:
     if not isinstance(txt_list, list) or len(txt_list) == 0:
-        return ''
+        return ['']
 
     if len(txt_list) <= k:
         chosen = txt_list
     else:
-        chosen = np.random.choice(txt_list, size=k, replace=False)
+        chosen = np.random.choice(txt_list, size=k, replace=False).tolist()
 
-    return '\n'.join(chosen)
+    return chosen

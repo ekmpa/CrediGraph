@@ -12,9 +12,9 @@ from tgrag.encoders.encoder import Encoder
 class TextEncoder(Encoder):
     def __init__(
         self,
-        model_name: str = 'Qwen/Qwen3-Embedding-0.6B',
+        model_name: str = 'Qwen/Qwen3-Embedding-0.6B',  # TODO: Too small; 4B/8B> paramaters size
         device: str | None = None,
-        max_seq_length: int = 256,
+        max_seq_length: int = 1024,
         batch_size: int = 128,
         use_fp16: bool = True,
     ):
@@ -22,8 +22,8 @@ class TextEncoder(Encoder):
         self.model = SentenceTransformer(model_name, device=device)
         self.model.max_seq_length = max_seq_length
 
-        if use_fp16 and self.device is not None and 'cuda' in self.device:
-            self.model = self.model.half()
+        # if use_fp16 and self.device is not None and "cuda" in self.device:
+        #     self.model = self.model.half()
 
         self.batch_size = batch_size
 
