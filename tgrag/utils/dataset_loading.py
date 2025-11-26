@@ -184,7 +184,7 @@ def construct_zarr_rni_backend(
         store=zarr_storage,
         mode='w',
         shape=(total_rows, 64),
-        chunks=(1024, 64),
+        chunks=(16384, 64),
         dtype='float32',
     )
 

@@ -143,7 +143,6 @@ class ZarrDataset(InMemoryDataset):
 
         data = Data(y=score, edge_index=edge_index, edge_attr=edge_attr)
         data.num_nodes = len(mapping)
-        data.num_features = 65
 
         data.labeled_mask = labeled_mask.detach().clone().bool()
 
