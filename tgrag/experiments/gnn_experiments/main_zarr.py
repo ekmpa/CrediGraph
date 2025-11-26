@@ -55,6 +55,7 @@ def main() -> None:
     )
     logging.info('In-Memory Zarr Dataset loaded.')
     zarr_path = scratch / cast(str, meta_args.database_folder) / 'embeddings.zarr'
+    logging.info(f'Reading Zarr storage from: {zarr_path}')
     embeddings = zarr.open_array(str(zarr_path))
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
