@@ -1,4 +1,5 @@
 import logging
+import time
 from pathlib import Path
 from typing import List, Tuple
 
@@ -33,37 +34,80 @@ def train(
 ) -> Tuple[float, float, Tensor, Tensor]:
     model.train()
     device = next(model.parameters()).device
+
     total_loss = 0
     total_batches = 0
     all_preds = []
     all_targets = []
+
+    total_zarr_time = 0.0
+    total_to_tensor_time = 0.0
+    total_forward_time = 0.0
+
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        ##TODO: Integrate zarr read:
-        batch_indices = (
-            batch.n_id.to(torch.int64).cpu().numpy()
-        )  # Will this slow down? GPU -> index to cpu?
-        x_batch_numpy = embeddings[batch_indices]  # Zarr Read
+
+        t0 = time.perf_counter()
+        batch_indices = batch.n_id.to(torch.int64).cpu().numpy()
+        x_batch_numpy = embeddings[batch_indices]
+        t1 = time.perf_counter()
+        zarr_time = t1 - t0
+        total_zarr_time += zarr_time
+
+        t2 = time.perf_counter()
         x_batch_tensor = torch.from_numpy(x_batch_numpy).to(device)
+        t3 = time.perf_counter()
+        to_tensor_time = t3 - t2
+        total_to_tensor_time += to_tensor_time
+
+        t4 = time.perf_counter()
         preds = model(x_batch_tensor, batch.edge_index).squeeze()
+        t5 = time.perf_counter()
+        forward_time = t5 - t4
+        total_forward_time += forward_time
+
         targets = batch.y
         train_mask = batch.train_mask
+
         if train_mask.sum() == 0:
             continue
 
         loss = F.l1_loss(preds[train_mask], targets[train_mask])
         loss.backward()
         optimizer.step()
+
         total_loss += loss.item()
         total_batches += 1
         all_preds.append(preds[train_mask])
         all_targets.append(targets[train_mask])
 
+        # Per-batch logging
+        logging.info(
+            f'[Batch] ZARR: {zarr_time:.6f}s  '
+            f'NUMPY->TENSOR: {to_tensor_time:.6f}s  '
+            f'PRED: {forward_time:.6f}s'
+        )
+
+    # Aggregate logging
+    logging.info(f'Total ZARR read time: {total_zarr_time:.4f}s')
+    logging.info(f'Total NumPy→Tensor time: {total_to_tensor_time:.4f}s')
+    logging.info(f'Total forward pass time: {total_forward_time:.4f}s')
+    logging.info(
+        f'Avg ZARR read per batch: {total_zarr_time / max(total_batches,1):.6f}s'
+    )
+    logging.info(
+        f'Avg NumPy→Tensor per batch: {total_to_tensor_time / max(total_batches,1):.6f}s'
+    )
+    logging.info(
+        f'Avg forward per batch: {total_forward_time / max(total_batches,1):.6f}s'
+    )
+
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
     avg_preds = ragged_mean_by_index(all_preds)
     avg_targets = ragged_mean_by_index(all_targets)
     mse = total_loss / total_batches
+
     return (mse, r2, avg_preds, avg_targets)
 
 
@@ -254,12 +298,14 @@ def run_gnn_baseline_zarr_backend(
             )
             epoch_avg_preds.append(batch_preds)
             epoch_avg_targets.append(batch_targets)
-            train_loss, _, _, train_r2 = evaluate(model, train_loader, 'train_mask')
+            train_loss, _, _, train_r2 = evaluate(
+                model, train_loader, 'train_mask', embeddings
+            )
             valid_loss, valid_mean_baseline_loss, _, valid_r2 = evaluate(
-                model, val_loader, 'valid_mask'
+                model, val_loader, 'valid_mask', embeddings
             )
             test_loss, test_mean_baseline_loss, test_random_baseline_loss, test_r2 = (
-                evaluate(model, test_loader, 'test_mask')
+                evaluate(model, test_loader, 'test_mask', embeddings)
             )
             result = (
                 train_loss,
