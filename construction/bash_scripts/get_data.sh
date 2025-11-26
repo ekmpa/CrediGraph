@@ -23,17 +23,17 @@ if [ -z "$SCRATCH" ]; then
     DATA_DIR="$PROJECT_ROOT/data"
 else
     DATA_DIR="$SCRATCH"
-    echo "Using SCRATCH directory: $DATA_DIR"
+    echo "[INFO] Using SCRATCH directory: $DATA_DIR"
 fi
 
 mkdir -p "$DATA_DIR/crawl-data/$CRAWL/"
 INPUT_DIR="$DATA_DIR/crawl-data/$CRAWL/input$subfolder_id"
 mkdir -p "$INPUT_DIR"
 
-echo "CC File Type= $data_type"
+echo "[INFO] CC File Type= $data_type"
 listing="$DATA_DIR/crawl-data/$CRAWL/$data_type.paths.gz"
 
-echo "Downloading sample ${data_type} file..."
+echo "[INFO] Downloading sample ${data_type} file..."
 sample_file="$(gzip -dc "$listing" | head -n 1 || true)"
 if [ -n "$sample_file" ]; then
   full_path="$DATA_DIR/crawl-data/$sample_file"
@@ -44,13 +44,13 @@ fi
 
 listing_content="$(gzip -dc "$listing")"
 listing_count=$(wc -l <<< "$listing_content")
-echo "listing_FilesCount=$listing_count"
+echo "[INFO] listing_FilesCount=$listing_count"
 
 if [ "$listing_count" -lt "$end_idx" ]; then
   end_idx="$listing_count"
 fi
 FilesCount=$((end_idx - start_idx + 1))
-echo "To Process FilesCount=$FilesCount"
+echo "[INFO] To Process FilesCount=$FilesCount"
 
 file="$(gzip -dc "$listing" | head -1 || true)"
 if [ -n "$file" ]; then
@@ -62,11 +62,11 @@ fi
 
 input_file="$INPUT_DIR/test_${data_type}.txt"
 [ -f "$input_file" ] && rm "$input_file"
-echo "Writing input file listings to $input_file"
+echo "[INFO] Writing input file listings to $input_file"
 
 gzip -dc "$listing" | sed -n "$((start_idx + 1)),$((end_idx + 1))p" > "$input_file"
 
-echo "Done writing $FilesCount paths to $input_file"
+echo "[INFO] Done writing $FilesCount paths to $input_file"
 
 echo "$listing_content" > "$INPUT_DIR/all_${data_type}_${CRAWL}_${subfolder_id}.txt"
 
@@ -95,26 +95,52 @@ downloaded=0
 fail_log="$DATA_DIR/crawl-data/$CRAWL/failed_${data_type}_${CRAWL}_${subfolder_id}.txt"
 : > "$fail_log"
 
-while IFS= read -r wat_file; do
-  file_path="$DATA_DIR/crawl-data/$wat_file"
-  target_file="$file_path"
+PARALLEL_JOBS=6
+CHUNK_SIZE=$(( (FilesCount + PARALLEL_JOBS - 1) / PARALLEL_JOBS ))
 
-  if [ -f "$target_file" ] && gzip -t "$target_file" 2>/dev/null; then
-    echo "File '$target_file' already exists and is valid."
-    downloaded=$((downloaded+1))
-    continue
-  fi
+echo "[INFO] Launching $PARALLEL_JOBS parallel download workers (chunk size: $CHUNK_SIZE)"
 
-  url="$BASE_URL/$wat_file"
-  if fetch_with_retries "$url" "$target_file" 5; then
-    echo "[OK] Downloaded: $target_file"
-    downloaded=$((downloaded+1))
-  else
-    echo "[SKIP] Failed: $url"
-    echo "$url" >> "$fail_log"
-    skipped=$((skipped+1))
-  fi
-done < "$input_file"
+worker() {
+    local worker_id="$1"
+    local start=$(( (worker_id - 1) * CHUNK_SIZE + 1 ))
+    local end=$(( worker_id * CHUNK_SIZE ))
+    if [ "$start" -gt "$FilesCount" ]; then return; fi
+    if [ "$end" -gt "$FilesCount" ]; then end="$FilesCount"; fi
 
-echo "[SUMMARY] $CRAWL type=$data_type downloaded=$downloaded skipped=$skipped"
-echo "[SUMMARY] Failed log: $fail_log"
+    echo "[INFO] Worker $worker_id handling lines $start–$end"
+
+    sed -n "${start},${end}p" "$input_file" |
+    skipped=0
+    while IFS= read -r wat_file; do
+        CUSTOM_SEGMENTS_DIR="segments${subfolder_id}"
+        file_path="$DATA_DIR/crawl-data/$CRAWL/$CUSTOM_SEGMENTS_DIR/${wat_file#*/segments/}"
+        target_file="$file_path"
+
+        if [ -f "$target_file" ] && gzip -t "$target_file" 2>/dev/null; then
+            echo "[Worker $worker_id] Already valid: $target_file"
+            continue
+        fi
+
+        url="$BASE_URL/$wat_file"
+        if fetch_with_retries "$url" "$target_file" 5; then
+            echo "[Worker $worker_id] OK: $target_file"
+        else
+            echo "[Worker $worker_id] FAIL: $url"
+            echo "$url" >> "$fail_log"
+            skipped=$((skipped+1))
+        fi
+    done
+}
+
+pids=()
+for w in $(seq 1 $PARALLEL_JOBS); do
+    worker "$w" &
+    pids+=($!)
+done
+
+for pid in "${pids[@]}"; do
+    wait "$pid"
+done
+
+echo "[INFO] $CRAWL type=$data_type downloaded=$downloaded skipped=$skipped"
+echo "[INFO] Failed log: $fail_log"
