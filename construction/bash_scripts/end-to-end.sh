@@ -18,9 +18,10 @@ subfolder_name="$(basename "$(dirname "${BASH_SOURCE[0]}")")"  # auto-detect par
 
 # set paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONSTRUCTION_DIR="$(dirname "$SCRIPT_DIR")"
+SUBFOLDER_PATH="$SCRIPT_DIR"
+CRAWL_FOLDER="$(dirname "$SUBFOLDER_PATH")"
+CONSTRUCTION_DIR="$(dirname "$CRAWL_FOLDER")"
 PROJECT_ROOT="$(dirname "$CONSTRUCTION_DIR")"
-SUBFOLDER_PATH="$CONSTRUCTION_DIR/$subfolder_name"
 SPARK_WAREHOUSE_PATH="$SUBFOLDER_PATH/spark-warehouse"
 seed_list="$PROJECT_ROOT/data/dqr/domain_pc1.csv"
 
@@ -42,7 +43,7 @@ echo "[INFO] Data downloaded for $CRAWL"
 if [ "$data_type" = "wat" ]; then
     echo "#####################  run_wat_to_link @ $(date '+%Y-%m-%d %H:%M:%S') #####################"
     "$SUBFOLDER_PATH/run_wat_to_link.sh" "$CRAWL" "$subfolder_id"
-    echo "[INFO] wat_output_table constructed for $CRAWL."
+    echo "[INFO] wat_output_table constructed for $CRAWL in $SPARK_WAREHOUSE_PATH."
     echo "#####################  run_link_to_graph @ $(date '+%Y-%m-%d %H:%M:%S') #####################"
     "$SUBFOLDER_PATH/run_link_to_graph.sh" "$CRAWL" "$subfolder_id"
     echo "[INFO] Compressed graphs constructed for $CRAWL."
