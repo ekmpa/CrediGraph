@@ -7,10 +7,6 @@ if [ $# -lt 2 ]; then
     exit 1
 fi
 
-# TODO:
-# comments
-# fallback for fetch error ?
-
 START_MONTH="$1"
 END_MONTH="$2"
 NUM_SUBFOLDERS="${3:-9}"
@@ -41,13 +37,33 @@ fi
 
 process_crawl() {
     local CRAWL=$1
+
+    cleanup() {
+        echo "[WARN][$CRAWL] Interrupted — merging partial results..."
+        local merged_output="$DATA_DIR/crawl-data/$CRAWL/output1"
+        for (( i=2; i<=NUM_SUBFOLDERS; i++ )); do
+            local src="$DATA_DIR/crawl-data/$CRAWL/output$i"
+            if [ -d "$src" ]; then
+                echo "[INFO][$CRAWL] (cleanup) merging $src into $merged_output"
+                uv run python tgrag/construct_graph_scripts/merge_ext.py \
+                    --source "$src" \
+                    --target "$merged_output"
+            fi
+        done
+        echo "[INFO][$CRAWL] Cleanup merge complete."
+    }
+
+    trap cleanup EXIT INT TERM
+
     echo "[INFO] Starting crawl: $CRAWL"
 
     mkdir -p "$DATA_DIR/crawl-data/$CRAWL"
     mkdir -p "$DATA_DIR/crawl-data/$CRAWL/output"
-    rm -rf "$DATA_DIR/crawl-data/$CRAWL/output"/*
+    #rm -rf "$DATA_DIR/crawl-data/$CRAWL/output"/*
 
-    WAT_PATHS_FILE=$(mktemp /tmp/wat.paths.XXXXXX.gz)
+    WAT_PATHS_FILE="$DATA_DIR/crawl-data/$CRAWL/wat.paths.gz"
+    mkdir -p "$DATA_DIR/crawl-data/$CRAWL"
+
     MAX_RETRIES=3
     SUCCESS=0
 
@@ -55,12 +71,12 @@ process_crawl() {
         echo "[INFO] Attempt $attempt downloading WAT paths for $CRAWL..."
         wget -q "$BASE_URL/crawl-data/$CRAWL/wat.paths.gz" -O "$WAT_PATHS_FILE"
 
-        if gzip -t "$WAT_PATHS_FILE"; then
+        if gzip -t "$WAT_PATHS_FILE" 2>/dev/null; then
             echo "[INFO] Valid WAT file downloaded."
             SUCCESS=1
             break
         else
-            echo "[WARN] Corrupted WAT file (attempt $attempt), retrying..."
+            echo "[WARN] Corrupted or missing WAT file (attempt $attempt), retrying..."
             rm -f "$WAT_PATHS_FILE"
             sleep 2
         fi
@@ -68,7 +84,7 @@ process_crawl() {
 
     if [[ "$SUCCESS" -ne 1 ]]; then
         echo "[ERROR] Failed to get valid WAT paths file for $CRAWL after $MAX_RETRIES attempts" >&2
-        return 1
+        return 1 ## todo
     fi
 
     TOTAL_FILES=$(gzip -dc "$WAT_PATHS_FILE" | wc -l)
@@ -94,6 +110,7 @@ process_crawl() {
                 echo "[INFO] Creating $TARGET_SCRIPTS from template"
                 cp -r "$TEMPLATE_SCRIPTS" "$TARGET_SCRIPTS"
             fi
+            rm -rf "$SEGMENT_DIR"
             mkdir -p "$OUTPUT_DIR" "$SEGMENT_DIR"
 
             START_IDX=$((i * FILES_PER_SUBSET))
@@ -110,11 +127,27 @@ process_crawl() {
                 echo "[INFO][$CRAWL][Subfolder $SUBFOLDER_ID] Batch: $batch_start-$batch_end"
                 rm -rf "$SEGMENT_DIR"/*
                 bash "$TARGET_SCRIPTS/end-to-end.sh" "$CRAWL" "$batch_start" "$batch_end" "$SUBFOLDER_ID"
+                uv run python ../tgrag/construct_graph_scripts/construct_aggregate.py --source "$DATA_DIR/crawl-data/$CRAWL/output_text_dir$SUBFOLDER_ID" --target "$DATA_DIR/crawl-data/$CRAWL/output$SUBFOLDER_ID"
+                for f in edges vertices; do
+                    target_file="$DATA_DIR/crawl-data/$CRAWL/output$SUBFOLDER_ID/${f}.txt.gz"
+                    if [ -f "$target_file" ]; then
+                        num_lines=$(gzip -dc "$target_file" | wc -l)
+                        echo "[INFO] After slice $batch_start-$batch_end: $f has $num_lines records"
+
+                        if [ "$f" == "edges" ]; then
+                            TOTAL_EDGES=$num_lines
+                        else
+                            TOTAL_NODES=$num_lines
+                        fi
+                    fi
+                done
             done
-        ) >"$CONSTRUCTION_DIR/logs/${CRAWL}_sub$((i+1))_out.log" \
-          2>"$CONSTRUCTION_DIR/logs/${CRAWL}_sub$((i+1))_err.log" &
+        ) >"$CONSTRUCTION_DIR/logs/${CRAWL}_sub$((i+1)).out" \
+          2>"$CONSTRUCTION_DIR/logs/${CRAWL}_sub$((i+1)).err" &
 
         pids+=($!)
+
+        sleep 600
     done
 
     for pid in "${pids[@]}"; do
@@ -127,14 +160,15 @@ process_crawl() {
     for (( i=2; i<=NUM_SUBFOLDERS; i++ )); do
         local src="$DATA_DIR/$CRAWL/output$i"
         echo "[INFO][$CRAWL] Merging $src into $merged_output"
-        uv run python tgrag/construct_graph_scripts/merge_ext.py \
+        uv run python ../tgrag/construct_graph_scripts/merge_ext.py \
             --source "$src" \
             --target "$merged_output"
     done
     echo "[INFO][$CRAWL] Final merged output: $merged_output"
+
+    #python tgrag/construct_graph_scripts/stats.py --input "$merged_output"
 }
 
-# Launches each crawl in parallel with stdout and stderr logs.
 for CRAWL in $CRAWL_INDICES; do
     process_crawl "$CRAWL" \
       >"$CONSTRUCTION_DIR/logs/${CRAWL}_main_out.log" \
