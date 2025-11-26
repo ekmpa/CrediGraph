@@ -94,13 +94,13 @@ def train(
     logging.info(f'Total NumPy→Tensor time: {total_to_tensor_time:.4f}s')
     logging.info(f'Total forward pass time: {total_forward_time:.4f}s')
     logging.info(
-        f'Avg ZARR read per batch: {total_zarr_time / max(total_batches,1):.6f}s'
+        f'Avg ZARR read per batch: {total_zarr_time / max(total_batches, 1):.6f}s'
     )
     logging.info(
-        f'Avg NumPy→Tensor per batch: {total_to_tensor_time / max(total_batches,1):.6f}s'
+        f'Avg NumPy→Tensor per batch: {total_to_tensor_time / max(total_batches, 1):.6f}s'
     )
     logging.info(
-        f'Avg forward per batch: {total_forward_time / max(total_batches,1):.6f}s'
+        f'Avg forward per batch: {total_forward_time / max(total_batches, 1):.6f}s'
     )
 
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
@@ -125,16 +125,31 @@ def train_(
     all_targets = []
     pred_scores = []
     target_scores = []
+    total_zarr_time = 0.0
+    total_to_tensor_time = 0.0
+    total_forward_time = 0.0
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        ##TODO: Integrate zarr read:
-        batch_indices = (
-            batch.n_id.to(torch.int64).cpu().numpy()
-        )  # Will this slow down? GPU -> index to cpu?
-        x_batch_numpy = embeddings[batch_indices]  # Zarr Read
+
+        t0 = time.perf_counter()
+        batch_indices = batch.n_id.to(torch.int64).cpu().numpy()
+        x_batch_numpy = embeddings[batch_indices]
+        t1 = time.perf_counter()
+        zarr_time = t1 - t0
+        total_zarr_time += zarr_time
+
+        t2 = time.perf_counter()
         x_batch_tensor = torch.from_numpy(x_batch_numpy).to(device)
+        t3 = time.perf_counter()
+        to_tensor_time = t3 - t2
+        total_to_tensor_time += to_tensor_time
+
+        t4 = time.perf_counter()
         preds = model(x_batch_tensor, batch.edge_index).squeeze()
+        t5 = time.perf_counter()
+        forward_time = t5 - t4
+        total_forward_time += forward_time
         targets = batch.y
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
@@ -152,6 +167,26 @@ def train_(
         for targ in targets[train_mask]:
             target_scores.append(targ.item())
 
+        # Per-batch logging
+        logging.info(
+            f'[Batch] ZARR: {zarr_time:.6f}s  '
+            f'NUMPY->TENSOR: {to_tensor_time:.6f}s  '
+            f'PRED: {forward_time:.6f}s'
+        )
+
+    # Aggregate logging
+    logging.info(f'Total ZARR read time: {total_zarr_time:.4f}s')
+    logging.info(f'Total NumPy→Tensor time: {total_to_tensor_time:.4f}s')
+    logging.info(f'Total forward pass time: {total_forward_time:.4f}s')
+    logging.info(
+        f'Avg ZARR read per batch: {total_zarr_time / max(total_batches, 1):.6f}s'
+    )
+    logging.info(
+        f'Avg NumPy→Tensor per batch: {total_to_tensor_time / max(total_batches, 1):.6f}s'
+    )
+    logging.info(
+        f'Avg forward per batch: {total_forward_time / max(total_batches, 1):.6f}s'
+    )
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
     ragged_mean_by_index(all_preds)
     ragged_mean_by_index(all_targets)
