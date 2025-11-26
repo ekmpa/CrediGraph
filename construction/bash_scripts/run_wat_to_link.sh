@@ -13,11 +13,14 @@ CRAWL="$1"
 subfolder_id="$2"
 output_table="${3:-wat_output_table}"  # Hussien: do we need to be able to change this?
 
-# Get the root of the project (one level above this script's directory)
+# get paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONSTRUCTION_DIR="$(dirname "$SCRIPT_DIR")"
+SUBFOLDER_PATH="$SCRIPT_DIR"
+CRAWL_FOLDER="$(dirname "$SUBFOLDER_PATH")"
+CONSTRUCTION_DIR="$(dirname "$CRAWL_FOLDER")"
 PROJECT_ROOT="$(dirname "$CONSTRUCTION_DIR")"
 VENV_PATH="$PROJECT_ROOT/.venv"
+SPARK_WAREHOUSE="$SUBFOLDER_PATH/spark-warehouse"
 INPUT_DIR_SUFFIX="input${subfolder_id}"
 
 # Use SCRATCH if defined, else fallback to project-local data dir
@@ -36,17 +39,39 @@ source "$VENV_PATH/bin/activate"
 export PYSPARK_PYTHON="$VENV_PATH/bin/python"
 export PYSPARK_DRIVER_PYTHON="$VENV_PATH/bin/python"
 
+MAX_RETRIES=10
+RETRY_DELAY=5
 
-# Run the Spark job
-# Local testing: use "$INPUT_DIR/test_wat.txt"
-# Cluster / full usage: ""$INPUT_DIR/all_wat_$CRAWL.txt"
-"$VENV_PATH/bin/spark-submit" \
-  --py-files "$PROJECT_ROOT/tgrag/cc-scripts/sparkcc.py" \
-  "$PROJECT_ROOT/tgrag/cc-scripts/wat_extract_links.py" \
-  "$INPUT_DIR/test_wat.txt" \
-  "$output_table" \
-  --input_base_url https://data.commoncrawl.org/
+for attempt in $(seq 1 $MAX_RETRIES); do
+    echo "[INFO] Starting Spark job (attempt $attempt)..."
 
+    # randomize UI port to reduce clashes
+    export SPARK_UI_PORT=$(( 4040 + RANDOM % 2000 ))
 
+    set +e
+    "$VENV_PATH/bin/spark-submit" \
+        --conf "spark.ui.port=$SPARK_UI_PORT" \
+        --conf "spark.port.maxRetries=40" \
+        --conf "spark.sql.warehouse.dir=$SPARK_WAREHOUSE" \
+        --master local[1] \
+        --py-files "$PROJECT_ROOT/tgrag/cc-scripts/sparkcc.py" \
+        "$PROJECT_ROOT/tgrag/cc-scripts/wat_extract_links.py" \
+        "$INPUT_DIR/test_wat.txt" \
+        "$output_table" \
+        --input_base_url https://data.commoncrawl.org/
+    exit_code=$?
+    set -e
 
-#  ../../data/crawl-data/CC-MAIN-2025-21/input/test_wat.txt   wat_output_table   --input_base_url https://data.commoncrawl.org/
+    if [ $exit_code -eq 0 ]; then
+        echo "[INFO] Spark job succeeded on attempt $attempt"
+        break
+    fi
+
+    echo "[WARN] Spark job failed (exit $exit_code); retrying in $RETRY_DELAY seconds..."
+    sleep $RETRY_DELAY
+done
+
+if [ $exit_code -ne 0 ]; then
+    echo "[ERROR] Spark job failed after $MAX_RETRIES attempts"
+    exit 1
+fi
