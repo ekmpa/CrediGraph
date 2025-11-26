@@ -54,8 +54,8 @@ def main() -> None:
         database_folder=f'{scratch}/{meta_args.database_folder}',
     )
     logging.info('In-Memory Zarr Dataset loaded.')
-    scratch / cast(str, meta_args.database_folder) / 'embeddings.zarr'
-    embeddings = zarr.open_array(str())
+    zarr_path = scratch / cast(str, meta_args.database_folder) / 'embeddings.zarr'
+    embeddings = zarr.open_array(str(zarr_path))
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
