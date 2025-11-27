@@ -1,7 +1,7 @@
 import os
 from glob import glob
 from pathlib import Path
-from typing import Tuple
+from typing import List, Tuple
 
 
 def get_root_dir() -> Path:
@@ -58,3 +58,12 @@ def get_data_paths(slice: str, crawl_path: str) -> Tuple[str, str]:
     vertices_path = os.path.join(f'{crawl_path}/{slice}/output/', 'vertices.txt.gz')
     edges_path = os.path.join(f'{crawl_path}/{slice}/output/', 'edges.txt.gz')
     return vertices_path, edges_path
+
+
+def discover_subfolders(base_dir: Path) -> List[Path]:
+    subfolders = []
+    for p in base_dir.iterdir():
+        if p.is_dir():
+            if (p / 'edges.csv').exists() and (p / 'vertices.csv').exists():
+                subfolders.append(p)
+    return subfolders
