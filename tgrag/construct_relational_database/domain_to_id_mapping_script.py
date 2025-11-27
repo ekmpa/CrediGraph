@@ -27,7 +27,7 @@ parser.add_argument(
 
 
 def build_global_mapping(
-    subfolders: List[Path], chunk_size: int = 1_000_000
+    output_folder: Path, subfolders: List[Path], chunk_size: int = 1_000_000
 ) -> Dict[str, int]:
     """Scan all vertices.csv files and build one global domain→id mapping."""
     logging.info('Building global domain-to-id mapping...')
@@ -50,6 +50,13 @@ def build_global_mapping(
                     next_id += 1
 
     logging.info(f'Total unique domains: {len(domain_to_id):,}')
+    with open(output_folder / 'global_domain_to_id.pkl', 'wb') as f:
+        pickle.dump(domain_to_id, f)
+
+    np.save(
+        output_folder / 'global_domain_ids.npy',
+        np.arange(len(domain_to_id), dtype=np.int64),
+    )
     return domain_to_id
 
 
@@ -126,14 +133,8 @@ def main() -> None:
     if not subfolders:
         raise RuntimeError(f'No valid subfolders found in {base_dir}')
 
-    domain_to_id = build_global_mapping(subfolders)
-
-    with open(aggregate_out / 'global_domain_to_id.pkl', 'wb') as f:
-        pickle.dump(domain_to_id, f)
-
-    np.save(
-        aggregate_out / 'global_domain_ids.npy',
-        np.arange(len(domain_to_id), dtype=np.int64),
+    domain_to_id = build_global_mapping(
+        output_folder=aggregate_out, subfolders=subfolders
     )
 
     aggregate_rewrite(subfolders, domain_to_id, aggregate_out)
