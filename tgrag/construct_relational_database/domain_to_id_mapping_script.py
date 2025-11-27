@@ -125,7 +125,7 @@ def main() -> None:
 
     base_dir = scratch / cast(str, meta_args.database_folder)
     aggregate_out = base_dir / 'aggregate'
-    aggregate_out.parent.mkdir(parents=True, exist_ok=True)
+    aggregate_out.mkdir(parents=True, exist_ok=True)
 
     logging.info(f'Scanning base directory: {base_dir}')
     subfolders = discover_subfolders(base_dir)
