@@ -15,6 +15,6 @@ def print_memory_usage(description: str = '') -> None:
         )
 
 
-def mem() -> None:
+def mem() -> float:
     process = psutil.Process(os.getpid())
     return process.memory_info().rss / (1024**2)  # MB

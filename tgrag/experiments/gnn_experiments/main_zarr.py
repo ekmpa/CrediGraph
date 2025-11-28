@@ -10,6 +10,7 @@ from tgrag.experiments.gnn_experiments.gnn_experiment_zarr_extension import (
 )
 from tgrag.utils.args import parse_args
 from tgrag.utils.logger import setup_logging
+from tgrag.utils.mem import mem
 from tgrag.utils.path import get_root_dir, get_scratch
 from tgrag.utils.plot import (
     load_all_loss_tuples,
@@ -42,6 +43,7 @@ def main() -> None:
 
     logging.info(f'Scratch Location: {scratch}')
 
+    logging.info(f'Memory before ZarrDataset: {mem():2f} MB')
     dataset = ZarrDataset(
         root=f'{root}/data/',
         node_file=cast(str, meta_args.node_file),
@@ -56,6 +58,7 @@ def main() -> None:
         database_folder=cast(str, meta_args.database_folder),
     )
     logging.info('In-Memory Zarr Dataset loaded.')
+    logging.info(f'Memory after ZarrDataset load: {mem():2f} MB')
     zarr_path = scratch / cast(str, meta_args.database_folder) / 'embeddings.zarr'
     logging.info(f'Reading Zarr storage from: {zarr_path}')
     embeddings = zarr.open_array(str(zarr_path))

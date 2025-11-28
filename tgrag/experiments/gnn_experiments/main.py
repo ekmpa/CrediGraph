@@ -12,6 +12,7 @@ from tgrag.encoders.zero_encoder import ZeroEncoder
 from tgrag.experiments.gnn_experiments.gnn_experiment import run_gnn_baseline
 from tgrag.utils.args import parse_args
 from tgrag.utils.logger import setup_logging
+from tgrag.utils.mem import mem
 from tgrag.utils.path import get_root_dir, get_scratch
 from tgrag.utils.plot import (
     load_all_loss_tuples,
@@ -57,6 +58,7 @@ def main() -> None:
 
     logging.info(f'Encoding Dictionary: {encoding_dict}')
 
+    logging.info(f'Memory before: {mem():2f} MB')
     dataset = TemporalDataset(
         root=f'{root}/data/',
         node_file=cast(str, meta_args.node_file),
@@ -71,6 +73,7 @@ def main() -> None:
         processed_dir=f'{scratch}/{meta_args.processed_location}',
     )  # Map to .to_cpu()
     logging.info('In-Memory Dataset loaded.')
+    logging.info(f'Memory after TemporalDataset load: {mem():2f} MB')
 
     for experiment, experiment_arg in experiment_args.exp_args.items():
         logging.info(f'\n**Running**: {experiment}')
