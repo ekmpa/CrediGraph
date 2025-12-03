@@ -2,14 +2,14 @@
 set -euo pipefail
 
 if [ $# -lt 2 ]; then
-    echo "Usage: $0 <start-month> <end-month> [num-subfolders]"
-    echo "e.g.: $0 'January 2025' 'February 2025' 9"
+    echo "Usage: $0 <start-month> <end-month>"
+    echo "e.g.: $0 'January 2025' 'February 2025'"
     exit 1
 fi
 
 START_MONTH="$1"
 END_MONTH="$2"
-NUM_SUBFOLDERS="${3:-9}"
+NUM_SUBFOLDERS=8
 
 export PYTHONPATH="$(pwd)/.."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,6 +27,47 @@ print(' '.join(indices))
 "
 }
 
+get_subfolder_indices() {
+    local wanted_id="$1"
+    local numeric_key="$2"
+
+    local json_file="$SCRIPT_DIR/indices.json"
+
+    if [[ ! -f "$json_file" ]]; then
+        echo "[]" > "$json_file"
+    fi
+
+    jq -r --arg id "$wanted_id" --arg key "$numeric_key" '
+        (.[] | select(.ID == $id) | .[$key]) // 0
+    ' "$json_file"
+}
+
+update_subfolder_index() {
+    local crawl_id="$1"
+    local sub_id="$2"
+    local value="$3"
+
+    local json_file="$SCRIPT_DIR/indices.json"
+    tmp=$(mktemp)
+
+    jq \
+      --arg id "$crawl_id" \
+      --arg key "$sub_id" \
+      --argjson val "$value" '
+        if any(.ID == $id) then
+            map(
+                if .ID == $id then
+                    .[$key] = $val
+                else
+                    .
+                end
+            )
+        else
+            . + [{ "ID": $id, ($key): $val }]
+        end
+      ' "$json_file" > "$tmp" && mv "$tmp" "$json_file"
+}
+
 CRAWL_INDICES=$(get_cc_indices "$START_MONTH" "$END_MONTH")
 
 if [ -z "${SCRATCH:-}" ]; then
@@ -38,28 +79,9 @@ fi
 process_crawl() {
     local CRAWL=$1
 
-    cleanup() {
-        echo "[WARN][$CRAWL] Interrupted — merging partial results..."
-        local merged_output="$DATA_DIR/crawl-data/$CRAWL/output1"
-        for (( i=2; i<=NUM_SUBFOLDERS; i++ )); do
-            local src="$DATA_DIR/crawl-data/$CRAWL/output$i"
-            if [ -d "$src" ]; then
-                echo "[INFO][$CRAWL] (cleanup) merging $src into $merged_output"
-                uv run python tgrag/construct_graph_scripts/merge_ext.py \
-                    --source "$src" \
-                    --target "$merged_output"
-            fi
-        done
-        echo "[INFO][$CRAWL] Cleanup merge complete."
-    }
-
-    trap cleanup EXIT INT TERM
-
     echo "[INFO] Starting crawl: $CRAWL"
 
     mkdir -p "$DATA_DIR/crawl-data/$CRAWL"
-    mkdir -p "$DATA_DIR/crawl-data/$CRAWL/output"
-    #rm -rf "$DATA_DIR/crawl-data/$CRAWL/output"/*
 
     WAT_PATHS_FILE="$DATA_DIR/crawl-data/$CRAWL/wat.paths.gz"
     mkdir -p "$DATA_DIR/crawl-data/$CRAWL"
@@ -120,7 +142,23 @@ process_crawl() {
             echo "[INFO][$CRAWL][Subfolder $SUBFOLDER_ID] Processing $START_IDX to $END_IDX"
 
             BATCH_SIZE=300
-            for (( batch_start=START_IDX; batch_start<=END_IDX; batch_start+=BATCH_SIZE )); do
+
+            prev_stoppoint=$(get_subfolder_indices "$CRAWL" "$SUBFOLDER_ID")
+            if (( prev_stoppoint == 0 )); then
+                effective_start="$START_IDX"
+                rm -rf "$OUTPUT_DIR"/*
+            else
+                effective_start="$prev_stoppoint"
+            fi
+
+            save_progress() {
+                echo "[WARN][$CRAWL][Sub $SUBFOLDER_ID] Saving last stop index: $batch_start"
+                update_subfolder_index "$CRAWL" "$SUBFOLDER_ID" "$batch_start"
+            }
+
+            trap save_progress EXIT INT TERM
+
+            for (( batch_start=effective_start; batch_start<=END_IDX; batch_start+=BATCH_SIZE )); do
                 batch_end=$((batch_start + BATCH_SIZE - 1))
                 if [ "$batch_end" -gt "$END_IDX" ]; then batch_end=$END_IDX; fi
 
@@ -184,6 +222,4 @@ for dir in "$CONSTRUCTION_DIR"/CC-*; do
     fi
 done
 
-echo "[INFO] Cleanup done."
-
-echo "All crawls completed."
+echo "[INFO] Cleanup done, all crawls completed."
