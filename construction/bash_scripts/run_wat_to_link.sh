@@ -49,11 +49,11 @@ for attempt in $(seq 1 $MAX_RETRIES); do
     export SPARK_UI_PORT=$(( 4040 + RANDOM % 2000 ))
 
     set +e
+    # below, above --py-files arg, we had #--master local[1] \ (currently testing without will see)
     "$VENV_PATH/bin/spark-submit" \
         --conf "spark.ui.port=$SPARK_UI_PORT" \
         --conf "spark.port.maxRetries=40" \
         --conf "spark.sql.warehouse.dir=$SPARK_WAREHOUSE" \
-        --master local[1] \
         --py-files "$PROJECT_ROOT/tgrag/cc-scripts/sparkcc.py" \
         "$PROJECT_ROOT/tgrag/cc-scripts/wat_extract_links.py" \
         "$INPUT_DIR/test_wat.txt" \
