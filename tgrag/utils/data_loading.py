@@ -1,10 +1,10 @@
 import gzip
+import json
 import subprocess
 from datetime import date, datetime
 from pathlib import Path
 from typing import IO, Callable, Dict, Iterator, List, Set, Tuple
 
-import requests
 from tqdm import tqdm
 
 
@@ -20,12 +20,12 @@ def iso_week_to_timestamp(iso_week_str: str) -> str:
     return monday_date.strftime('%Y%m%d')
 
 
-def month_to_CC_slice(month_str: str) -> str:
+def month_to_CC_slice(month_str: str, local_path: str = 'collinfo.json') -> str:
     """Convert YYYY-MM to CC slice name: CC-MAIN-YYYY-WW."""
     url = 'https://index.commoncrawl.org/collinfo.json'
-    response = requests.get(url)
-    response.raise_for_status()
-    indices = response.json()
+
+    with open(local_path, 'r') as f:
+        indices = json.load(f)
 
     dt = datetime.strptime(month_str, '%Y-%m')
     month_name = dt.strftime('%B')
