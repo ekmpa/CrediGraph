@@ -11,11 +11,6 @@ START_MONTH="$1"
 END_MONTH="$2"
 NUM_SUBFOLDERS=8
 
-NO_ERR=0
-if [[ "${3:-}" == "--no-err" ]]; then
-    NO_ERR=1
-fi
-
 export PYTHONPATH="$(pwd)/.."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -138,12 +133,6 @@ process_crawl() {
                 cp -r "$TEMPLATE_SCRIPTS" "$TARGET_SCRIPTS"
             fi
 
-            if (( NO_ERR == 1 )); then
-                ERR_REDIRECT="/dev/null"
-            else
-                ERR_REDIRECT="$CONSTRUCTION_DIR/logs/${CRAWL}_sub$((i+1)).err"
-            fi
-
             rm -rf "$SEGMENT_DIR"
             mkdir -p "$OUTPUT_DIR" "$SEGMENT_DIR"
 
@@ -193,7 +182,7 @@ process_crawl() {
                 done
             done
         ) >"$CONSTRUCTION_DIR/logs/${CRAWL}_sub$((i+1)).out" \
-          2>"$ERR_REDIRECT" &
+          2>"$CONSTRUCTION_DIR/logs/${CRAWL}_sub$((i+1)).err" &
 
         pids+=($!)
 
@@ -216,7 +205,8 @@ process_crawl() {
     done
     echo "[INFO][$CRAWL] Final merged output: $merged_output"
 
-    #python tgrag/construct_graph_scripts/stats.py --input "$merged_output"
+    # then, process the merged output?
+
 }
 
 for CRAWL in $CRAWL_INDICES; do

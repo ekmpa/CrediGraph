@@ -110,7 +110,6 @@ worker() {
     echo "[INFO] Worker $worker_id handling lines $start–$end"
 
     sed -n "${start},${end}p" "$input_file" |
-    skipped=0
     while IFS= read -r wat_file; do
         CUSTOM_SEGMENTS_DIR="segments${subfolder_id}"
         file_path="$DATA_DIR/crawl-data/$CRAWL/$CUSTOM_SEGMENTS_DIR/${wat_file#*/segments/}"
