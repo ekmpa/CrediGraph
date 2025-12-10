@@ -114,7 +114,7 @@ def run_weak_supervision_forward(
 
 def main() -> None:
     root = get_root_dir()
-    scratch = get_scratch()
+    get_scratch()
     args = parser.parse_args()
     config_file_path = root / args.config_file
     meta_args, experiment_args = parse_args(config_file_path)
@@ -141,7 +141,7 @@ def main() -> None:
         index_col=meta_args.index_col,
         encoding=encoding_dict,
         seed=meta_args.global_seed,
-        processed_dir=f'{scratch}/{meta_args.processed_location}',
+        processed_dir=cast(str, meta_args.processed_location),
     )  # Map to .to_cpu()
     logging.info('In-Memory Dataset loaded.')
     weight_directory = (
