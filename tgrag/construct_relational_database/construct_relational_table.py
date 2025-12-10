@@ -5,7 +5,7 @@ import logging
 import pickle
 import sqlite3
 from pathlib import Path
-from typing import cast
+from typing import List, cast
 
 import numpy as np
 import pandas as pd
@@ -15,7 +15,7 @@ from tqdm import tqdm
 
 from tgrag.utils.args import parse_args
 from tgrag.utils.logger import setup_logging
-from tgrag.utils.path import get_root_dir, get_scratch
+from tgrag.utils.path import discover_subfolders, get_root_dir, get_scratch
 from tgrag.utils.rd_utils import table_has_data
 from tgrag.utils.seed import seed_everything
 from tgrag.utils.target_generation import strict_exact_etld1_match
@@ -33,11 +33,11 @@ parser.add_argument(
 
 
 def construct_formatted_data(
-    db_path: Path,
-    node_csv: Path,
+    output_path: Path,
+    subfolders: List[Path],
     dqr_csv: Path,
     seed: int = 42,
-    D: int = 128,
+    D: int = 64,
     chunk_size: int = 1_000_000,
 ) -> None:
     dqr_df = pd.read_csv(dqr_csv)
@@ -47,46 +47,49 @@ def construct_formatted_data(
     }
 
     rng = np.random.default_rng(seed=seed)
-    output_path = db_path / 'features.json'
+    output_path = output_path / 'features.json'
 
     if output_path.exists():
         logging.info(f'{output_path} already exists, returning.')
         return
 
-    logging.info(f'Processing {node_csv} in chunks of {chunk_size:,} rows...')
-
     included: int = 0
     with open(output_path, 'w') as f_out:
-        for chunk in tqdm(
-            pd.read_csv(node_csv, chunksize=chunk_size),
-            desc='Reading vertices',
-            unit='chunk',
-        ):
-            x_chunk = rng.normal(size=(len(chunk), D)).astype(np.float32)
+        for folder in tqdm(subfolders, desc='Processing Subfolders'):
+            node_csv = folder / 'vertices.csv'
 
-            for i, (_, row) in tqdm(
-                enumerate(chunk.iterrows()), desc='Iterating chunk'
+            logging.info(f'Processing {node_csv} in chunks of {chunk_size:,} rows...')
+
+            for chunk in tqdm(
+                pd.read_csv(node_csv, chunksize=chunk_size),
+                desc='Reading vertices',
+                unit='chunk',
             ):
-                raw_domain = str(row['domain']).strip()
+                x_chunk = rng.normal(size=(len(chunk), D)).astype(np.float32)
 
-                etld1 = strict_exact_etld1_match(raw_domain, dqr_domains)
+                for i, (_, row) in tqdm(
+                    enumerate(chunk.iterrows()), desc='Iterating chunk'
+                ):
+                    raw_domain = str(row['domain']).strip()
 
-                if etld1 is None:
-                    y = -1.0
-                else:
-                    included += 1
-                    y = float(dqr_domains[etld1]['pc1'])
+                    etld1 = strict_exact_etld1_match(raw_domain, dqr_domains)
 
-                record = {
-                    'domain': raw_domain,
-                    'ts': int(row['ts']),
-                    'y': y,
-                    'x': x_chunk[i].tolist(),
-                }
+                    if etld1 is None:
+                        y = -1.0
+                    else:
+                        included += 1
+                        y = float(dqr_domains[etld1]['pc1'])
 
-                f_out.write(json.dumps(record) + '\n')
+                    record = {
+                        'domain': raw_domain,
+                        'ts': int(row['ts']),
+                        'y': y,
+                        'x': x_chunk[i].tolist(),
+                    }
 
-    logging.info(f'There are {included} domains that exist in DQR')
+                    f_out.write(json.dumps(record) + '\n')
+
+    logging.info(f'There are {included} domains that intersect with DQR')
     logging.info(f'Streaming write complete to {output_path}')
 
 
@@ -121,9 +124,9 @@ def initialize_graph_db(db_path: Path) -> sqlite3.Connection:
 
 
 def construct_masks_from_json(
-    nid_map_path: Path, json_path: Path, db_path: Path, seed: int = 0
+    output_path: Path, nid_map_path: Path, json_path: Path, seed: int
 ) -> None:
-    output_path = db_path / 'split_idx.pt'
+    output_path = output_path / 'split_idx.pt'
     if output_path.exists():
         logging.info(f'{output_path} already exists, returning.')
         return
@@ -238,7 +241,7 @@ def populate_from_json(
 
                 x = np.array(record['x'], dtype=np.float32).tobytes()
                 con.execute(
-                    'INSERT INTO domain VALUES (?, ?, ?, ?)',
+                    'INSERT OR IGNORE INTO domain VALUES (?, ?, ?, ?)',
                     (id, int(record['ts']), x, float(record['y'])),
                 )
         logging.info('Database populated')
@@ -257,24 +260,32 @@ def main() -> None:
     setup_logging(meta_args.log_file_path)
     seed_everything(meta_args.global_seed)
 
-    db_path = scratch / cast(str, meta_args.database_folder)
-    node_path = scratch / cast(str, meta_args.node_file)
+    base_dir = scratch / cast(str, meta_args.database_folder)
+    aggregate_out = base_dir / 'aggregate'
+    aggregate_out.parent.mkdir(parents=True, exist_ok=True)
+
+    logging.info(f'Scanning base directory: {base_dir}')
+    subfolders = discover_subfolders(base_dir)
     dqr_path = root / 'data' / 'dqr' / 'domain_pc1.csv'
 
-    construct_formatted_data(db_path=db_path, node_csv=node_path, dqr_csv=dqr_path)
+    db_path = scratch / cast(str, meta_args.database_folder)
+
+    construct_formatted_data(
+        output_path=aggregate_out, subfolders=subfolders, dqr_csv=dqr_path
+    )
     construct_masks_from_json(
-        nid_map_path=db_path / 'nid_map.pkl',
-        json_path=db_path / 'features.json',
-        db_path=db_path,
+        output_path=aggregate_out,
+        nid_map_path=aggregate_out / 'global_domain_to_id.pkl',
+        json_path=aggregate_out / 'features.json',
         seed=meta_args.global_seed,
     )
     con = initialize_graph_db(db_path=db_path)
     populate_from_json(
         con=con,
-        nid_map_path=db_path / 'nid_map.pkl',
-        json_path=db_path / 'features.json',
+        nid_map_path=aggregate_out / 'global_domain_to_id.pkl',
+        json_path=aggregate_out / 'features.json',
     )
-    populate_edges(con=con, edges_path=db_path / 'edges_with_id.csv')
+    populate_edges(con=con, edges_path=aggregate_out / 'edges_with_id.csv')
     logging.info('Completed.')
 
 
