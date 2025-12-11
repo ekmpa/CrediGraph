@@ -1,4 +1,4 @@
-from typing import Type, Union
+from typing import Tuple, Type, Union
 
 import torch
 from torch import Tensor, nn
@@ -40,6 +40,7 @@ class Model(torch.nn.Module):
         hidden_channels: int,
         out_channels: int,
         num_layers: int,
+        num_classes: int,
         dropout: float,
     ):
         super().__init__()
@@ -67,8 +68,11 @@ class Model(torch.nn.Module):
             in_features=hidden_channels, out_features=out_channels
         )
         self.node_predictor = NodePredictor(in_dim=out_channels, out_dim=1)
+        self.cls_head = nn.Linear(in_features=out_channels, out_features=num_classes)
 
-    def forward(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
+    def forward(
+        self, x: Tensor, edge_index: Tensor | None = None
+    ) -> Tuple[Tensor, Tensor]:
         x = self.input_linear(x)
         x = self.dropout(x)
         x = self.act(x)
@@ -82,7 +86,8 @@ class Model(torch.nn.Module):
         x = self.output_normalization(x)
         x = self.output_linear(x)
         x = self.node_predictor(x)
-        return x
+        cls_pred = self.cls_head(x)
+        return x, cls_pred
 
     def get_embeddings(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
         x = self.input_linear(x)
