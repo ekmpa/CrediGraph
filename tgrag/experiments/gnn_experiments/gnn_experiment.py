@@ -38,7 +38,7 @@ def train(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
+        preds, cls_preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
@@ -76,7 +76,7 @@ def train_(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
+        preds, cls_preds = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
@@ -117,7 +117,7 @@ def evaluate(
     all_targets = []
     for batch in loader:
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
+        preds, _ = model(batch.x, batch.edge_index).squeeze()
         targets = batch.y
         mask = getattr(batch, mask_name)
         if mask.sum() == 0:
@@ -220,6 +220,7 @@ def run_gnn_baseline(
             out_channels=model_arguments.embedding_dimension,
             num_layers=model_arguments.num_layers,
             dropout=model_arguments.dropout,
+            num_classes=3,
         ).to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
