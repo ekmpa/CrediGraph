@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -21,13 +21,13 @@ class TemporalDataset(InMemoryDataset):
         node_file: str = 'features.csv',
         edge_file: str = 'edges.csv',
         target_file: str = 'target.csv',
-        target_col: str = 'score',
         target_index_name: str = 'nid',
         target_index_col: int = 0,
         edge_src_col: str = 'src',
         edge_dst_col: str = 'dst',
         index_col: int = 1,
         index_name: str = 'node_id',
+        target_col: Union[List[str], str] = 'score',
         encoding: Optional[Dict[str, Encoder]] = None,
         transform: Optional[Callable] = None,
         pre_transform: Optional[Callable] = None,
@@ -113,10 +113,10 @@ class TemporalDataset(InMemoryDataset):
         )
         logging.info(f'Size of score vector: {score.size()}')
 
-        labeled_mask = score != -1.0
+        labeled_mask = (score != -1.0)[:, 0]
 
         labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
-        labeled_scores = score[labeled_idx].squeeze().numpy()
+        labeled_scores = score[:, 0][labeled_idx].squeeze().numpy()
 
         if labeled_scores.size == 0:
             raise ValueError(
