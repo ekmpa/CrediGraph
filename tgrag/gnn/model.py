@@ -85,8 +85,8 @@ class Model(torch.nn.Module):
 
         x = self.output_normalization(x)
         x = self.output_linear(x)
-        x = self.node_predictor(x)
         cls_pred = self.cls_head(x)
+        x = self.node_predictor(x)
         return x, cls_pred
 
     def get_embeddings(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
