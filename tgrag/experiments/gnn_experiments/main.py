@@ -12,7 +12,7 @@ from tgrag.encoders.zero_encoder import ZeroEncoder
 from tgrag.experiments.gnn_experiments.gnn_experiment import run_gnn_baseline
 from tgrag.utils.args import parse_args
 from tgrag.utils.logger import setup_logging
-from tgrag.utils.path import get_root_dir, get_scratch
+from tgrag.utils.path import get_root_dir
 from tgrag.utils.plot import (
     load_all_loss_tuples,
     plot_metric_across_models,
@@ -35,7 +35,6 @@ parser.add_argument(
 
 def main() -> None:
     root = get_root_dir()
-    scratch = get_scratch()
     args = parser.parse_args()
     config_file_path = root / args.config_file
     meta_args, experiment_args = parse_args(config_file_path)
@@ -68,7 +67,7 @@ def main() -> None:
         index_col=meta_args.index_col,
         encoding=encoding_dict,
         seed=meta_args.global_seed,
-        processed_dir=f'{scratch}/{meta_args.processed_location}',
+        processed_dir=cast(str, meta_args.processed_location),
     )  # Map to .to_cpu()
     logging.info('In-Memory Dataset loaded.')
 
