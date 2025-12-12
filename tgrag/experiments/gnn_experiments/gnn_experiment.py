@@ -92,7 +92,6 @@ def train_(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        logging.info(f'Batch x: {batch.x}')
         preds, cls_preds = model(batch.x, batch.edge_index)
         preds = preds.squeeze()
         targets = batch.y
