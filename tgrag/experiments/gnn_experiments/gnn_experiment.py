@@ -98,7 +98,7 @@ def train_(
         targets_cls = torch.tensor(
             [int(((elem * 10) % 10) / (num_classes + 1)) for elem in targets],
             dtype=torch.long,
-        )
+        ).to(device)
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
             continue
