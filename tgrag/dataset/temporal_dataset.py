@@ -115,7 +115,9 @@ class TemporalDataset(InMemoryDataset):
 
         labeled_mask = (score != -1.0)[:, 0]
 
-        labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
+        labeled_idx = torch.nonzero(
+            torch.tensor(labeled_mask.detach().clone()), as_tuple=True
+        )[0]
         labeled_scores = score[:, 0][labeled_idx].squeeze().numpy()
 
         if labeled_scores.size == 0:
