@@ -42,7 +42,8 @@ def train(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds, cls_preds = model(batch.x, batch.edge_index).squeeze()
+        preds, cls_preds = model(batch.x, batch.edge_index)
+        preds = preds.squeeze()
         targets = batch.y
         targets_cls = torch.tensor(
             [int(((elem * 10) % 10) / (num_classes + 1)) for elem in targets],
@@ -92,7 +93,8 @@ def train_(
         optimizer.zero_grad()
         batch = batch.to(device)
         logging.info(f'Batch x: {batch.x}')
-        preds, cls_preds = model(batch.x, batch.edge_index).squeeze()
+        preds, cls_preds = model(batch.x, batch.edge_index)
+        preds = preds.squeeze()
         targets = batch.y
         targets_cls = torch.tensor(
             [int(((elem * 10) % 10) / (num_classes + 1)) for elem in targets],
@@ -140,7 +142,8 @@ def evaluate(
     all_targets = []
     for batch in loader:
         batch = batch.to(device)
-        preds, _ = model(batch.x, batch.edge_index).squeeze()
+        preds, _ = model(batch.x, batch.edge_index)
+        preds = preds.squeeze()
         targets = batch.y
         mask = getattr(batch, mask_name)
         if mask.sum() == 0:
