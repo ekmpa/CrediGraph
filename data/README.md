@@ -10,14 +10,20 @@ We use this data as it is, as our ground truth supervised labels.
 
 ## Weak labels
 
+Standardized into: 0 = Phishing, 1 = Legitimate, with headers `domain` and `label`.
+
 ### LegitPhish
 
-[LegitPhish](https://data.mendeley.com/datasets/hx4m73v2sf/2) is a URL-based datasets with binary labels (0 = Phishing, 1 = Legitimate). The data is processed by converting URLs to their domain name, averaging the scores of all URLs that resolve to the same domain, and standardizing the header (we always use `domain` and `label` in the processed csvs.)
+[LegitPhish](https://data.mendeley.com/datasets/hx4m73v2sf/2) is a URL-based dataset with binary labels (0 = Phishing, 1 = Legitimate). The data is processed by converting URLs to their domain name, averaging the scores of all URLs that resolve to the same domain, and standardizing the header (we always use `domain` and `label` in the processed csvs.)
 
 ```bash
 0: 26957
 1: 37113
 ```
+
+### PhishDataset
+
+[PhishDataset](https://github.com/ESDAUNG/PhishDataset/blob/main/data_imbal%20-%2055000.xlsx) is a URL-based dataset with binary labels (0 = Legitimate, 1 = Phishing)
 
 ### Wikipedia
 

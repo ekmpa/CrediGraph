@@ -8,20 +8,29 @@ from tgrag.utils.matching import extract_domain
 # make all binary labels standardized and have 0 [unreliable] - 1 [reliable] and 'domain', 'label' columns as csv
 
 
-def process_csv(input_csv: Path, output_csv: Path) -> None:
+def process_csv(
+    input_csv: Path,
+    output_csv: Path,
+    is_url: bool,
+    domain_col: str,
+    label_col: str,
+    inverse: bool = False,
+) -> None:
     domain_labels = defaultdict(list)
 
     with input_csv.open('r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
 
         for row in reader:
-            url = row.get('URL')
-            label = row.get('ClassLabel')
+            domain = row.get(domain_col)
+            label = row.get(label_col)
 
-            if url is None or label is None:
+            if domain is None or label is None:
                 continue
 
-            domain = extract_domain(url)
+            if is_url:
+                domain = extract_domain(domain)
+
             if domain is None:
                 continue
 
@@ -40,6 +49,8 @@ def process_csv(input_csv: Path, output_csv: Path) -> None:
 
             avg_label = sum(labels) / len(labels)
             binary_label = 1 if avg_label >= 0.5 else 0
+            if inverse:
+                binary_label = 1 - binary_label
             writer.writerow([domain, binary_label])
 
     check_processed_file(output_csv)
@@ -93,6 +104,20 @@ def main() -> None:
     process_csv(
         Path(f'{class_raw}/url_features_extracted1.csv'),
         Path(f'{class_proc}/legit-phish.csv'),
+        is_url=True,
+        domain_col='URL',
+        label_col='ClassLabel',
+        inverse=False,
+    )
+
+    print('======= PhishDataset ========')
+    process_csv(
+        Path(f'{class_raw}/data_imbal.csv'),
+        Path(f'{class_proc}/phish-dataset.csv'),
+        is_url=True,
+        domain_col='URLs',
+        label_col='\ufeffLabels',
+        inverse=True,
     )
 
     print('======= wiki ========')
