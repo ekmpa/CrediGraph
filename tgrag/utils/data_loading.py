@@ -1,3 +1,4 @@
+import csv
 import gzip
 import subprocess
 from datetime import date
@@ -5,6 +6,30 @@ from pathlib import Path
 from typing import IO, Callable, Dict, Iterator, List, Set, Tuple
 
 from tqdm import tqdm
+
+
+def check_processed_file(processed: Path) -> None:
+    processed_count = 0
+    label_counts = {0: 0, 1: 0}
+    headers = None
+
+    with processed.open('r', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        headers = next(reader, None)
+
+        for row in reader:
+            if not row:
+                continue
+            processed_count += 1
+            label = int(row[1])
+            if label in label_counts:
+                label_counts[label] += 1
+
+    print('Processed: rows:', processed_count)
+    print('Headers:', headers)
+    print('Label counts:')
+    print('  0:', label_counts[0])
+    print('  1:', label_counts[1])
 
 
 def iso_week_to_timestamp(iso_week_str: str) -> str:
