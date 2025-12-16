@@ -1,4 +1,5 @@
 import csv
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -52,6 +53,33 @@ def process_csv(
             if inverse:
                 binary_label = 1 - binary_label
             writer.writerow([domain, binary_label])
+
+    check_processed_file(output_csv)
+
+
+def process_unlabelled_csv(input_path: Path, output_csv: Path, is_legit: bool) -> None:
+    label = 1 if is_legit else 0
+
+    domains = set()
+
+    with input_path.open('r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip().strip('"')
+            if not line:
+                continue
+
+            line = re.sub(r'\s*\(.*?\)\s*$', '', line)
+            domain = line.split()[0].lower()
+
+            if domain:
+                domains.add(domain)
+
+    with output_csv.open('w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(['domain', 'label'])
+
+        for domain in sorted(domains):
+            writer.writerow([domain, label])
 
     check_processed_file(output_csv)
 
@@ -118,6 +146,13 @@ def main() -> None:
         domain_col='URLs',
         label_col='\ufeffLabels',
         inverse=True,
+    )
+
+    print('======= Nelez ========')
+    process_unlabelled_csv(
+        Path(f'{class_raw}/dezinformacni_weby (2).csv'),
+        Path(f'{class_proc}/nelez.csv'),
+        is_legit=False,
     )
 
     print('======= wiki ========')

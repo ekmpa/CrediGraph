@@ -8,6 +8,10 @@ Below is some more information about the processing of the data we use as labels
 
 We use this data as it is, as our ground truth supervised labels.
 
+Other regression labels we don't use yet:
+
+- Zoznam from [Konspiratori](https://konspiratori.sk/zoznam-stranok)
+
 ## Weak labels
 
 Standardized into: 0 = Phishing, 1 = Legitimate, with headers `domain` and `label`.
@@ -24,6 +28,20 @@ Standardized into: 0 = Phishing, 1 = Legitimate, with headers `domain` and `labe
 ### PhishDataset
 
 [PhishDataset](https://github.com/ESDAUNG/PhishDataset/blob/main/data_imbal%20-%2055000.xlsx) is a URL-based dataset with binary labels (0 = Legitimate, 1 = Phishing)
+
+```bash
+0: 3730
+1: 40535
+```
+
+### Nelez
+
+[Nelež](https://www.nelez.cz) is a blacklist of misinformation websites from a Czech organisation of the same name.
+
+```bash
+0: 51
+1: 0
+```
 
 ### Wikipedia
 
