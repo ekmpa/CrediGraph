@@ -28,7 +28,11 @@ def train(
     model: torch.nn.Module,
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
+    num_classes: int = 3,
+    w_reg: float = 0.8,
+    w_cls: float = 0.2,
 ) -> Tuple[float, float, Tensor, Tensor]:
+    assert w_reg + w_cls == 1
     model.train()
     device = next(model.parameters()).device
     total_loss = 0
@@ -38,13 +42,22 @@ def train(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
+        preds, cls_preds = model(batch.x, batch.edge_index)
+        preds = preds.squeeze()
         targets = batch.y
+        targets_cls = torch.tensor(
+            [int(((elem * 10) % 10) / (num_classes + 1)) for elem in targets],
+            dtype=torch.long,
+        )
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
             continue
 
-        loss = F.l1_loss(preds[train_mask], targets[train_mask])
+        loss_reg = F.l1_loss(preds[train_mask], targets[train_mask])
+        loss_ce = F.cross_entropy(input=cls_preds, target=targets_cls)
+
+        loss = w_reg * loss_reg + w_cls * loss_ce
+
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -63,26 +76,37 @@ def train_(
     model: torch.nn.Module,
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
+    num_classes: int = 3,
+    w_reg: float = 0.8,
+    w_cls: float = 0.2,
 ) -> Tuple[float, float, List[float], List[float]]:
+    assert w_reg + w_cls == 1
     model.train()
     device = next(model.parameters()).device
     total_loss = 0
     total_batches = 0
     all_preds = []
     all_targets = []
-    # TODO: Score in one list
     pred_scores = []
     target_scores = []
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
+        preds, cls_preds = model(batch.x, batch.edge_index)
+        preds = preds.squeeze()
         targets = batch.y
+        targets_cls = torch.tensor(
+            [int(((elem * 10) % 10) / (num_classes + 1)) for elem in targets],
+            dtype=torch.long,
+        ).to(device)
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
             continue
 
-        loss = F.l1_loss(preds[train_mask], targets[train_mask])
+        loss_reg = F.l1_loss(preds[train_mask], targets[train_mask])
+        loss_ce = F.cross_entropy(input=cls_preds, target=targets_cls)
+
+        loss = w_reg * loss_reg + w_cls * loss_ce
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -117,19 +141,18 @@ def evaluate(
     all_targets = []
     for batch in loader:
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
+        preds, _ = model(batch.x, batch.edge_index)
+        preds = preds.squeeze()
         targets = batch.y
         mask = getattr(batch, mask_name)
         if mask.sum() == 0:
             continue
-        # MEAN: 0.546
-        mean_preds = torch.full(batch.y[mask].size(), 0.5).to(device)
+        mean_preds = torch.full(batch.y[mask].size(), 0.546).to(device)
         random_preds = torch.rand(batch.y[mask].size(0)).to(device)
         loss = F.l1_loss(preds[mask], targets[mask])
         mean_loss = F.l1_loss(mean_preds, targets[mask])
         random_loss = F.l1_loss(random_preds, targets[mask])
 
-        # TODO: Change this to report the loss of mean to be accurate. Use full score for don't average per batch.
         total_loss += loss.item()
         total_mean_loss += mean_loss.item()
         total_random_loss += random_loss.item()
@@ -220,6 +243,7 @@ def run_gnn_baseline(
             out_channels=model_arguments.embedding_dimension,
             num_layers=model_arguments.num_layers,
             dropout=model_arguments.dropout,
+            num_classes=3,
         ).to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
