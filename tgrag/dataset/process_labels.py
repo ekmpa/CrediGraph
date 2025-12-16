@@ -3,6 +3,8 @@ from pathlib import Path
 
 from tgrag.utils.data_loading import check_processed_file
 
+# make all binary labels standardized and have 0 [unreliable] - 1 [reliable] and 'domain', 'label' columns as csv
+
 
 def process_wiki(goggle_path: Path, output_csv: Path) -> None:
     rows = []
@@ -38,14 +40,20 @@ def process_wiki(goggle_path: Path, output_csv: Path) -> None:
 
 def main() -> None:
     classification_dir = Path('./data/classification')
-    Path('./data/regression')
+    regression_dir = Path('./data/regression')
+
+    class_raw = classification_dir / 'raw'
+    class_proc = classification_dir / 'processed'
+
+    regression_dir / 'raw'
+    regression_dir / 'processed'
 
     process_wiki(
-        Path(f'{classification_dir}/wikipedia-reliable-sources.goggle'),
-        Path(f'{classification_dir}/wikipedia_sources.csv'),
+        Path(f'{class_raw}/wikipedia-reliable-sources.goggle'),
+        Path(f'{class_proc}/wikipedia.csv'),
     )
 
-    check_processed_file(Path(f'{classification_dir}/wikipedia_sources.csv'))
+    check_processed_file(Path(f'{class_proc}/wikipedia.csv'))
 
 
 if __name__ == '__main__':
