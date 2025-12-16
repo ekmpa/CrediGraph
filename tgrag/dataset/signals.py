@@ -158,4 +158,16 @@ datasets = [
         task=Task.CLASSIFICATION,
         type=SignalType.BINARY,
     ),
+    Dataset(
+        name='ConsensusCredibility',
+        url='https://science.feedback.org/consensus-credibility-scores-comprehensive-dataset-web-domains-credibility/',
+        task=Task.REGRESSION,
+        type=SignalType.CREDIBILITY,
+    ),
+    Dataset(
+        name='OpenFeedback',
+        url='https://open.feedback.org/',
+        task=Task.REGRESSION,
+        type=SignalType.CREDIBILITY,
+    ),
 ]
