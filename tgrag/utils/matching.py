@@ -3,6 +3,7 @@ used for label matching, and WET-WAT matching.
 """
 
 from typing import Dict, List, Optional
+from urllib.parse import urlparse
 
 import tldextract
 
@@ -76,3 +77,14 @@ def lookup_exact(
 
 def reverse_domain(domain: str) -> str:
     return '.'.join(domain.split('.')[::-1])
+
+
+def extract_domain(url: str) -> str | None:
+    try:
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+        if not domain:
+            return None
+        return domain
+    except Exception:
+        return None
