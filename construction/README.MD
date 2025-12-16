@@ -24,13 +24,22 @@ Then in the job script, make sure to set `export PATH="$HOME/bin:$PATH"`
 
 ### Building Temporal Graphs
 
+The graph construction can be parallelized. We use a configuration of 8 subfolders, distributed across 8 CPUs. 
+
 ```sh
 bash pipeline.sh <start_month> <end_month> <number of subfolders>
 # e.g,
-bash pipeline.sh 'January 2020' 'February 2020' 9
+bash pipeline.sh 'January 2020' 'February 2020' 8
 ```
 
-where the format `<month name YYYY>` must be respected, and the number of subfolders designated the extent of parallelization of the graph construction. Note that not parallelizing the construction means a graph takes up to 600 hours to be processed and produced, whereas high level of parallelization can take this down to ... ?
+To launch a cluster job using `run.sh` directly (uses cluster practices for the pipeline): 
+```bash
+sbatch run.sh <start_month> [<end_month>]
+
+e.g.: 
+sbatch --job-name="Jan-Mar"  run.sh 'January 2025' 'March 2025'
+```
+With no second argument, only a single month is processed. Otherwise, the entire interval is. We find it optimal to launch jobs for a singular month with current set-up of 8 CPUs.
 
 > ***Note:***
 > With a subfolder division factor set to 8 (with 8 CPUs), currently, the system uses, per batch:
@@ -41,7 +50,7 @@ where the format `<month name YYYY>` must be respected, and the number of subfol
 
 > ***Note:***
 >
-> At times out of our control, the Common Crawl connection may be down. The CrediBench pipeline has safeguards against this (retries and wait periods), but in some cases, the server is just offline for a short amount of time. In the pipeline, this will appear most often as a `RuntimeError` in the high-level pipeline (before going into data download) that indicates the fetch from `https://index.commoncrawl.org/collinfo.json` failed.
+> At times, the Common Crawl connection is down. The CrediBench pipeline has safeguards against this (retries and wait periods), but in some cases, the server is just offline for some amount of time. In the pipeline, this will appear most often as a `RuntimeError` in the high-level pipeline (before going into data download) that indicates the fetch from `https://index.commoncrawl.org/collinfo.json` failed. 
 
 #### (one batch)
 

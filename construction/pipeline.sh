@@ -2,14 +2,14 @@
 set -euo pipefail
 
 if [ $# -lt 2 ]; then
-    echo "Usage: $0 <start-month> <end-month>"
-    echo "e.g.: $0 'January 2025' 'February 2025'"
+    echo "Usage: $0 <start-month> <end-month> [num-subfolders]"
+    echo "e.g.: $0 'January 2025' 'February 2025' [8]"
     exit 1
 fi
 
 START_MONTH="$1"
 END_MONTH="$2"
-NUM_SUBFOLDERS=8
+NUM_SUBFOLDERS="${3:-8}"
 
 export PYTHONPATH="$(pwd)/.."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -84,7 +84,6 @@ process_crawl() {
     mkdir -p "$DATA_DIR/crawl-data/$CRAWL"
 
     WAT_PATHS_FILE="$DATA_DIR/crawl-data/$CRAWL/wat.paths.gz"
-    mkdir -p "$DATA_DIR/crawl-data/$CRAWL"
 
     MAX_RETRIES=3
     SUCCESS=0
@@ -169,16 +168,16 @@ process_crawl() {
                 uv run python ../tgrag/construct_graph_scripts/construct_aggregate.py --source "$DATA_DIR/crawl-data/$CRAWL/output_text_dir$SUBFOLDER_ID" --target "$DATA_DIR/crawl-data/$CRAWL/output$SUBFOLDER_ID"
                 for f in edges vertices; do
                     target_file="$DATA_DIR/crawl-data/$CRAWL/output$SUBFOLDER_ID/${f}.txt.gz"
-                    if [ -f "$target_file" ]; then
-                        num_lines=$(gzip -dc "$target_file" | wc -l)
-                        echo "[INFO] After slice $batch_start-$batch_end: $f has $num_lines records"
+                    #if [ -f "$target_file" ]; then
+                    num_lines=$(gzip -dc "$target_file" | wc -l)
+                    echo "[INFO] After slice $batch_start-$batch_end: $f has $num_lines records"
 
-                        if [ "$f" == "edges" ]; then
-                            TOTAL_EDGES=$num_lines
-                        else
-                            TOTAL_NODES=$num_lines
-                        fi
+                    if [ "$f" == "edges" ]; then
+                        TOTAL_EDGES=$num_lines
+                    else
+                        TOTAL_NODES=$num_lines
                     fi
+                    #fi
                 done
             done
         ) >"$CONSTRUCTION_DIR/logs/${CRAWL}_sub$((i+1)).out" \
