@@ -91,7 +91,6 @@ def train_(
         preds = preds.squeeze()
         targets = batch.y[:, 0]
         targets_cls = batch.y[:, 1]
-        logging.info(f'targets_cls: {targets_cls}')
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
             continue
@@ -99,6 +98,7 @@ def train_(
         regression_indices = torch.nonzero(targets != -1.0)
         cls_indices = torch.nonzero(targets_cls != -1.0)
 
+        targets_cls = F.one_hot(targets_cls, num_classes=2)
         if regression_indices.numel() and cls_indices.numel():
             loss_reg = F.l1_loss(preds[regression_indices], targets[regression_indices])
             loss_ce = F.cross_entropy(
