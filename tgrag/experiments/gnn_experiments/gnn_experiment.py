@@ -91,6 +91,7 @@ def train_(
         preds = preds.squeeze()
         targets = batch.y[:, 0]
         targets_cls = batch.y[:, 1]
+        logging.info(f'targets_cls: {targets_cls}')
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
             continue
