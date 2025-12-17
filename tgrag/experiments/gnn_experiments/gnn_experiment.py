@@ -95,10 +95,25 @@ def train_(
         if train_mask.sum() == 0:
             continue
 
-        loss_reg = F.l1_loss(preds[train_mask], targets[train_mask])
-        loss_ce = F.cross_entropy(input=cls_preds, target=targets_cls)
+        regression_indices = torch.nonzero(targets != -1.0)
+        cls_indices = torch.nonzero(targets_cls != -1.0)
 
-        loss = w_reg * loss_reg + w_cls * loss_ce
+        if regression_indices.numel() and cls_indices.numel():
+            loss_reg = F.l1_loss(preds[regression_indices], targets[regression_indices])
+            loss_ce = F.cross_entropy(
+                input=cls_preds[cls_indices], target=targets_cls[cls_indices]
+            )
+            loss = w_reg * loss_reg + w_cls * loss_ce
+
+        elif regression_indices.numel():
+            loss = F.l1_loss(preds[regression_indices], targets[regression_indices])
+        elif cls_indices.numel():
+            loss = F.cross_entropy(
+                input=cls_preds[cls_indices], target=targets_cls[cls_indices]
+            )
+        else:
+            raise Exception('Regression and CLS indices are empty.')
+
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
