@@ -97,26 +97,19 @@ def train_(
 
         regression_indices = torch.nonzero(targets != -1.0)
         cls_indices = torch.nonzero(targets_cls != -1.0)
-        logging.info(f'indices shape: {cls_indices.shape}')
 
         targets_cls = F.one_hot(
             targets_cls[cls_indices].long(), num_classes=2
         ).squeeze()
-        logging.info(f'target_cls shape: {targets_cls.shape}')
-        logging.info(f'targets_cls: {targets_cls[cls_indices]}')
         if regression_indices.numel() and cls_indices.numel():
             loss_reg = F.l1_loss(preds[regression_indices], targets[regression_indices])
-            loss_ce = F.cross_entropy(
-                input=cls_preds[cls_indices], target=targets_cls[cls_indices]
-            )
+            loss_ce = F.cross_entropy(input=cls_preds[cls_indices], target=targets_cls)
             loss = w_reg * loss_reg + w_cls * loss_ce
 
         elif regression_indices.numel():
             loss = F.l1_loss(preds[regression_indices], targets[regression_indices])
         elif cls_indices.numel():
-            loss = F.cross_entropy(
-                input=cls_preds[cls_indices], target=targets_cls[cls_indices]
-            )
+            loss = F.cross_entropy(input=cls_preds[cls_indices], target=targets_cls)
         else:
             raise Exception('Regression and CLS indices are empty.')
 
