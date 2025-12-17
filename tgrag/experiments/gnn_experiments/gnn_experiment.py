@@ -250,7 +250,7 @@ def run_gnn_baseline(
             out_channels=model_arguments.embedding_dimension,
             num_layers=model_arguments.num_layers,
             dropout=model_arguments.dropout,
-            num_classes=3,
+            num_classes=2,
         ).to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
