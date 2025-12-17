@@ -149,20 +149,26 @@ def evaluate(
         batch = batch.to(device)
         preds, _ = model(batch.x, batch.edge_index)
         preds = preds.squeeze()
-        targets = batch.y
+        targets = batch.y[:, 0]
         mask = getattr(batch, mask_name)
         if mask.sum() == 0:
             continue
-        mean_preds = torch.full(batch.y[mask].size(), 0.546).to(device)
-        random_preds = torch.rand(batch.y[mask].size(0)).to(device)
-        loss = F.l1_loss(preds[mask], targets[mask])
-        mean_loss = F.l1_loss(mean_preds, targets[mask])
-        random_loss = F.l1_loss(random_preds, targets[mask])
+        regression_indices = torch.nonzero(targets != -1.0)
+        if regression_indices.numel():
+            mean_preds = torch.full(targets[regression_indices].size(), 0.546).to(
+                device
+            )
+            random_preds = torch.rand(targets[regression_indices].size(0)).to(device)
+            loss = F.l1_loss(preds[regression_indices], targets[regression_indices])
+            mean_loss = F.l1_loss(mean_preds, targets[regression_indices])
+            random_loss = F.l1_loss(random_preds, targets[regression_indices])
 
-        total_loss += loss.item()
-        total_mean_loss += mean_loss.item()
-        total_random_loss += random_loss.item()
-        total_batches += 1
+            total_loss += loss.item()
+            total_mean_loss += mean_loss.item()
+            total_random_loss += random_loss.item()
+            total_batches += 1
+        else:
+            continue
 
         all_preds.append(preds[mask])
         all_targets.append(targets[mask])
