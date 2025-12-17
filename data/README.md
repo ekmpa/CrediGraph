@@ -13,6 +13,8 @@ Other regression labels we don't use yet:
 - Zoznam from [Konspiratori](https://konspiratori.sk/zoznam-stranok)
 - [FineWeb](https://huggingface.co/datasets/HuggingFaceFW/fineweb) which gives language scores.
 - The [Iffy Index](https://iffy.news/index/)
+- [Consensus Credibility](https://science.feedback.org/consensus-credibility-scores-comprehensive-dataset-web-domains-credibility) pending access
+- [Open Feedback](https://open.feedback.org/) pending request
 
 ## Weak labels
 
