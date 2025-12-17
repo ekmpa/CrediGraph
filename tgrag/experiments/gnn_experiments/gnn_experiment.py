@@ -101,9 +101,6 @@ def train_(
         targets_cls = F.one_hot(
             targets_cls[cls_indices].long(), num_classes=2
         ).squeeze()
-        logging.info(f'target_cls size: {targets_cls.shape}')
-        logging.info(f'cls_preds size: {cls_preds.shape}')
-        logging.info(f'cls_preds: {cls_preds[cls_indices]}')
         logging.info(f'targets_cls: {targets_cls[cls_indices]}')
         if regression_indices.numel() and cls_indices.numel():
             loss_reg = F.l1_loss(preds[regression_indices], targets[regression_indices])
