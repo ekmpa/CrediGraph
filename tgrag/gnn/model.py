@@ -69,7 +69,6 @@ class Model(torch.nn.Module):
         )
         self.node_predictor = NodePredictor(in_dim=out_channels, out_dim=1)
         self.cls_head = nn.Linear(in_features=out_channels, out_features=num_classes)
-        self.softmax = nn.Softmax(dim=-1)
 
     def forward(
         self, x: Tensor, edge_index: Tensor | None = None
@@ -87,9 +86,8 @@ class Model(torch.nn.Module):
         x = self.output_normalization(x)
         x = self.output_linear(x)
         cls_logits = self.cls_head(x)
-        cls_pred = self.softmax(cls_logits)
         x = self.node_predictor(x)
-        return x, cls_pred
+        return x, cls_logits
 
     def get_embeddings(self, x: Tensor, edge_index: Tensor | None = None) -> Tensor:
         x = self.input_linear(x)
