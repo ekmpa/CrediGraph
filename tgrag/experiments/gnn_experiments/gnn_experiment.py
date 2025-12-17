@@ -28,7 +28,6 @@ def train(
     model: torch.nn.Module,
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
-    num_classes: int = 3,
     w_reg: float = 0.8,
     w_cls: float = 0.2,
 ) -> Tuple[float, float, Tensor, Tensor]:
@@ -44,11 +43,8 @@ def train(
         batch = batch.to(device)
         preds, cls_preds = model(batch.x, batch.edge_index)
         preds = preds.squeeze()
-        targets = batch.y
-        targets_cls = torch.tensor(
-            [int(((elem * 10) % 10) / (num_classes + 1)) for elem in targets],
-            dtype=torch.long,
-        )
+        targets = batch.y[:, 0]
+        targets_cls = batch.y[:, 1]
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
             continue
@@ -76,7 +72,6 @@ def train_(
     model: torch.nn.Module,
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
-    num_classes: int = 3,
     w_reg: float = 0.8,
     w_cls: float = 0.2,
 ) -> Tuple[float, float, List[float], List[float]]:
@@ -94,11 +89,8 @@ def train_(
         batch = batch.to(device)
         preds, cls_preds = model(batch.x, batch.edge_index)
         preds = preds.squeeze()
-        targets = batch.y
-        targets_cls = torch.tensor(
-            [int(((elem * 10) % 10) / (num_classes + 1)) for elem in targets],
-            dtype=torch.long,
-        ).to(device)
+        targets = batch.y[:, 0]
+        targets_cls = batch.y[:, 1]
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
             continue
