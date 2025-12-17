@@ -68,7 +68,6 @@ datasets = [
         name='LegitPhish',
         url='https://data.mendeley.com/datasets/hx4m73v2sf/2',
         size=[63678, 37540],
-        label_col='ClassLabel',
         task=Task.CLASSIFICATION,
         type=SignalType.BINARY,
         # overlap_DQR=,
@@ -132,13 +131,13 @@ datasets = [
         type=SignalType.BINARY,
         # overlap_DQR
     ),
-    Dataset(
-        name='CICDataset',
-        url='http://cicresearch.ca/CICDataset/ISCX-URL-2016/Dataset/',
-        size=[33500, 35300],
-        task=Task.CLASSIFICATION,
-        type=SignalType.BINARY,
-    ),
+    # Dataset(
+    #     name='CICDataset',
+    #     url='http://cicresearch.ca/CICDataset/ISCX-URL-2016/Dataset/',
+    #     size=[33500, 35300],
+    #     task=Task.CLASSIFICATION,
+    #     type=SignalType.BINARY,
+    # ),
     Dataset(
         name='misinformation-domains',
         url='https://github.com/JanaLasser/misinformation_domains/blob/main/data/clean/domain_list_clean.csv',

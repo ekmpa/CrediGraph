@@ -2,6 +2,7 @@ import csv
 import re
 from collections import defaultdict
 from pathlib import Path
+from typing import List, Optional
 
 from tgrag.utils.data_loading import check_processed_file
 from tgrag.utils.matching import extract_domain
@@ -16,6 +17,7 @@ def process_csv(
     domain_col: str,
     label_col: str,
     inverse: bool = False,
+    labels: Optional[List] = None,
 ) -> None:
     domain_labels = defaultdict(list)
 
@@ -35,8 +37,17 @@ def process_csv(
             if domain is None:
                 continue
 
+            score = label
+            if labels is not None:
+                if label == labels[0]:
+                    score = 0
+                elif label == labels[1]:
+                    score = 1
+                else:
+                    continue
+
             try:
-                domain_labels[domain].append(float(label))
+                domain_labels[domain].append(float(score))
             except ValueError:
                 continue
 
@@ -159,6 +170,37 @@ def main() -> None:
     process_goggle(
         Path(f'{class_raw}/wikipedia-reliable-sources.goggle'),
         Path(f'{class_proc}/wikipedia.csv'),
+    )
+
+    print('======= URL-Phish ========')
+    process_csv(
+        Path(f'{class_raw}/Dataset.csv'),
+        Path(f'{class_proc}/url-phish.csv'),
+        is_url=True,
+        domain_col='url',
+        label_col='label',
+        inverse=True,
+    )
+
+    print('======== Phish&Legit =======')
+    process_csv(
+        Path(f'{class_raw}/new_data_urls.csv'),
+        Path(f'{class_proc}/phish-and-legit.csv'),
+        is_url=True,
+        domain_col='url',
+        label_col='status',
+        inverse=False,
+    )
+
+    print('======== Misinformation domains =========')
+    process_csv(
+        Path(f'{class_raw}/domain_list_clean.csv'),
+        Path(f'{class_proc}/misinfo-domains.csv'),
+        is_url=False,
+        domain_col='url',
+        label_col='type',
+        inverse=False,
+        labels=['unreliable', 'reliable'],
     )
 
 

@@ -11,10 +11,12 @@ We use this data as it is, as our ground truth supervised labels.
 Other regression labels we don't use yet:
 
 - Zoznam from [Konspiratori](https://konspiratori.sk/zoznam-stranok)
+- [FineWeb](https://huggingface.co/datasets/HuggingFaceFW/fineweb) which gives language scores.
+- The [Iffy Index](https://iffy.news/index/)
 
 ## Weak labels
 
-Standardized into: 0 = Phishing, 1 = Legitimate, with headers `domain` and `label`.
+Standardized into: 0 = Phishing, 1 = Legitimate, with headers `domain` and `label`. The label counts shown below follow this convention.
 
 ### LegitPhish
 
@@ -50,4 +52,31 @@ Standardized into: 0 = Phishing, 1 = Legitimate, with headers `domain` and `labe
 ```bash
 0: 1029
 1: 2906
+```
+
+### URL-Phish
+
+[URL-Phish](https://data.mendeley.com/datasets/65z9twcx3r/1) is a feature-engineered dataset for phishing detection. URLs have label 0 if they are considered benign, 1 for phishing.
+
+```bash
+0: 10551
+1: 92460
+```
+
+### Phish & Legit
+
+[Phish & Legit](https://www.kaggle.com/datasets/harisudhan411/phishing-and-legitimate-urls?resource=download) is a URL Classification dataset of suspicous (0) and genuine (1) web addresses.
+
+```bash
+0: 292163
+1: 146316
+```
+
+### Misinformation domains
+
+[Misinfo-domains](https://github.com/JanaLasser/misinformation_domains/tree/main) is a collection of domains labelled unreliable if they are assessed as spreaders of unreliable information.
+
+```bash
+0: 2170
+1: 2597
 ```
