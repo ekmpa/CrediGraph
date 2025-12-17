@@ -10,7 +10,8 @@ from torch_geometric.data import Data, InMemoryDataset
 
 from tgrag.encoders.encoder import Encoder
 from tgrag.utils.dataset_loading import load_large_edge_csv, load_node_csv
-from tgrag.utils.load_labels import get_full_dict
+from tgrag.utils.load_labels import get_full_dict, get_weak_set
+from tgrag.utils.path import get_root_dir
 from tgrag.utils.target_generation import generate_exact_targets_csv
 
 
@@ -75,12 +76,32 @@ class TemporalDataset(InMemoryDataset):
         node_path = os.path.join(self.raw_dir, self.node_file)
         edge_path = os.path.join(self.raw_dir, self.edge_file)
         target_path = os.path.join(self.raw_dir, self.target_file)
+        root = get_root_dir()
         if os.path.exists(target_path):
             logging.info('Target file already exists.')
         else:
             logging.info('Generating target file.')
             dqr = get_full_dict()
-            generate_exact_targets_csv(node_path, target_path, dqr)
+            legitimate = get_weak_set(
+                root
+                / 'data'
+                / 'phishing_data'
+                / 'cc_dec_2024_PhishDataset_legit_domains.csv'
+            )
+            malware = get_weak_set(
+                root / 'data' / 'phishing_data' / 'cc_dec_2024_URLhaus_domains.csv'
+            )
+            phishing = get_weak_set(
+                root / 'data' / 'phishing_data' / 'cc_dec_2024_phishtank_domains.csv'
+            )
+            generate_exact_targets_csv(
+                node_path,
+                target_path,
+                dqr,
+                legitimate_domains=legitimate,
+                malware_domains=malware,
+                phishing_domains=phishing,
+            )
 
         logging.info('***Constructing Feature Matrix***')
         x_full, mapping, full_index = load_node_csv(
