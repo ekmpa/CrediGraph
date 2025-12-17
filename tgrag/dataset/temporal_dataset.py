@@ -128,6 +128,7 @@ class TemporalDataset(InMemoryDataset):
         df_target = pd.concat([df_target, filler])
         df_target.sort_index(inplace=True)
         logging.info(f'Size of filled target dataframe: {df_target.shape}')
+        logging.info(f'Using {self.target_col} for score.')
         score = torch.tensor(
             df_target[self.target_col].astype('float32').fillna(-1).values,
             dtype=torch.float,
