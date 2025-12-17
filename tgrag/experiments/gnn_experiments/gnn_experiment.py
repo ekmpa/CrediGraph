@@ -158,7 +158,7 @@ def evaluate(
             mean_preds = torch.full(targets[regression_indices].size(), 0.546).to(
                 device
             )
-            random_preds = torch.rand(targets[regression_indices].size(0)).to(device)
+            random_preds = torch.rand(targets[regression_indices].size()).to(device)
             loss = F.l1_loss(preds[regression_indices], targets[regression_indices])
             mean_loss = F.l1_loss(mean_preds, targets[regression_indices])
             random_loss = F.l1_loss(random_preds, targets[regression_indices])
