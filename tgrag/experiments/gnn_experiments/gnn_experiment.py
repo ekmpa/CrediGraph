@@ -99,6 +99,7 @@ def train_(
         cls_indices = torch.nonzero(targets_cls != -1.0)
 
         targets_cls = F.one_hot(targets_cls[cls_indices].long(), num_classes=2)
+        logging.info(f'target_cls size: {targets_cls.shape}')
         if regression_indices.numel() and cls_indices.numel():
             loss_reg = F.l1_loss(preds[regression_indices], targets[regression_indices])
             loss_ce = F.cross_entropy(
