@@ -20,9 +20,16 @@ Other regression labels we don't use yet:
 
 Standardized into: 0 = Phishing, 1 = Legitimate, with headers `domain` and `label`. The label counts shown below follow this convention.
 
+**Total:**
+
+```bash
+0: 325792
+1: 306240
+```
+
 ### LegitPhish
 
-[LegitPhish](https://data.mendeley.com/datasets/hx4m73v2sf/2) is a URL-based dataset with binary labels (0 = Phishing, 1 = Legitimate). The data is processed by converting URLs to their domain name, averaging the scores of all URLs that resolve to the same domain, and standardizing the header (we always use `domain` and `label` in the processed csvs.)
+[LegitPhish](https://data.mendeley.com/datasets/hx4m73v2sf/2) is a URL-based dataset with binary labels (0 = Phishing, 1 = Legitimate). The data is processed by converting URLs to their domain name, averaging the scores of all URLs that resolve to the same domain, and then binarizing based on a threshold of 0.5. We also standardise the header (we always use `domain` and `label` in the processed csvs.)
 
 ```bash
 0: 26957

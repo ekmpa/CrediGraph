@@ -129,6 +129,45 @@ def process_goggle(goggle_path: Path, output_csv: Path) -> None:
     check_processed_file(output_csv)
 
 
+def merge_processed_labels(processed_dir: Path, output_csv: Path) -> None:
+    domain_labels = defaultdict(list)
+
+    for csv_path in processed_dir.glob('*.csv'):
+        if csv_path.name == output_csv.name:
+            continue
+
+        with csv_path.open('r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+
+            for row in reader:
+                domain = row.get('domain')
+                if type(domain) == str and domain.startswith('www.'):
+                    domain = domain[4:]
+                label = row.get('label')
+
+                if domain is None or label is None:
+                    continue
+
+                try:
+                    domain_labels[domain].append(float(label))
+                except ValueError:
+                    continue
+
+    with output_csv.open('w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(['domain', 'label'])
+
+        for domain, labels in sorted(domain_labels.items()):
+            if not labels:
+                continue
+
+            avg_label = sum(labels) / len(labels)
+            final_label = 1 if avg_label >= 0.5 else 0
+            writer.writerow([domain, final_label])
+
+    check_processed_file(output_csv)
+
+
 def main() -> None:
     classification_dir = Path('./data/classification')
     regression_dir = Path('./data/regression')
@@ -201,6 +240,12 @@ def main() -> None:
         label_col='type',
         inverse=False,
         labels=['unreliable', 'reliable'],
+    )
+
+    print('======== Merging final labels =========')
+    merge_processed_labels(
+        class_proc,
+        class_proc / 'labels.csv',
     )
 
 
