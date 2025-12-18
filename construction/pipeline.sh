@@ -94,7 +94,7 @@ else
     DATA_DIR="$SCRATCH"
 fi
 
-process_crawl() {
+construct() {
     local CRAWL=$1
 
     echo "[INFO] Starting crawl: $CRAWL"
@@ -184,6 +184,7 @@ process_crawl() {
                 echo "[INFO][$CRAWL][Subfolder $SUBFOLDER_ID] Batch: $batch_start-$batch_end"
                 rm -rf "$SEGMENT_DIR"/*
                 bash "$TARGET_SCRIPTS/end-to-end.sh" "$CRAWL" "$batch_start" "$batch_end" "$SUBFOLDER_ID"
+                # TODO: make below atomic 
                 uv run python ../tgrag/construct_graph_scripts/construct_aggregate.py --source "$DATA_DIR/crawl-data/$CRAWL/output_text_dir$SUBFOLDER_ID" --target "$DATA_DIR/crawl-data/$CRAWL/output$SUBFOLDER_ID"
                 for f in edges vertices; do
                     target_file="$DATA_DIR/crawl-data/$CRAWL/output$SUBFOLDER_ID/${f}.txt.gz"
@@ -212,6 +213,7 @@ process_crawl() {
     done
 
     echo "[INFO][$CRAWL] All subsets done. Starting merge..."
+    echo "#####################  start merge @ $(date '+%Y-%m-%d %H:%M:%S') #####################"
 
     local merged_output="$DATA_DIR/crawl-data/$CRAWL/output1"
     for (( i=2; i<=NUM_SUBFOLDERS; i++ )); do
@@ -222,13 +224,11 @@ process_crawl() {
             --target "$merged_output"
     done
     echo "[INFO][$CRAWL] Final merged output: $merged_output"
-
-    # then, process the merged output?
-
+    echo "#####################  end merge @ $(date '+%Y-%m-%d %H:%M:%S') #####################"
 }
 
 for CRAWL in $CRAWL_INDICES; do
-    process_crawl "$CRAWL" \
+    construct "$CRAWL" \
       >"$CONSTRUCTION_DIR/logs/${CRAWL}_main_out.log" \
       2>"$CONSTRUCTION_DIR/logs/${CRAWL}_main_err.log" &
 done
