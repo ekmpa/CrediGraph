@@ -1,5 +1,9 @@
 #!/bin/bash
 set -euo pipefail
+shopt -s inherit_errexit 2>/dev/null || true
+
+trap 'echo "[FATAL] ${BASH_SOURCE[0]}:${LINENO}: command \"${BASH_COMMAND}\" failed" >&2' ERR
+
 
 if [ $# -lt 2 ]; then
     echo "Usage: $0 <start-month> <end-month> [num-subfolders]"
@@ -48,24 +52,38 @@ update_subfolder_index() {
     local value="$3"
 
     local json_file="$SCRIPT_DIR/indices.json"
+    local lock_file="$SCRIPT_DIR/indices.json.lock"
+    local tmp
+
     tmp=$(mktemp)
 
-    jq \
-      --arg id "$crawl_id" \
-      --arg key "$sub_id" \
-      --argjson val "$value" '
-        if any(.ID == $id) then
-            map(
-                if .ID == $id then
-                    .[$key] = $val
-                else
-                    .
-                end
-            )
-        else
-            . + [{ "ID": $id, ($key): $val }]
-        end
-      ' "$json_file" > "$tmp" && mv "$tmp" "$json_file"
+    (
+        # acquire exclusive lock
+        flock -x 200
+
+        # ensure file exists
+        [ -f "$json_file" ] || echo "[]" > "$json_file"
+
+        jq \
+          --arg id "$crawl_id" \
+          --arg key "$sub_id" \
+          --argjson val "$value" '
+            if any(.ID == $id) then
+                map(
+                    if .ID == $id then
+                        .[$key] = $val
+                    else
+                        .
+                    end
+                )
+            else
+                . + [{ "ID": $id, ($key): $val }]
+            end
+          ' "$json_file" > "$tmp"
+
+        # atomic replace
+        mv "$tmp" "$json_file"
+    ) 200>"$lock_file"
 }
 
 CRAWL_INDICES=$(get_cc_indices "$START_MONTH" "$END_MONTH")
@@ -128,8 +146,9 @@ process_crawl() {
             TARGET_SCRIPTS="$CRAWL_DIR/$SUBFOLDER_NAME"
 
             if [ ! -d "$TARGET_SCRIPTS" ]; then
-                echo "[INFO] Creating $TARGET_SCRIPTS from template"
-                cp -r "$TEMPLATE_SCRIPTS" "$TARGET_SCRIPTS"
+                tmp_dir="${TARGET_SCRIPTS}.tmp.$$"
+                cp -r "$TEMPLATE_SCRIPTS" "$tmp_dir"
+                mv "$tmp_dir" "$TARGET_SCRIPTS"
             fi
 
             rm -rf "$SEGMENT_DIR"
@@ -156,7 +175,7 @@ process_crawl() {
                 update_subfolder_index "$CRAWL" "$SUBFOLDER_ID" "$batch_start"
             }
 
-            trap save_progress EXIT INT TERM
+            trap save_progress INT TERM
 
             for (( batch_start=effective_start; batch_start<=END_IDX; batch_start+=BATCH_SIZE )); do
                 batch_end=$((batch_start + BATCH_SIZE - 1))
@@ -194,11 +213,11 @@ process_crawl() {
 
     echo "[INFO][$CRAWL] All subsets done. Starting merge..."
 
-    local merged_output="$DATA_DIR/$CRAWL/output1"
+    local merged_output="$DATA_DIR/crawl-data/$CRAWL/output1"
     for (( i=2; i<=NUM_SUBFOLDERS; i++ )); do
-        local src="$DATA_DIR/$CRAWL/output$i"
+        local src="$DATA_DIR/crawl-data/$CRAWL/output$i"
         echo "[INFO][$CRAWL] Merging $src into $merged_output"
-        uv run python ../tgrag/construct_graph_scripts/merge_ext.py \
+        uv run python $PROJECT_ROOT/tgrag/construct_graph_scripts/merge_ext.py \
             --source "$src" \
             --target "$merged_output"
     done
@@ -217,10 +236,12 @@ done
 wait
 
 # Clean out subfolders
-for dir in "$CONSTRUCTION_DIR"/CC-*; do
-    if [ -d "$dir" ]; then
-        rm -rf "$dir"
-    fi
+for CRAWL in $CRAWL_INDICES; do
+    for dir in "$CONSTRUCTION_DIR"/$CRAWL/*; do
+        if [ -d "$dir" ]; then
+            rm -rf "$dir"
+        fi
+    done
 done
 
 echo "[INFO] Cleanup done, all crawls completed."
