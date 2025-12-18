@@ -13,10 +13,8 @@ end_idx="$3"
 subfolder_id="$4"
 data_type="${5:-wat}"
 spark_table_name="${6:-content_table}"
-#subfolder_name="bash_scripts${subfolder_id}"
 subfolder_name="$(basename "$(dirname "${BASH_SOURCE[0]}")")"  # auto-detect parent dir
 
-# set paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SUBFOLDER_PATH="$SCRIPT_DIR"
 CRAWL_FOLDER="$(dirname "$SUBFOLDER_PATH")"
@@ -25,6 +23,7 @@ PROJECT_ROOT="$(dirname "$CONSTRUCTION_DIR")"
 SPARK_WAREHOUSE_PATH="$SUBFOLDER_PATH/spark-warehouse"
 seed_list="$PROJECT_ROOT/data/dqr/domain_pc1.csv"
 
+echo "======================================"
 echo "start_idx=$start_idx end_idx=$end_idx"
 echo "seed_list=$seed_list"
 echo "spark_table_name=$spark_table_name"
@@ -56,3 +55,4 @@ elif [ "$data_type" = "wet" ]; then
       echo "wet_extract_content_table constructed for $CRAWL batch_${start_idx}_${end_idx}"
 fi
 echo "********************** End Of $data_type Task @ $(date '+%Y-%m-%d %H:%M:%S') **********************"
+echo "======================================"
