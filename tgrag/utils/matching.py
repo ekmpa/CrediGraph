@@ -2,7 +2,9 @@
 used for label matching, and WET-WAT matching.
 """
 
+import re
 from typing import Dict, List, Optional
+from urllib.parse import urlparse
 
 import tldextract
 
@@ -76,3 +78,28 @@ def lookup_exact(
 
 def reverse_domain(domain: str) -> str:
     return '.'.join(domain.split('.')[::-1])
+
+
+def extract_domain(raw: str) -> str | None:
+    if not raw:
+        return None
+
+    raw = raw.strip().strip('\'"')
+    raw = raw.replace('&amp;', '&')
+
+    # if no scheme, add one so urlparse works
+    if not re.match(r'^[a-zA-Z][a-zA-Z0-9+.-]*://', raw):
+        raw = 'http://' + raw
+
+    try:
+        parsed = urlparse(raw)
+        domain = parsed.netloc.lower()
+
+        if not domain:
+            return None
+
+        domain = domain.split(':')[0]
+        return domain
+
+    except Exception:
+        return None
