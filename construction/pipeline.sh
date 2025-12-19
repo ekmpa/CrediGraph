@@ -1,9 +1,5 @@
 #!/bin/bash
 set -euo pipefail
-shopt -s inherit_errexit 2>/dev/null || true
-
-trap 'echo "[FATAL] ${BASH_SOURCE[0]}:${LINENO}: command \"${BASH_COMMAND}\" failed" >&2' ERR
-
 
 if [ $# -lt 2 ]; then
     echo "Usage: $0 <start-month> <end-month> [num-subfolders]"
@@ -21,7 +17,12 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 CONSTRUCTION_DIR="$PROJECT_ROOT/construction"
 TEMPLATE_SCRIPTS="$CONSTRUCTION_DIR/bash_scripts"
 BASE_URL=https://data.commoncrawl.org
-mkdir -p "$CONSTRUCTION_DIR/logs"
+
+if [ -z "${SCRATCH:-}" ]; then
+    DATA_DIR="$PROJECT_ROOT/data"
+else
+    DATA_DIR="$SCRATCH"
+fi
 
 get_cc_indices() {
     uv run python -c "
@@ -31,10 +32,12 @@ print(' '.join(indices))
 "
 }
 
+CRAWL_INDICES=$(get_cc_indices "$START_MONTH" "$END_MONTH")
+mkdir -p "$CONSTRUCTION_DIR/logs"
+
 get_subfolder_indices() {
     local wanted_id="$1"
     local numeric_key="$2"
-
     local json_file="$SCRIPT_DIR/indices.json"
 
     if [[ ! -f "$json_file" ]]; then
@@ -58,8 +61,7 @@ update_subfolder_index() {
     tmp=$(mktemp)
 
     (
-        # acquire exclusive lock
-        flock -x 200
+        flock -x 200 # acquire exclusive lock
 
         # ensure file exists
         [ -f "$json_file" ] || echo "[]" > "$json_file"
@@ -86,25 +88,18 @@ update_subfolder_index() {
     ) 200>"$lock_file"
 }
 
-CRAWL_INDICES=$(get_cc_indices "$START_MONTH" "$END_MONTH")
-
-if [ -z "${SCRATCH:-}" ]; then
-    DATA_DIR="$PROJECT_ROOT/data"
-else
-    DATA_DIR="$SCRATCH"
-fi
-
 construct() {
     local CRAWL=$1
 
-    echo "[INFO] Starting crawl: $CRAWL"
-
-    mkdir -p "$DATA_DIR/crawl-data/$CRAWL"
+    echo "[INFO] Starting crawl: $CRAWL @ $(date '+%Y-%m-%d %H:%M:%S') "
 
     WAT_PATHS_FILE="$DATA_DIR/crawl-data/$CRAWL/wat.paths.gz"
-
+    CRAWL_DIR="$CONSTRUCTION_DIR/$CRAWL"
     MAX_RETRIES=3
     SUCCESS=0
+
+    mkdir -p "$DATA_DIR/crawl-data/$CRAWL"
+    mkdir -p "$CRAWL_DIR"
 
     for attempt in $(seq 1 $MAX_RETRIES); do
         echo "[INFO] Attempt $attempt downloading WAT paths for $CRAWL..."
@@ -123,17 +118,14 @@ construct() {
 
     if [[ "$SUCCESS" -ne 1 ]]; then
         echo "[ERROR] Failed to get valid WAT paths file for $CRAWL after $MAX_RETRIES attempts" >&2
-        return 1 ## todo
+        return 1 
     fi
 
     TOTAL_FILES=$(gzip -dc "$WAT_PATHS_FILE" | wc -l)
-    echo "[INFO] Total WAT files: $TOTAL_FILES"
-
     FILES_PER_SUBSET=$(( (TOTAL_FILES + NUM_SUBFOLDERS - 1) / NUM_SUBFOLDERS ))
-    echo "[INFO] Splitting into $NUM_SUBFOLDERS subsets, ~$FILES_PER_SUBSET files each"
 
-    CRAWL_DIR="$CONSTRUCTION_DIR/$CRAWL"
-    mkdir -p "$CRAWL_DIR"
+    echo "[INFO] Total WAT files: $TOTAL_FILES"
+    echo "[INFO] Splitting into $NUM_SUBFOLDERS subsets, ~$FILES_PER_SUBSET files each"
 
     pids=()
 
@@ -188,7 +180,6 @@ construct() {
                 uv run python ../tgrag/construct_graph_scripts/construct_aggregate.py --source "$DATA_DIR/crawl-data/$CRAWL/output_text_dir$SUBFOLDER_ID" --target "$DATA_DIR/crawl-data/$CRAWL/output$SUBFOLDER_ID"
                 for f in edges vertices; do
                     target_file="$DATA_DIR/crawl-data/$CRAWL/output$SUBFOLDER_ID/${f}.txt.gz"
-                    #if [ -f "$target_file" ]; then
                     num_lines=$(gzip -dc "$target_file" | wc -l)
                     echo "[INFO] After slice $batch_start-$batch_end: $f has $num_lines records"
 
@@ -197,14 +188,12 @@ construct() {
                     else
                         TOTAL_NODES=$num_lines
                     fi
-                    #fi
                 done
             done
         ) >"$CONSTRUCTION_DIR/logs/${CRAWL}_sub$((i+1)).out" \
           2>"$CONSTRUCTION_DIR/logs/${CRAWL}_sub$((i+1)).err" &
 
         pids+=($!)
-
         sleep 600
     done
 
@@ -212,7 +201,6 @@ construct() {
         wait "$pid"
     done
 
-    echo "[INFO][$CRAWL] All subsets done. Starting merge..."
     echo "#####################  start merge @ $(date '+%Y-%m-%d %H:%M:%S') #####################"
 
     local merged_output="$DATA_DIR/crawl-data/$CRAWL/output1"
@@ -235,7 +223,6 @@ done
 
 wait
 
-# Clean out subfolders
 for CRAWL in $CRAWL_INDICES; do
     for dir in "$CONSTRUCTION_DIR"/$CRAWL/*; do
         if [ -d "$dir" ]; then
