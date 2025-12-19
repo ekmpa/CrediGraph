@@ -1,5 +1,6 @@
 import csv
 import gzip
+import shlex
 import subprocess
 from datetime import date
 from pathlib import Path
@@ -42,6 +43,15 @@ def iso_week_to_timestamp(iso_week_str: str) -> str:
     # ISO week: Monday is day 1
     monday_date = date.fromisocalendar(year, week, 1)
     return monday_date.strftime('%Y%m%d')
+
+
+def load_dqr(path: str) -> Dict[str, float]:
+    dqr = {}
+    with open(path, newline='') as f:
+        r = csv.DictReader(f)
+        for row in r:
+            dqr[row['domain'].strip().lower()] = float(row['pc1'])
+    return dqr
 
 
 def run(cmd: List[str], check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -114,6 +124,10 @@ def read_edge_file(path: str, id_to_domain: Dict[int, str]) -> Set[Tuple[str, st
                 continue  # skip if an endpoint wasn't present in vertices map
             result.add((src, dst))
     return result
+
+
+def shlex_quote(s: str) -> str:
+    return shlex.quote(s)
 
 
 def open_file(path: str) -> Callable[..., IO]:
