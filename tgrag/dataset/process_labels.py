@@ -168,6 +168,40 @@ def merge_processed_labels(processed_dir: Path, output_csv: Path) -> None:
     check_processed_file(output_csv)
 
 
+def _load_domains(path: Path, domain_col: str = 'domain') -> set:
+    domains = set()
+    with path.open('r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            d = row.get(domain_col)
+            if not d:
+                continue
+            if d.startswith('www.'):
+                d = d[4:]
+            domains.add(d)
+    return domains
+
+
+def check_overlaps(strong_labels: Path, weak_labels: Path) -> None:
+    """Checks overlaps between used datasets.
+
+    Assumption:
+    - The file at `strong_labels` has a path with columns 'domain', 'pc1' (to be changed to 'label' when we merge with other sources than DQR)
+    - The file at `weak_labels` has columns 'domain' and 'label', label = 0 for phishing, label = 1 for legitimate
+
+    """
+    strong = _load_domains(strong_labels)
+    weak = _load_domains(weak_labels)
+
+    overlap = strong & weak
+    union = strong | weak
+
+    print(f'# strong: {len(strong)}')
+    print(f'# weak: {len(weak)}')
+    print(f'# overlap: {len(overlap)}')
+    print(f'# union: {len(union)}')
+
+
 def main() -> None:
     classification_dir = Path('./data/classification')
     regression_dir = Path('./data/regression')
@@ -245,7 +279,12 @@ def main() -> None:
     print('======== Merging final labels =========')
     merge_processed_labels(
         class_proc,
-        class_proc / 'labels.csv',
+        Path(f'{class_proc}/labels.csv'),
+    )
+
+    check_overlaps(
+        Path('./data/dqr/domain_pc1.csv'),
+        Path(f'{class_proc}/labels.csv'),
     )
 
 
