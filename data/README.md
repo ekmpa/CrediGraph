@@ -27,6 +27,17 @@ Standardized into: 0 = Phishing, 1 = Legitimate, with headers `domain` and `labe
 1: 306240
 ```
 
+In terms of comparing the size of our strong label set (DQR) and our weak label set (see below),
+
+```bash
+# strong: 11519
+# weak: 632014
+# overlap: 6079
+# union: 637454
+```
+
+i.e, more than half of the strong labels are present in the weak label set.
+
 ### LegitPhish
 
 [LegitPhish](https://data.mendeley.com/datasets/hx4m73v2sf/2) is a URL-based dataset with binary labels (0 = Phishing, 1 = Legitimate). The data is processed by converting URLs to their domain name, averaging the scores of all URLs that resolve to the same domain, and then binarizing based on a threshold of 0.5. We also standardise the header (we always use `domain` and `label` in the processed csvs.)
