@@ -30,6 +30,9 @@ class Dataset:
     # ADD: domain, language
     name: str
     url: str
+    used: (
+        bool  # some are pending / invalid for current use cases but may be useful later
+    )
     size: Optional[List[int]] = None
     # for classification, just # domains,
     # for regression, [# in negative, # in positive class]
@@ -58,6 +61,7 @@ datasets = [
     Dataset(
         name='DQR',
         url='https://github.com/hauselin/domain-quality-ratings',
+        used=True,
         size=[11521],
         label_col='pc1',
         task=Task.REGRESSION,
@@ -67,6 +71,7 @@ datasets = [
     Dataset(
         name='LegitPhish',
         url='https://data.mendeley.com/datasets/hx4m73v2sf/2',
+        used=True,
         size=[63678, 37540],
         task=Task.CLASSIFICATION,
         type=SignalType.BINARY,
@@ -75,6 +80,7 @@ datasets = [
     Dataset(
         name='PhishDataset',
         url='https://github.com/ESDAUNG/PhishDataset',
+        used=True,
         size=[5000, 50000],
         label_col='URLs',
         task=Task.CLASSIFICATION,
@@ -84,6 +90,7 @@ datasets = [
     Dataset(
         name='Zoznam',
         url='https://konspiratori.sk/zoznam-stranok',
+        used=False,
         size=[337],
         label_col=2,
         task=Task.REGRESSION,
@@ -93,6 +100,7 @@ datasets = [
     Dataset(
         name='Nelez',
         url='https://www.nelez.cz',
+        used=True,
         size=[51],
         label_col=0,
         task=Task.CLASSIFICATION,
@@ -102,6 +110,7 @@ datasets = [
     Dataset(
         name='Wikipedia',
         url='https://github.com/kynoptic/wikipedia-reliable-sources',
+        used=True,
         size=[1029, 2906],
         task=Task.CLASSIFICATION,
         type=SignalType.BINARY,
@@ -110,14 +119,16 @@ datasets = [
     Dataset(
         name='fineweb',
         url='https://huggingface.co/datasets/HuggingFaceFW/fineweb',
+        used=False,
         size=[52000000000],
         task=Task.REGRESSION,
         type=SignalType.LANGUAGE,
         # overlap_DQR=
     ),
     Dataset(
-        name='PhishingDetection',
+        name='URL-Phish',
         url='https://data.mendeley.com/datasets/65z9twcx3r/1',
+        used=True,
         size=[11660, 100000],
         task=Task.CLASSIFICATION,
         type=SignalType.BINARY,
@@ -126,21 +137,24 @@ datasets = [
     Dataset(
         name='Phishing&LegitURLs',
         url='https://www.kaggle.com/datasets/harisudhan411/phishing-and-legitimate-urls',
+        used=True,
         size=[800000],
         task=Task.CLASSIFICATION,
         type=SignalType.BINARY,
         # overlap_DQR
     ),
-    # Dataset(
-    #     name='CICDataset',
-    #     url='http://cicresearch.ca/CICDataset/ISCX-URL-2016/Dataset/',
-    #     size=[33500, 35300],
-    #     task=Task.CLASSIFICATION,
-    #     type=SignalType.BINARY,
-    # ),
+    Dataset(
+        name='CICDataset',
+        url='http://cicresearch.ca/CICDataset/ISCX-URL-2016/Dataset/',
+        used=False,
+        size=[33500, 35300],
+        task=Task.CLASSIFICATION,
+        type=SignalType.BINARY,
+    ),
     Dataset(
         name='misinformation-domains',
         url='https://github.com/JanaLasser/misinformation_domains/blob/main/data/clean/domain_list_clean.csv',
+        used=True,
         size=[2170, 2597],
         task=Task.CLASSIFICATION,
         type=SignalType.BINARY,
@@ -148,24 +162,28 @@ datasets = [
     Dataset(
         name='Iffy-Index',
         url='https://iffy.news/index/',
+        used=False,
         task=Task.REGRESSION,
         type=SignalType.CREDIBILITY,
     ),
     Dataset(
         name='Malicious&BenignWebsites',
         url='https://www.kaggle.com/datasets/xwolf12/malicious-and-benign-websites',
+        used=True,
         task=Task.CLASSIFICATION,
         type=SignalType.BINARY,
     ),
     Dataset(
         name='ConsensusCredibility',
         url='https://science.feedback.org/consensus-credibility-scores-comprehensive-dataset-web-domains-credibility/',
+        used=False,
         task=Task.REGRESSION,
         type=SignalType.CREDIBILITY,
     ),
     Dataset(
         name='OpenFeedback',
         url='https://open.feedback.org/',
+        used=False,
         task=Task.REGRESSION,
         type=SignalType.CREDIBILITY,
     ),
