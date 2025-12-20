@@ -261,9 +261,37 @@ def main() -> None:
     merge_edges([edges_d0, edges_d1], merged_edges, env)
     merge_nodes([frontier0, frontier1, frontier2], merged_nodes, env)
 
-    print('[INFO] Finished.')
-    print(f'[INFO] Edges → {merged_edges}')
-    print(f'[INFO] Nodes  → {merged_nodes}')
+    print('[INFO] Finished merging global subnetworks.')
+
+    egos_dir = os.path.join(outdir, 'egos')
+    os.makedirs(egos_dir, exist_ok=True)
+    print(f'[INFO] Splitting subnetworks per ego → {egos_dir}')
+
+    nodes_split_script = f"""
+      awk -F $'\\t' '
+        NR>1 {{
+          node=$1; root=$2;
+          out=sprintf("{egos_dir}/%s.nodes", root);
+          print >> out;
+        }}
+      ' {shlex_quote(merged_nodes)}
+    """
+    run_checked(['/bin/bash', '-lc', nodes_split_script], env)
+
+    edges_split_script = f"""
+      gzip -cd -- {shlex_quote(merged_edges)} |
+      awk -F $'\\t' '
+        {{
+          root=$1;
+          out=sprintf("{egos_dir}/%s.edges", root);
+          print >> out;
+        }}
+      '
+    """
+    run_checked(['/bin/bash', '-lc', edges_split_script], env)
+
+    print(f'[INFO] Per-ego subnetworks in: {egos_dir}')
+    print('[INFO] Example: ls -lh egos/*.nodes')
 
 
 if __name__ == '__main__':
