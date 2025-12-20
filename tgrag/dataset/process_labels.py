@@ -28,14 +28,11 @@ def process_csv(
             domain = row.get(domain_col)
             label = row.get(label_col)
 
-            if domain is None or label is None:
+            if not domain or label is None:
                 continue
 
             if is_url:
                 domain = extract_domain(domain)
-
-            if domain is None:
-                continue
 
             score = label
             if labels is not None:
@@ -145,7 +142,7 @@ def merge_processed_labels(processed_dir: Path, output_csv: Path) -> None:
                     domain = domain[4:]
                 label = row.get('label')
 
-                if domain is None or label is None:
+                if not domain or label is None:
                     continue
 
                 try:
