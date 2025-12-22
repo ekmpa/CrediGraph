@@ -1,173 +1,538 @@
 import argparse
 import logging
+from typing import Dict, cast
 import pickle
-from typing import Dict, List, Tuple
-
 import numpy as np
-import pandas as pd
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import train_test_split
-from sklearn.neural_network import MLPRegressor
-from tqdm import tqdm
-
+from tgrag.utils.args import parse_args
 from tgrag.utils.logger import setup_logging
 from tgrag.utils.path import get_root_dir
-from tgrag.utils.plot import plot_histogram, plot_loss, plot_regression_scatter
-
-parser = argparse.ArgumentParser(description='MLP Experiments')
-parser.add_argument(
-    '--target', type=str, default='mbfc_bias', choices=['pc1', 'mbfc_bias']
-)
-parser.add_argument('--emb_path', type=str, default='data/dqr')
-parser.add_argument('--dqr_path', type=str, default='data/dqr')
-parser.add_argument(
-    '--embed_type', type=str, default='text', choices=['text', 'domainName']
-)
-parser.add_argument('--batch_size', type=int, default=5000)
-parser.add_argument('--test_valid_size', type=float, default=0.4)
-parser.add_argument('--emb_dim', type=int, default=1024)
-parser.add_argument('--max_iter', type=int, default=200)
-parser.add_argument('--lr', type=float, default=1e-3)
-parser.add_argument('--epochs', type=int, default=15)
-parser.add_argument('--plots_out_path', type=str, default='plots')
-parser.add_argument(
-    '--log-file',
-    type=str,
-    default='mlp_experiment.log',
-    help='Name of log file at project root.',
-)
+from tqdm import tqdm
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.neural_network import MLPRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+from statistics import mean
+from mlp_multihead import MultiTaskMLP, train_multihead
 
 
-def load_emb_dict(embed_type: str, path: str) -> Dict[str, np.ndarray]:
-    if embed_type == 'text':
-        with open(f'{path}/labeled_11k_scraped_text_emb.pkl', 'rb') as f:
+def load_agg_Nmonth_emb_dict(embed_type, path="../../../data", model_name="embeddinggemma-300m",
+                             month_lst=["dec", "nov", "oct"], target="pc1", agg="avg"):
+    months_emb_lst = []
+    if embed_type == "GNN_GAT":
+        for month in month_lst:
+            with open(f'{path}/dqr_gnn_embeddings/{month}_{target}_dqr_domain_rni_embeddings.pkl', 'rb') as f:
+                embd_dict = pickle.load(f)
+            months_emb_lst.append(embd_dict)
+        common_domains_set = set(months_emb_lst[0].keys()).intersection(months_emb_lst[1].keys()).intersection(
+            months_emb_lst[2].keys())
+
+    for key in common_domains_set:
+        for i in range(1, len(months_emb_lst)):
+            if agg == "concat":
+                months_emb_lst[0][key].extend(months_emb_lst[i][key])
+            elif agg == "min":
+                months_emb_lst[0][key] = [min(a, b) for a, b in zip(months_emb_lst[0][key], months_emb_lst[i][key])]
+            elif agg == "max":
+                months_emb_lst[0][key] = [max(a, b) for a, b in zip(months_emb_lst[0][key], months_emb_lst[i][key])]
+            elif agg == "avg":
+                months_emb_lst[0][key] = [(a + b) / 2 for a, b in zip(months_emb_lst[0][key], months_emb_lst[i][key])]
+
+    concat_dict = {k: v for k, v in months_emb_lst[0].items() if k in common_domains_set}
+    # print(f"concat Nmonth emb size={len(concat_dict[list(concat_dict.keys())[0]])}")
+    # print(f"len of keys={len(concat_dict.keys())}")
+    return concat_dict
+
+
+def load_agg_Nmonth_weaksupervision_emb_dict(embed_type, path="../../../data", model_name="embeddinggemma-300m",
+                                             month_lst=["dec", "nov", "oct"], target="pc1", agg="avg"):
+    months_emb_PhishTank_lst = []
+    months_emb_URLhaus_lst = []
+    months_emb_legit_lst = []
+    for month in month_lst:
+        with open(f'{path}/PhishTank_{target}_rni_{month}_2024_embeddings.pkl', 'rb') as f:
+            months_emb_PhishTank_lst.append(pickle.load(f))
+        with open(f'{path}/URLHaus_{target}_rni_{month}_2024_embeddings.pkl', 'rb') as f:
+            months_emb_URLhaus_lst.append(pickle.load(f))
+        with open(f'{path}/IP2Location_{target}_rni_{month}_2024_embeddings.pkl', 'rb') as f:
+            months_emb_legit_lst.append(pickle.load(f))
+
+    for ds_months in [months_emb_PhishTank_lst, months_emb_URLhaus_lst, months_emb_legit_lst]:
+        for key in ds_months[0].keys():
+            for i in range(1, len(ds_months)):  # loop on dataset months
+                if key in ds_months[i]:
+                    if agg == "concat":
+                        ds_months[0][key].extend(ds_months[i][key])
+                        # print(len(ds_months[0][key]))
+                    elif agg == "min":
+                        ds_months[0][key] = [min(a, b) for a, b in zip(ds_months[0][key], ds_months[i][key])]
+                    elif agg == "max":
+                        ds_months[0][key] = [max(a, b) for a, b in zip(ds_months[0][key], ds_months[i][key])]
+                    elif agg == "avg":
+                        ds_months[0][key] = [(a + b) / 2 for a, b in zip(ds_months[0][key], ds_months[i][key])]
+                        # print(len(ds_months[0][key]))
+    return months_emb_PhishTank_lst[0], months_emb_URLhaus_lst[0], months_emb_legit_lst[0]
+
+
+def load_emb_dict(embed_type, path="../../../data", model_name="embeddinggemma-300m", month="dec", target="pc1"):
+    if embed_type == "text":
+        if model_name == "embeddinggemma-300m":
+            with open(f'{path}/dqr_{month}_text_embeddinggemma-300m_768.pkl', 'rb') as f:
+                embd_dict = pickle.load(f)
+        elif model_name == "embeddingQwen3-0.6B":
+            with open(f'{path}/dqr_{month}_text_embeddingQwen3-0.6B_1024.pkl', 'rb') as f:
+                embd_dict = pickle.load(f)
+        elif model_name == "embeddingQwen3-8B":
+            with open(f'{path}/dqr_{month}_text_embeddingQwen3-8B_4096.pkl', 'rb') as f:
+                embd_dict = pickle.load(f)
+        elif model_name == "embeddingTE3L":
+            with open(f'{path}/dqr_{month}_text_embeddingTE3L_3072.pkl', 'rb') as f:
+                embd_dict = pickle.load(f)
+        elif model_name == "IPTC_Topic_emb":
+            with open(f'/shared_mnt/github_repos/CrediGraph/IPTCTopicModeling/dqr_dec_IPTC_predFinalLayer_emb_dict.pkl',
+                      'rb') as f:
+                embd_dict = pickle.load(f)
+    elif embed_type == "domainName":
+        with open(f'{path}/dqr_domainName_embeddingQwen3-0.6B_1024.pkl', 'rb') as f:
             embd_dict = pickle.load(f)
-    elif embed_type == 'domainName':
-        with open(f'{path}/labeled_11k_domainname_emb.pkl', 'rb') as f:
+    elif embed_type == "GNN_GAT":
+        # with open(f'{path}/11Kdataset_GAT_targets_connected_edges_GNN_textE_300E_pc1_emb.pkl', 'rb') as f:
+        #     embd_dict=pickle.load(f)
+        with open(f'{path}/dqr_gnn_embeddings/{month}_{target}_dqr_domain_rni_embeddings.pkl', 'rb') as f:
             embd_dict = pickle.load(f)
+    elif embed_type == "IPTC_Topic":
+        with open(f'/shared_mnt/github_repos/CrediGraph/IPTCTopicModeling/dqr_IPTC-news-topic_scores.pkl', 'rb') as f:
+            embd_dict = pickle.load(f)
+    elif embed_type == "IPTC_Topic_freq":
+        with open(f'/shared_mnt/github_repos/CrediGraph/IPTCTopicModeling/dqr_topics_frequancy_norm_dict.pkl',
+                  'rb') as f:
+            embd_dict = pickle.load(f)
+    elif embed_type == "IPTC_Topic_emb":
+        with open(f'/shared_mnt/github_repos/CrediGraph/IPTCTopicModeling/dqr_dec_IPTC_predFinalLayer_emb_dict.pkl',
+                  'rb') as f:
+            embd_dict = pickle.load(f)
+        # print(list(embd_dict.keys())[0],embd_dict[list(embd_dict.keys())[0]])
+    elif embed_type == "3Feat":
+        with open(f'/shared_mnt/github_repos/CrediGraph/data/dqr/dqr_3Feat_dict.pkl', 'rb') as f:
+            embd_dict = pickle.load(f)
+    elif embed_type == "3Feat2":
+        with open(f'/shared_mnt/github_repos/CrediGraph/data/dqr/dqr_3Feat_dict2.pkl', 'rb') as f:
+            embd_dict = pickle.load(f)
+
+    elif embed_type == "TFIDF":
+        # with open(f'{path}/dqr_TFIDF_emb.pkl', 'rb') as f:
+        #     embd_dict=pickle.load(f)
+        # with open(f'{path}/dqr_TFIDF_emb_8465.pkl', 'rb') as f:
+        #     embd_dict=pickle.load(f)
+        # with open(f'{path}/dqr_TFIDF_emb_19437.pkl', 'rb') as f:
+        #     embd_dict=pickle.load(f)
+        if month == "dec":
+            with open(f'{path}/dqr_dec_TFIDF_weaksupervision_emb_222755.pkl', 'rb') as f:
+                embd_dict = pickle.load(f)
+        elif month == "nov":
+            with open(f'{path}/dqr_nov_TFIDF_weaksupervision_emb_258729.pkl', 'rb') as f:
+                embd_dict = pickle.load(f)
+        elif month == "oct":
+            with open(f'{path}/dqr_oct_TFIDF_weaksupervision_emb_19085.pkl', 'rb') as f:
+                embd_dict = pickle.load(f)
+    elif embed_type == "PASTEL":
+        with open(f'{path}/dqr_pastel_dict.pkl', 'rb') as f:
+            embd_dict = pickle.load(f)
+    elif embed_type == "PASTEL_hasContent":
+        with open(f'{path}/dqr_hasContent_pastel_dict.pkl', 'rb') as f:
+            embd_dict = pickle.load(f)
+
     return embd_dict
 
 
-def train_valid_test_split(
-    target: str, labeled_11k_df: pd.DataFrame, test_valid_size: float = 0.4
-) -> Tuple[
-    pd.DataFrame, List[float], pd.DataFrame, List[float], pd.DataFrame, List[float]
-]:
-    if target == 'pc1':
-        quantiles = labeled_11k_df[target].quantile([0.2, 0.4, 0.6, 0.8, 1.0])
-    elif target == 'mbfc_bias':
+def load_weaksupervision_emb_dict(embed_type, path="../../../data", model_name="embeddinggemma-300m", month="dec",
+                                  target="pc1", gnn_emb=None, agg=None):
+    embd_dict_phishtank, embd_dict_URLhaus, embd_dict_PhishDataset_legit = {}, {}, {}
+    if embed_type == "text":
+        if model_name == "embeddinggemma-300m":
+            with open(f'{path}/dqr_{month}_text_embeddinggemma-300m_768.pkl', 'rb') as f:
+                embd_dict = pickle.load(f)
+        elif model_name == "embeddingQwen3-0.6B":
+            with open(f'{path}/dqr_{month}_text_embeddingQwen3-0.6B_1024.pkl', 'rb') as f:
+                embd_dict = pickle.load(f)
+        elif model_name == "embeddingQwen3-8B":
+            with open(f'{path}/cc_dec_2024_phishtank_Qwen3-Embedding-8B_4096.pkl', 'rb') as f:
+                embd_dict_phishtank = pickle.load(f)
+            with open(f'{path}/cc_dec_2024_URLhaus_Qwen3-Embedding-8B_4096.pkl', 'rb') as f:
+                embd_dict_URLhaus = pickle.load(f)
+            with open(f'{path}/cc_dec_2024_PhishDataset_legit_Qwen3-Embedding-8B_4096.pkl', 'rb') as f:
+                embd_dict_PhishDataset_legit = pickle.load(f)
+        elif model_name == "embeddingTE3L":
+            with open(f'{path}/phishtank_{month}_TE3L_weaksupervision_emb_3072.pkl', 'rb') as f:
+                embd_dict_phishtank = pickle.load(f)
+            with open(f'{path}/URLhaus_{month}_TE3L_weaksupervision_emb_3072.pkl', 'rb') as f:
+                embd_dict_URLhaus = pickle.load(f)
+            with open(f'{path}/PhishDataset_legit_{month}_TE3L_weaksupervision_emb_3072.pkl', 'rb') as f:
+                embd_dict_PhishDataset_legit = pickle.load(f)
+
+        if gnn_emb == True:
+            print("len of embd_dict_phishtank before appending GNN=",
+                  len(embd_dict_phishtank[list(embd_dict_phishtank.keys())[0]]))
+            if agg is None:
+                with open(f'{path}/PhishTank_{target}_rni_embeddings.pkl', 'rb') as f:
+                    gnn_embd_dict_phishtank = pickle.load(f)
+                with open(f'{path}/URLHaus_{target}_rni_embeddings.pkl', 'rb') as f:
+                    gnn_embd_dict_URLhaus = pickle.load(f)
+                with open(f'{path}/IP2Location_{target}_rni_embeddings.pkl', 'rb') as f:
+                    gnn_embd_dict_PhishDataset_legit = pickle.load(f)
+            else:
+                gnn_embd_dict_phishtank, gnn_embd_dict_URLhaus, gnn_embd_dict_PhishDataset_legit = load_agg_Nmonth_weaksupervision_emb_dict(
+                    embed_type, path, model_name, month_lst=["dec", "nov", "oct"], target=target, agg=agg)
+
+            ############# Append Emb #############
+            for k in embd_dict_phishtank:
+                embd_dict_phishtank[k] = gnn_embd_dict_phishtank[k] + embd_dict_phishtank[k]
+            for k in embd_dict_URLhaus:
+                embd_dict_URLhaus[k] = gnn_embd_dict_URLhaus[k] + embd_dict_URLhaus[k]
+            for k in embd_dict_PhishDataset_legit:
+                embd_dict_PhishDataset_legit[k] = gnn_embd_dict_PhishDataset_legit[k] + embd_dict_PhishDataset_legit[k]
+            print("len of embd_dict_phishtank after appending GNN=",
+                  len(embd_dict_phishtank[list(embd_dict_phishtank.keys())[0]]))
+
+
+    elif embed_type == "domainName":
+        with open(f'{path}/dqr_domainName_embeddingQwen3-0.6B_1024.pkl', 'rb') as f:
+            embd_dict = pickle.load(f)
+    elif embed_type == "GNN_GAT":
+        with open(f'{path}/11Kdataset_GAT_targets_connected_edges_GNN_textE_300E_pc1_emb.pkl', 'rb') as f:
+            embd_dict = pickle.load(f)
+    elif embed_type == "TFIDF":
+        # with open(f'{path}/dqr_TFIDF_emb.pkl', 'rb') as f:
+        #     embd_dict=pickle.load(f)
+        # with open(f'{path}/dqr_TFIDF_emb_8465.pkl', 'rb') as f:
+        #     embd_dict=pickle.load(f)
+        # with open(f'{path}/dqr_dec_TFIDF_emb_19437.pkl', 'rb') as f:
+        #     embd_dict=pickle.load(f)
+        # with open(f'{path}/dqr_TFIDF_emb_19437.pkl', 'rb') as f:
+        #     embd_dict=pickle.load(f)
+        emb_size = "222755" if month == "dec" else "258729" if month == "nov" else "19085"
+        with open(f'{path}/phishtank_{month}_TFIDF_weaksupervision_emb_{emb_size}.pkl', 'rb') as f:
+            embd_dict_phishtank = pickle.load(f)
+        with open(f'{path}/URLhaus_{month}_TFIDF_weaksupervision_emb_{emb_size}.pkl', 'rb') as f:
+            embd_dict_URLhaus = pickle.load(f)
+        with open(f'{path}/phishDataset_legit_{month}_TFIDF_weaksupervision_emb_{emb_size}.pkl', 'rb') as f:
+            embd_dict_PhishDataset_legit = pickle.load(f)
+
+    return embd_dict_phishtank, embd_dict_URLhaus, embd_dict_PhishDataset_legit
+
+
+def train_valid_test_split(target, labeled_11k_df, test_valid_size=0.4):
+    if target == "mbfc_bias":
         quantiles = labeled_11k_df[target].quantile([0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
+    else:
+        quantiles = labeled_11k_df[target].quantile([0.2, 0.4, 0.6, 0.8, 1.0])
     bins = [labeled_11k_df[target].min()] + quantiles.tolist()
-    labeled_11k_df[target + '_cat'] = pd.cut(
-        labeled_11k_df[target], bins=bins, labels=quantiles, include_lowest=True
-    )
+    labeled_11k_df[target + '_cat'] = pd.cut(labeled_11k_df[target], bins=bins, labels=quantiles, include_lowest=True)
     X = labeled_11k_df[['domain', target]]
     y = labeled_11k_df[target + '_cat']
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_valid_size, stratify=y, random_state=42
     )
     X_valid, X_test, y_valid, y_test = train_test_split(
-        X_test, y_test, test_size=0.5, stratify=y_test, random_state=42
-    )
-    return (
-        X_train,
-        labeled_11k_df.iloc[X_train.index][target].tolist(),
-        X_valid,
-        labeled_11k_df.iloc[X_valid.index][target].tolist(),
-        X_test,
-        labeled_11k_df.iloc[X_test.index][target].tolist(),
-    )
+        X_test, y_test, test_size=0.5, stratify=y_test, random_state=42)
+    return X_train, labeled_11k_df.iloc[X_train.index][target].tolist(), X_valid, labeled_11k_df.iloc[X_valid.index][
+        target].tolist(), X_test, labeled_11k_df.iloc[X_test.index][target].tolist()
 
 
-def resize_emb(
-    embds: Dict[str, np.ndarray],
-    X_train: pd.DataFrame,
-    X_valid: pd.DataFrame,
-    X_test: pd.DataFrame,
-    trim_to: int = 1024,
-) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
-    X_train_feat = [embds[d][0:trim_to] for d in X_train['domain'].tolist()]
-    X_valid_feat = [embds[d][0:trim_to] for d in X_valid['domain'].tolist()]
-    X_test_feat = [embds[d][0:trim_to] for d in X_test['domain'].tolist()]
+def resize_emb(text_emb, target, X_train, X_valid, X_test, gnn_emb=None, topic_emb=None, trim_to=1024):
+    X_train_feat = [text_emb[d][0:trim_to] for d in X_train["domain"].tolist()]
+    X_valid_feat = [text_emb[d][0:trim_to] for d in X_valid["domain"].tolist()]
+    X_test_feat = [text_emb[d][0:trim_to] for d in X_test["domain"].tolist()]
+    print("emb-size=", len(X_test_feat[0]))
+    if gnn_emb is not None:
+        X_train_feat_gnn = [gnn_emb[d][0:trim_to] for d in X_train["domain"].tolist()]
+        X_train_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in zip(X_train_feat_gnn, X_train_feat)]
+
+        X_valid_feat_gnn = [gnn_emb[d][0:trim_to] for d in X_valid["domain"].tolist()]
+        X_valid_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in zip(X_valid_feat_gnn, X_valid_feat)]
+
+        X_test_feat_gnn = [gnn_emb[d][0:trim_to] for d in X_test["domain"].tolist()]
+        X_test_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in zip(X_test_feat_gnn, X_test_feat)]
+        print("emb-size=", len(X_test_feat[0]))
+    if topic_emb is not None:
+        X_train_feat_topic = [topic_emb[d] for d in X_train["domain"].tolist()]
+        X_train_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in
+                        zip(X_train_feat_topic, X_train_feat)]
+
+        X_valid_feat_topic = [topic_emb[d] for d in X_valid["domain"].tolist()]
+        X_valid_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in
+                        zip(X_valid_feat_topic, X_valid_feat)]
+
+        X_test_feat_topic = [topic_emb[d] for d in X_test["domain"].tolist()]
+        X_test_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in zip(X_test_feat_topic, X_test_feat)]
+        print("emb-size=", len(X_test_feat[0]))
+
     return X_train_feat, X_valid_feat, X_test_feat
 
 
-def train_mlp(
-    mlp_reg: MLPRegressor,
-    X_train_feat: List[np.ndarray],
-    Y_train: List[float],
-    X_valid_feat: List[np.ndarray],
-    Y_valid: List[float],
-    X_test_feat: List[np.ndarray],
-    Y_test: List[float],
-    epochs: int = 15,
-) -> Tuple[MLPRegressor, List[float], List[float], List[float], List[float]]:
+def train_mlp(mlp_reg, X_train_feat, Y_train, X_valid_feat, Y_valid, X_test_feat, Y_test, epochs=15):
     batch_size, train_loss, valid_loss, test_loss, mean_loss = 5000, [], [], [], []
     for _ in tqdm(range(epochs)):
-        for b in range(batch_size, len(Y_train), batch_size):
-            X_batch, y_batch = (
-                X_train_feat[b - batch_size : b],
-                Y_train[b - batch_size : b],
-            )
+        for b in range(0, len(Y_train), batch_size):
+            X_batch, y_batch = X_train_feat[b:b + batch_size], Y_train[b:b + batch_size]
             batch_mean = sum(y_batch) / len(y_batch)
             mlp_reg.partial_fit(X_batch, y_batch)
             train_loss.append(mlp_reg.loss_)
-            valid_loss.append(
-                mean_squared_error(Y_valid, mlp_reg.predict(X_valid_feat))
-            )
+            valid_loss.append(mean_squared_error(Y_valid, mlp_reg.predict(X_valid_feat)))
             test_loss.append(mean_squared_error(Y_test, mlp_reg.predict(X_test_feat)))
-            mean_loss.append(
-                mean_squared_error(y_batch, [batch_mean for elem in y_batch])
-            )
+            mean_loss.append(mean_squared_error(y_batch, [batch_mean for elem in y_batch]))
     return mlp_reg, train_loss, valid_loss, test_loss, mean_loss
 
 
-def eval(pred: np.ndarray, true: List[float]) -> Tuple[float, float, float]:
+def plot_loss(train_loss, valid_loss, test_loss, mean_loss, out_path="../../visualizations", target="pc1",
+              embed_type="text", emb_model="", use_gnn_emb=False, use_topic_emb=False, run=1, month="dec"):
+    plt.figure(figsize=(5, 4))
+    plt.rc('font', size=16)
+    plt.plot(range(len(train_loss)), train_loss, label="train loss")
+    plt.plot(range(len(train_loss)), valid_loss, label="validation loss")
+    plt.plot(range(len(train_loss)), test_loss, label="test loss")
+    plt.plot(range(len(train_loss)), mean_loss, label="mean loss")
+    plt.xticks(range(0, len(train_loss) + 1, 1 if len(train_loss) <= 10 else len(train_loss) // 10))
+    plt.xlabel("Epoch")
+    plt.ylabel("MSE")
+    plt.grid(True)
+    plt.legend(fontsize=14)
+    plt.savefig(
+        f"{out_path}/dqr_{month}_{target}_{embed_type}_{emb_model}_{'+GNN-RNI' if use_gnn_emb else ''}_run{str(run)}_loss_128-200-15-60-20-00.pdf",
+        bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+
+
+def plot_histogram(true, pred, out_path="../../visualizations", target="pc1", embed_type="text", emb_model="",
+                   use_gnn_emb=False, use_topic_emb=False, run=1, month="dec"):
+    plt.figure(figsize=(5, 4))
+    plt.hist(pred, bins=50, range=(0, 1), edgecolor='black', color='lightblue', label="Pred")
+    plt.hist(true, bins=50, range=(0, 1), edgecolor='black', color='orange', alpha=0.6, label="True")
+    y_max = max(np.histogram(true, bins=50, range=(0, 1))[0].max(),
+                np.histogram(pred, bins=50, range=(0, 1))[0].max())
+    plt.rc('font', size=15)
+    plt.xticks(np.arange(0, 1.1, 0.2), rotation=0, ha='right')
+    plt.yticks(np.arange(0, y_max + 50, 100), rotation=0, ha='right')
+    plt.xlabel(target.upper().replace("_", "-"))
+    plt.ylabel('Frequancy')
+    plt.legend()
+    plt.savefig(
+        f"{out_path}/dqr_{month}_{target}_{embed_type}_{emb_model}_{'GNN-RNI' if use_gnn_emb else ''}_{'topic-emb' if use_topic_emb else ''}_{'topic-emb' if use_topic_emb else ''}_run{str(run)}_testset_true_vs_pred_frequancy.pdf",
+        bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+
+
+def plot_regression_scatter(true, pred, out_path="../../visualizations", target="pc1", embed_type="text", emb_model="",
+                            use_gnn_emb=False, use_topic_emb=False, run=1, month="dec"):
+    plt.figure(figsize=(5, 4))
+    plt.rc('font', size=16)
+    plt.scatter(true, pred, alpha=0.7)
+    plt.plot([0, 1], [0, 1], color='red', linestyle='-', label='regression line')
+    plt.xticks(np.arange(0, 1.1, 0.2), rotation=0, ha='right')
+    plt.yticks(np.arange(0, 1.1, 0.2), rotation=0, ha='right')
+    plt.xlabel(target.upper().replace("_", "-"))
+    plt.ylabel(f"Predicted {target.upper().replace('_', '-')}")
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(
+        f"{out_path}/dqr_{month}_{target}_{embed_type}_{emb_model}_{'GNN-RNI' if use_gnn_emb else ''}_{'topic-emb' if use_topic_emb else ''}_run{str(run)}_testset_true_vs_pred_scatter.pdf",
+        bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+
+
+def eval(pred, true):
+    max(abs(x - y) for x, y in zip(true, pred))
+    res_df = pd.DataFrame(zip(true, pred), columns=['true', 'pred'])
+    res_df["diff"] = res_df.apply(lambda row: abs(row['true'] - row['pred']), axis=1)
+    max_idx = res_df.idxmax()["diff"]
+    min_idx = res_df.idxmin()["diff"]
+    max_diff_row = res_df.iloc[max_idx]
+    min_diff_row = res_df.iloc[min_idx]
+    max_diff_dict = max_diff_row.to_dict()
+    max_diff_dict["test_idx"] = max_idx
+    min_diff_dict = min_diff_row.to_dict()
+    min_diff_dict["test_idx"] = min_idx
+
     mse = mean_squared_error(true, pred)
+    # print(f"mse={mse}")
     r2 = r2_score(true, pred)
+    # print(f"r2={r2}")
     mae = mean_absolute_error(true, pred)
-    return mse, mae, r2
+    true_mean = mean(true)
+    mean_mae = mean_absolute_error(true, [true_mean for elem in true])
+    # print(f"MAE={mae}")
+    return mse, mae, r2, mean_mae, min_diff_dict, max_diff_dict
 
 
 def main() -> None:
-    root = get_root_dir()
+    root = str(get_root_dir())
+    parser = argparse.ArgumentParser(description="MLP Experiments")
+    parser.add_argument("--target", type=str, default="pc1", choices=["pc1", "mbfc", "mbfc_bias"], help="the credability target")
+    parser.add_argument("--emb_path", type=str, default=str(root + "/data/dqr") ,help="emb files path")
+    parser.add_argument("--dqr_path", type=str, default=str(root + "/data/dqr"),help="dqr dataset path")
+    parser.add_argument("--embed_type", type=str, default="text",
+                        choices=["text", "domainName", "GNN_GAT", "TFIDF", "PASTEL"], help="domains embedding technique")
+    parser.add_argument("--emb_model", type=str, default="embeddingTE3L",
+                        choices=["embeddingQwen3-8B", "embeddingQwen3-0.6B", "embeddinggemma-300m", "embeddingTE3L",
+                                 "IPTC_Topic_emb"],help="LLM embedding model")
+    parser.add_argument("--batch_size", type=int, default=5000,help="training batch size")
+    parser.add_argument("--test_valid_size", type=float, default=0.4,help="ratio of test and vaild sets")
+    parser.add_argument("--emb_dim", type=int, default=4096,help="embedding size")
+    parser.add_argument("--max_iter", type=int, default=200,help="MLP regressor max iteration count")
+    # parser.add_argument("--lr", type=float, default=3e-5)
+    parser.add_argument("--lr", type=float, default=5e-3,help="learning rate")
+    parser.add_argument("--epochs", type=int,default=14,help="# training epochs")  # default 20, 10 for Qwen38B, 10 for TFIDF-PC1, 4 for TFIDF-mbfc , 8 for TE3L, 7 for GNN+TE3L
+    parser.add_argument("--plots_out_path", type=str, default=str(root + "/plots"),help="plots and results store path")
+    parser.add_argument("--runs", type=int, default=1,help="# training runs")
+    parser.add_argument("--use_gnn_emb", type=bool, default=False,help="append GNN embedding")
+    parser.add_argument("--agg_month_emb", type=bool, default=False, help="aggregate montly GNN embeddings")
+    parser.add_argument("--use_topic_emb", type=bool, default=False,help="use topic modeling features")
+    parser.add_argument("--filter_by_GNN_nodes", type=bool, default=True,help="filter by domains has GNN embeddings")
+    parser.add_argument("--filter_by_PASTEL_domains", type=bool, default=False,help="filter by domains has PASTEL embeddings")
+    parser.add_argument("--MultiHead", type=bool, default=True, help="Use MultiHead Model")
+    parser.add_argument("--num_classes", type=int, default=3,help="# classifcation classes for Multihead model")
+    parser.add_argument("--generate_weaksupervision_scores", type=bool, default=False, help="gnerate weak supervision datasets scores")
+    parser.add_argument("--month", type=str, default="dec", choices=["oct", "nov", "dec"],help="CrediBench month snapshot")
     args = parser.parse_args()
-    setup_logging(args.log_file)
-    emb_dict = load_emb_dict(args.embed_type, root / args.emb_path)
-    labeled_11k_df = pd.read_csv(root / 'dqr' / 'domain_ratings.csv')
-    X_train, y_train, X_valid, y_valid, X_test, y_test = train_valid_test_split(
-        args.target, labeled_11k_df, args.test_valid_size
-    )
-    X_train_feat, X_valid_feat, X_test_feat = resize_emb(
-        emb_dict, X_train, X_valid, X_test, args.emb_dim
-    )
-    mlp_reg = MLPRegressor(
-        hidden_layer_sizes=(128, 64),
-        activation='relu',
-        solver='adam',
-        max_iter=args.max_iter,
-        random_state=42,
-        verbose=False,
-        learning_rate_init=args.lr,
-    )
-    mlp_reg, train_loss, valid_loss, test_loss, mean_loss = train_mlp(
-        mlp_reg,
-        X_train_feat,
-        y_train,
-        X_valid_feat,
-        y_valid,
-        X_test_feat,
-        y_test,
-        epochs=args.epochs,
-    )
-    true = y_test
-    pred = mlp_reg.predict(X_test_feat)
+    print("args=", args)
+    ############## Load training data and split ###############
+    text_emb_dict = load_emb_dict(args.embed_type, args.emb_path, args.emb_model, args.month)
+    labeled_11k_df = pd.read_csv(f"{args.dqr_path}/domain_ratings.csv")
+    ############### filter by the 8K GNN Nodes ###################
+    if args.filter_by_GNN_nodes:
+        targets_nodes_df = pd.read_csv(f"{args.dqr_path}/targets_nodes_df.csv")
+        targets_nodes_df["domain_rev"] = targets_nodes_df["domain"].apply(lambda x: '.'.join(str(x).split('.')[::-1]))
+        labeled_11k_df = labeled_11k_df[labeled_11k_df["domain"].isin(targets_nodes_df["domain_rev"])]
+        labeled_11k_df = labeled_11k_df.reset_index(drop=True)
+    if args.filter_by_PASTEL_domains:
+        pastel_emb_dict = {}
+        with open(f'{args.dqr_path}/dqr_hasContent_pastel_dict.pkl', 'rb') as f:
+            pastel_emb_dict = pickle.load(f)
+        labeled_11k_df = labeled_11k_df[labeled_11k_df["domain"].isin(pastel_emb_dict.keys())]
+        labeled_11k_df = labeled_11k_df.reset_index(drop=True)
+    ################# Train #####################
+    results = []
+    for i in range(args.runs):
+        X_train, y_train, X_valid, y_valid, X_test, y_test = train_valid_test_split(args.target, labeled_11k_df,
+                                                                                    args.test_valid_size)
+        if args.embed_type == "TFIDF":
+            print(f"TFIDF dim={text_emb_dict[list(text_emb_dict.keys())[0]].shape[0]}")
+            X_train_feat, X_valid_feat, X_test_feat = resize_emb(text_emb_dict, args.target, X_train, X_valid, X_test,
+                                                                 gnn_emb=None, trim_to=
+                                                                 text_emb_dict[list(text_emb_dict.keys())[0]].shape[0])
+        else:
+            if args.use_gnn_emb or args.use_topic_emb:
+                if args.use_gnn_emb:
+                    if args.agg_month_emb:
+                        gnn_emb_dict = load_agg_Nmonth_emb_dict("GNN_GAT", args.emb_path, agg="avg")
+                        labeled_11k_df = labeled_11k_df[labeled_11k_df["domain"].isin(gnn_emb_dict.keys())]
+                        labeled_11k_df = labeled_11k_df.reset_index(drop=True)
+                        X_train, y_train, X_valid, y_valid, X_test, y_test = train_valid_test_split(args.target,
+                                                                                                    labeled_11k_df,
+                                                                                                    args.test_valid_size)
+                    else:
+                        gnn_emb_dict = load_emb_dict("GNN_GAT", args.emb_path)
+                else:
+                    gnn_emb_dict = None
+                if args.use_topic_emb:
+                    # topic_iptc_emb_dict = load_emb_dict("IPTC_Topic", args.emb_path)
+                    # topic_iptc_emb_dict = load_emb_dict("IPTC_Topic_freq", args.emb_path)
+                    # topic_iptc_emb_dict = load_emb_dict("IPTC_Topic_emb", args.emb_path)
+                    # topic_iptc_emb_dict = load_emb_dict("3Feat", args.emb_path)
+                    # topic_iptc_emb_dict = load_emb_dict("3Feat2", args.emb_path)
+                    # gnn_emb_dict = load_emb_dict("IPTC_Topic", args.emb_path)
+                    topic_iptc_emb_dict = load_emb_dict("PASTEL_hasContent", args.emb_path)
+                else:
+                    topic_iptc_emb_dict = None
+                X_train_feat, X_valid_feat, X_test_feat = resize_emb(text_emb_dict, args.target, X_train, X_valid,
+                                                                     X_test, gnn_emb=gnn_emb_dict,
+                                                                     topic_emb=topic_iptc_emb_dict,
+                                                                     trim_to=args.emb_dim)
+            else:
+                X_train_feat, X_valid_feat, X_test_feat = resize_emb(text_emb_dict, args.target, X_train, X_valid,
+                                                                     X_test, gnn_emb=None, topic_emb=None,
+                                                                     trim_to=args.emb_dim)
 
-    plot_loss(train_loss, valid_loss, test_loss, mean_loss, args.plots_out_path)
-    plot_histogram(true, pred, args.plots_out_path)
-    plot_regression_scatter(true, pred, args.plots_out_path)
-    MSE, MAE, R2 = eval(pred, true)
-    logging.info(f'MSE={MSE}\tR2={R2}\tMAE={MAE}')
+        print(f"X_train_feat.shape={len(X_train_feat[0]) if type(X_train_feat[0]) == list else X_train_feat[0].shape}")
+        if args.MultiHead == False:
+            # mlp_reg = MLPRegressor(hidden_layer_sizes=(128, 64), activation='relu', solver='adam', max_iter=args.max_iter,random_state=42, verbose=False, learning_rate_init=args.lr,alpha=0.001)
+            mlp_reg = MLPRegressor(hidden_layer_sizes=(int(len(X_train_feat[0]) * 0.75), 128, 64, 16),
+                                   activation='relu', solver='adam', max_iter=args.max_iter, random_state=42,
+                                   verbose=False, learning_rate_init=args.lr)
+            mlp_reg, train_loss, valid_loss, test_loss, mean_loss = train_mlp(mlp_reg, X_train_feat, y_train,
+                                                                              X_valid_feat, y_valid, X_test_feat,
+                                                                              y_test, epochs=args.epochs)
+        else:
+            mlp_reg = MultiTaskMLP(input_dim=len(X_train_feat[0]), num_classes=args.num_classes,
+                                   hidden_dims=[int(len(X_train_feat[0]) * 0.9), 64, 16])
+            mlp_reg, train_loss, valid_loss, test_loss, mean_loss = train_multihead(mlp_reg, X_train_feat, y_train,
+                                                                                    X_valid_feat, y_valid, X_test_feat,
+                                                                                    y_test, lr=args.lr,
+                                                                                    epochs=args.epochs, w_reg=0.5,
+                                                                                    w_cls=0.5,
+                                                                                    num_classes=args.num_classes)
+        ################## Weak Supervision ###########
+        if args.generate_weaksupervision_scores == True:
+            if args.agg_month_emb:
+                embd_dict_phishtank, embd_dict_URLhaus, embd_dict_PhishDataset_legit = load_weaksupervision_emb_dict(
+                    args.embed_type, args.emb_path, args.emb_model, month="dec", target=args.target,
+                    gnn_emb=args.use_gnn_emb, agg="avg")
+            else:
+                embd_dict_phishtank, embd_dict_URLhaus, embd_dict_PhishDataset_legit = load_weaksupervision_emb_dict(
+                    args.embed_type, args.emb_path, args.emb_model, month="dec", target=args.target,
+                    gnn_emb=args.use_gnn_emb, agg=None)
+
+            phishtank_features = [v for k, v in embd_dict_phishtank.items()]
+            phishtank_pred = mlp_reg.predict(phishtank_features)
+            pd.DataFrame(zip(embd_dict_phishtank.keys(), phishtank_pred),
+                         columns=["domain", f"pred_{args.target}"]).to_csv(
+                f"{args.plots_out_path}/Phishtank_pred_{args.month}_{args.target}_{args.embed_type}_{args.emb_model}_{'_+GNN-RNI' if args.use_gnn_emb else ''}{'_agg' if args.agg_month_emb else ''}.csv",
+                index=None)
+            # print("phishtank_pred=",phishtank_pred)
+
+            URLhaus_features = [v for k, v in embd_dict_URLhaus.items()]
+            URLhaus_pred = mlp_reg.predict(URLhaus_features)
+            pd.DataFrame(zip(embd_dict_URLhaus.keys(), URLhaus_pred), columns=["domain", f"pred_{args.target}"]).to_csv(
+                f"{args.plots_out_path}/URLhaus_pred_{args.month}_{args.target}_{args.embed_type}_{args.emb_model}_{'_+GNN-RNI' if args.use_gnn_emb else ''}{'_agg' if args.agg_month_emb else ''}.csv",
+                index=None)
+
+            PhishDataset_legit_features = [v for k, v in embd_dict_PhishDataset_legit.items()]
+            PhishDataset_legit_pred = mlp_reg.predict(PhishDataset_legit_features)
+            pd.DataFrame(zip(embd_dict_PhishDataset_legit.keys(), PhishDataset_legit_pred),
+                         columns=["domain", f"pred_{args.target}"]).to_csv(
+                f"{args.plots_out_path}/PhishDataset_legit_pred_{args.month}_{args.target}_{args.embed_type}_{args.emb_model}_{'_+GNN-RNI' if args.use_gnn_emb else ''}{'_agg' if args.agg_month_emb else ''}.csv",
+                index=None)
+        ################## Plot and Eval ###############
+        true = y_test
+        pred = mlp_reg.predict(X_test_feat)
+        plot_loss(train_loss, valid_loss, test_loss, mean_loss, args.plots_out_path, target=args.target,
+                  emb_model=args.emb_model, use_gnn_emb=args.use_gnn_emb, use_topic_emb=args.use_topic_emb,
+                  embed_type=args.embed_type, run=i, month=args.month)
+        plot_histogram(true, pred, args.plots_out_path, target=args.target, emb_model=args.emb_model,
+                       use_gnn_emb=args.use_gnn_emb, use_topic_emb=args.use_topic_emb, embed_type=args.embed_type,
+                       run=i, month=args.month)
+        plot_regression_scatter(true, pred, args.plots_out_path, target=args.target, emb_model=args.emb_model,
+                                use_gnn_emb=args.use_gnn_emb, use_topic_emb=args.use_topic_emb,
+                                embed_type=args.embed_type, run=i, month=args.month)
+        MSE, MAE, R2, Mean_MAE, min_error_dict, max_error_dict = eval(pred, true)
+        min_error_dict["domain"] = X_test.iloc[min_error_dict["test_idx"]]["domain"]
+        max_error_dict["domain"] = X_test.iloc[max_error_dict["test_idx"]]["domain"]
+        results.append([MSE, MAE, R2, Mean_MAE, str(min_error_dict), str(max_error_dict), str(args)])
+        print(
+            f"Run{i}:MSE={MSE}\tR2={R2}\tMAE={MAE}\tMean_MAE={Mean_MAE}\tmin_error_dict={min_error_dict}\tmax_error_dict={max_error_dict}")
+        ############ save test results ############
+        X_test.to_csv(
+            f"{args.plots_out_path}/dqr_testset_{args.month}_{args.target}_{args.embed_type}_{args.emb_model}{'_GNN-RNI' if args.use_gnn_emb else ''}{'_IPTC-emb' if args.use_topic_emb else ''}{'_agg' if args.agg_month_emb else ''}.csv")
+        pd.DataFrame(zip(true, pred), columns=["true", "pred"]).to_csv(
+            f"{args.plots_out_path}/dqr_pred_{args.month}_{args.target}_{args.embed_type}_{args.emb_model}{'_GNN-RNI' if args.use_gnn_emb else ''}{'_IPTC-emb' if args.use_topic_emb else ''}{'_agg' if args.agg_month_emb else ''}.csv",
+            index=None)
+
+    results_df = pd.DataFrame(results, columns=['MSE', 'MAE', 'R2', 'Mean_MAE', 'Min_AE', 'Max_AE', 'args'])
+    results_df.to_csv(
+        f"{args.plots_out_path}/dqr_{args.month}_{args.target}_{args.embed_type}_{args.emb_model}{'_GNN-RNI' if args.use_gnn_emb else ''}{'_+IPTC-emb' if args.use_topic_emb else ''}{'_agg' if args.agg_month_emb else ''}_result.csv", )
+    for col in ['MSE', 'MAE', 'R2', 'Mean_MAE']:
+        print(f"{col}: Mean={results_df[col].mean()}\tstd={results_df[col].std()}")
 
 
 if __name__ == '__main__':

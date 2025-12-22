@@ -7,10 +7,10 @@ from jsonpath_ng import jsonpath, parse as jsonpath_parse
 import os
 import shutil
 import requests
-
 from pyspark.sql import Window
 from pyspark.sql.functions import row_number
 from pyspark.sql import functions as F
+from pyspark.sql.functions import input_file_name
 class ExtractWetContentsJob(CCSparkJob):
     """Extract links from WAT files and redirects from WARC files
     and save them as pairs <from, to>.
@@ -19,7 +19,8 @@ class ExtractWetContentsJob(CCSparkJob):
     num_output_partitions = 4
     name = 'ExtractWetContentsJob'
     output_schema = StructType(
-        [StructField('Domain_Name', StringType(), True),
+        [StructField('FileName', StringType(), True),
+         StructField('Domain_Name', StringType(), True),
          StructField('WARC_Target_URI', StringType(), True),
          StructField('WARC_Identified_Content_Language', StringType(), True),
          StructField('WARC_Date', StringType(), True),
@@ -51,12 +52,13 @@ class ExtractWetContentsJob(CCSparkJob):
 
     def iterate_records(self, warc_uri, archive_iterator):
         count=0
+        file_name=warc_uri.split("/segments/")[-1]
         for record in archive_iterator:
-                for res in self.process_record(record):
-                    Domain_Name, WARC_Target_URI, WARC_Identified_Content_Language, WARC_Date, Content_Type,Content_Length, wet_record_txt=res
-                    if Domain_Name:
-                        yield res
-                self.records_processed.add(1)
+            for res in self.process_record(record):
+                Domain_Name, WARC_Target_URI, WARC_Identified_Content_Language, WARC_Date, Content_Type,Content_Length, wet_record_txt=res
+                if Domain_Name:
+                    yield (file_name,)+res
+            self.records_processed.add(1)
 
 
     @staticmethod
@@ -78,6 +80,8 @@ class ExtractWetContentsJob(CCSparkJob):
                 if len(set(WARC_Identified_Content_Languages_lst) & set(self.supported_langs)) > 0:
                     WARC_Target_URI = record.rec_headers['WARC-Target-URI']
                     Domain_Name = urlparse(WARC_Target_URI).netloc
+                    # FileName=input_file_name()
+                    # print(f"FileName={FileName}")
                     if Domain_Name in self.domains_pc1_dict.value:
                     # if self.is_domain_exist(Domain_Name):
                         # print(f"{Domain_Name} exist")
@@ -124,6 +128,8 @@ class ExtractWetContentsJob(CCSparkJob):
     def load_domain_pc1(domains_pc1_csv_path="../../data/dqr/domain_pc1.csv"):
         doamins_df = pd.read_csv(domains_pc1_csv_path)
         return dict(zip(doamins_df["domain"].tolist(), doamins_df["pc1"].tolist()))
+
+
     def run_job(self, session):
         self.get_logger().info(f"seed domain path={self.args.trusted_domains}")
         out_path=str(session.conf.get("spark.sql.warehouse.dir")).split(":")[-1]+"/"+self.args.output
@@ -132,6 +138,7 @@ class ExtractWetContentsJob(CCSparkJob):
             shutil.rmtree(out_path)
         if self.args.input != '':
             input_data = session.sparkContext.textFile(
+            # input_data=session.sparkContext.wholeTextFiles(
                 self.args.input, minPartitions=self.args.num_input_partitions
             )
             output = input_data.mapPartitionsWithIndex(self.process_warcs)
