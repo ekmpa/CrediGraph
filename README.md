@@ -32,33 +32,34 @@ source .venv/bin/activate
 
 ## Usage
 
-### Running full graph data processing scripts
+### Building Temporal Graphs
 
-The `pipeline.sh` script iteratively runs the pipeline, with optional `--keep idx` to resume construction, skipping the first `idx` files:
+The graph construction can be parallelized. We use a configuration of 16 subfolders, distributed across 16 CPUs. 
 
+First, `cd construction`;
 ```sh
-cd bash_scripts
-
-bash pipeline.sh CC-Crawls/CC-2024-nov.txt # --keep idx
+bash pipeline.sh <start_month> <end_month> <number of subfolders>
+# e.g,
+bash pipeline.sh 'January 2020' 'February 2020' 16
 ```
 
-where `CC-2024-nov.txt` is a `.txt` file with the slice names, e.g one `CC-MAIN-YYYY-WW` per line.
+To launch a cluster job using `run.sh` directly (uses cluster practices for the pipeline): 
+```bash
+sbatch run.sh <start_month> [<end_month>]
+```
+For optimal settings, please see `construction/README.md`.
+
 
 This will construct the graph in `$SCRATCH/crawl-data/CC-MAIN-YYYY-WW/output`.
 
 #### Processing
 
-For processing a graph, run the `main` script in `tgrag/construct_graph_scripts`, with the slice name and the degree threshold `k`.
+For processing a graph, `cd construction` and:
 
 ```sh
-cd ..
-
-uv run python tgrag/construct_graph_scripts/main.py \
-    --slices CC-MAIN-YYYY-WW \
-    --min-deg k \
+bash process.sh "$START_MONTH" "$END_MONTH"
 ```
 
-This will create a `processed-degk/` folder under the slice's `output/` with the processed, filtered csv's, and the target labels in a csv.
 
 ### Running domain's content extraction
 
