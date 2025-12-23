@@ -50,7 +50,7 @@ process() {
 
     echo $GRAPH_DIR
     echo "#####################  start process @ $(date '+%Y-%m-%d %H:%M:%S') #####################"
-    bash $TARGET_SCRIPTS/process_graph.sh $GRAPH_DIR $CRAWL $MIN_DEG
+    bash $TARGET_SCRIPTS/process_graph.sh $GRAPH_DIR $CRAWL $MIN_DEG "20%"
     echo "#####################  end process @ $(date '+%Y-%m-%d %H:%M:%S') #####################"
     
 }

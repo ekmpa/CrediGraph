@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --partition=long  #unkillable #main #long
-#SBATCH --output=logs/Feb-pipeline-%j.out
-#SBATCH --error=logs/Feb-pipeline-%j.err
-#SBATCH --cpus-per-task=8                     # Ask for 4 CPUs
+#SBATCH --output=logs/Mar-pipeline-%j.out
+#SBATCH --error=logs/Mar-pipeline-%j.err
+#SBATCH --cpus-per-task=16                     # Ask for 4 CPUs
 #SBATCH --mem=256G
 #SBATCH --time=168:00:00    
-#SBATCH --job-name=Feb                  # The job will run for 1 day
+#SBATCH --job-name=Mar                # The job will run for 1 day
 
 if [ $# -lt 1 ]; then 
     echo "Usage: $0 <start-month> [<end-month>]"
@@ -18,8 +18,6 @@ elif [ $# -eq 2 ]; then
     START_MONTH="$1"
     END_MONTH="$2"
 fi
-
-# removed #SBATCH --gres=gpu:rtx8000:1   
 
 export PATH="$HOME/bin:$PATH"
 module load python/3.10
@@ -38,7 +36,6 @@ exit_script() {
 
 trap exit_script SIGTERM
 
-bash pipeline.sh "$START_MONTH" "$END_MONTH" 8
+bash pipeline.sh "$START_MONTH" "$END_MONTH" 16
 bash process.sh "$START_MONTH" "$END_MONTH"
 
-# if memory: try lock on aggregate or batch
