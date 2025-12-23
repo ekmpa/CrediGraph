@@ -1,11 +1,13 @@
 # Bash scripts for data processing
 
 > Note: *the slices available through the pipeline depend on the `collinfo.json` file. While we will try to update the repository regularly and thus recommend checking out the latest version of the repository (see below), if you are looking for more recent monthly slices, you can also fetch the json file from Common Crawl directly.*
-> The current version of the repository has data from the following interval:
+> 
+> **The current version of the repository has data from the following interval:**
 >
-> - Start month: March 2014
-> - End month: October 2025
->   Also, *Common Crawl (and CrediBench) technically support earlier indices than the start month indicated below. However, before March 2014, Common Crawl would deliver datasets on a seasonal (or, even earlier, yearly) basis. For consistency in the dataset we only consider the monthly granularity which starts in March 2014.*
+> - **Start month:** March 2014
+> - **End month:** October 2025
+>
+> Also, *Common Crawl (and CrediBench) technically support earlier indices than the start month indicated above. However, before March 2014, Common Crawl would deliver datasets on a seasonal (or, even earlier, yearly) basis. For consistency in the dataset we only consider the monthly granularity which starts in March 2014.*
 
 ## Set-up
 
@@ -24,12 +26,12 @@ Then in the job script, make sure to set `export PATH="$HOME/bin:$PATH"`
 
 ### Building Temporal Graphs
 
-The graph construction can be parallelized. We use a configuration of 8 subfolders, distributed across 8 CPUs. 
+The graph construction can be parallelized. We use a configuration of 16 subfolders, distributed across 16 CPUs. 
 
 ```sh
 bash pipeline.sh <start_month> <end_month> <number of subfolders>
 # e.g,
-bash pipeline.sh 'January 2020' 'February 2020' 8
+bash pipeline.sh 'January 2020' 'February 2020' 16
 ```
 
 To launch a cluster job using `run.sh` directly (uses cluster practices for the pipeline): 
@@ -39,28 +41,32 @@ sbatch run.sh <start_month> [<end_month>]
 e.g.: 
 sbatch --job-name="Jan-Mar"  run.sh 'January 2025' 'March 2025'
 ```
-With no second argument, only a single month is processed. Otherwise, the entire interval is. We find it optimal to launch jobs for a singular month with current set-up of 8 CPUs.
+
+#### Optimal Job Set-up
+With no second argument, only a single month is processed. Otherwise, the entire interval is. We use the following set-up as the optimal one we have found: 
+- Using 16 CPUs, submitting the job for a singular month and instructing it to build 16 subfolders. This allows 16-part parallelized construction and takes just a few days to construct a full, monthly graph. 
+- Though other possibilities include: 
+    - Using 16 CPUs, one can also submit a job that processes *two* months and instruct them each to use 8 subfolders. 
+    - Or, one can submit a 8-CPU and 8-subfolder job for one month, this would usually take up to a week to construct a full graph. 
+    - Note that the spark jobs contains a restriction to run on a singular CPU. Thus, if you wish to run with `# CPU != # total subfolders`, which we find to be suboptimal, you should change that setting (in `bash_scripts/`).
+
+
 
 > ***Note:***
-> With a subfolder division factor set to 8 (with 8 CPUs), currently, the system uses, per batch:
+> With a subfolder division factor set to 16 (with 16 CPUs), currently, the system uses, per batch:
 >
 > - 10 minute for downloading 300 WAT files
-> - 3 hours for processing it into a graph
-> - 15 minutes (on average, increases with size) to aggregate
+> - 2.5-3 hours for processing it into a graph
+> - 15 minutes (on average, but starts at 5 and increases with size) to aggregate
+
+#### Resuming mechanism 
+
+If a job, for any reason (out of time, or see below), fails, a mechanism is in place to store the last-used batch indices in `indices.json`. The pipeline then will automatically retrieve these indices and resume accordingly, when a new job is submitted for the same month. 
 
 > ***Note:***
 >
-> At times, the Common Crawl connection is down. The CrediBench pipeline has safeguards against this (retries and wait periods), but in some cases, the server is just offline for some amount of time. In the pipeline, this will appear most often as a `RuntimeError` in the high-level pipeline (before going into data download) that indicates the fetch from `https://index.commoncrawl.org/collinfo.json` failed. 
+> At times, the Common Crawl connection is down. The CrediBench pipeline has safeguards against this (retries and wait periods), but in some cases, the server is just offline for some amount of time. In the pipeline, this will appear most often as a `RuntimeError` in the high-level pipeline (before going into data download) that indicates the fetch from `https://index.commoncrawl.org/collinfo.json` failed. In the worst failure cases, this will require re-startin the job. 
 
-#### (one batch)
-
-<!--
-TODO: add updated low-level run commands. -->
-
-<!--
-```sh
-./end-to-end.sh ['COMMON-CRAWL-DATES', ...] start_idx end_idx [wat]
-``` -->
 
 ### Extract Wet Content
 
