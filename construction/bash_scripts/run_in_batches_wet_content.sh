@@ -9,4 +9,3 @@ for ((i=0; i<90001; i+=100)); do
     # rm -r ../data/crawl-data/CC-MAIN-2024-51/segments
     rm -r /shared_mnt/tmp/*
 done
-
