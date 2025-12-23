@@ -7,8 +7,6 @@ from typing import List, Optional
 from tgrag.utils.data_loading import check_processed_file
 from tgrag.utils.matching import extract_domain
 
-# make all binary labels standardized and have 0 [unreliable] - 1 [reliable] and 'domain', 'label' columns as csv
-
 
 def process_csv(
     input_csv: Path,
@@ -126,10 +124,11 @@ def process_goggle(goggle_path: Path, output_csv: Path) -> None:
     check_processed_file(output_csv)
 
 
-def merge_processed_labels(processed_dir: Path, output_csv: Path) -> None:
+def collect_merged(paths, output_csv): 
+
     domain_labels = defaultdict(list)
 
-    for csv_path in processed_dir.glob('*.csv'):
+    for csv_path in paths:
         if csv_path.name == output_csv.name:
             continue
 
@@ -150,6 +149,9 @@ def merge_processed_labels(processed_dir: Path, output_csv: Path) -> None:
                 except ValueError:
                     continue
 
+    return domain_labels
+
+def write_merged(domain_labels, output_csv): 
     with output_csv.open('w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow(['domain', 'label'])
@@ -162,8 +164,77 @@ def merge_processed_labels(processed_dir: Path, output_csv: Path) -> None:
             final_label = 1 if avg_label >= 0.5 else 0
             writer.writerow([domain, final_label])
 
+
+def merge_processed_labels(processed_dir: Path, output_csv: Path) -> None:
+    csv_paths = list(processed_dir.glob("*.csv"))
+    domain_labels = collect_merged(csv_paths, output_csv)
+    write_merged(domain_labels, output_csv)
     check_processed_file(output_csv)
 
+def read_weak_labels(path: Path) -> dict[str, int]:
+    weak = {}
+    with path.open("r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            d = row.get("domain")
+            l = row.get("label")
+            if not d or l is None:
+                continue
+            if d.startswith("www."):
+                d = d[4:]
+            weak[d] = int(l)
+    return weak
+
+
+def read_reg_scores(path: Path, score_col: str = "pc1") -> dict[str, float]:
+    reg = {}
+    with path.open("r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            d = row.get("domain")
+            s = row.get(score_col)
+            if not d or s is None:
+                continue
+            if d.startswith("www."):
+                d = d[4:]
+            try:
+                reg[d] = float(s)
+            except ValueError:
+                continue
+    return reg
+
+def merge_reg_class(class_dir: Path, reg_csv: Path, output_csv: Path) -> None:
+    csv_paths = list(class_dir.glob("*.csv")) + [reg_csv]
+    domain_labels = collect_merged(csv_paths, output_csv)
+    write_merged(domain_labels, output_csv)
+    check_processed_file(output_csv)
+
+def merge_reg_class(
+    weak_labels_csv: Path,
+    reg_csv: Path,
+    output_csv: Path,
+) -> None:
+    """
+    Final output schema:
+    domain, weak_label, reg_score
+        - Many domains only have one of the two, then the other is None.
+    """
+
+    weak = read_weak_labels(weak_labels_csv)
+    reg = read_reg_scores(reg_csv)
+
+    all_domains = sorted(set(weak) | set(reg))
+
+    with output_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["domain", "weak_label", "reg_score"])
+
+        for domain in all_domains:
+            writer.writerow([
+                domain,
+                weak.get(domain),   
+                reg.get(domain),      
+            ])
 
 def _load_domains(path: Path, domain_col: str = 'domain') -> set:
     domains = set()
@@ -200,14 +271,15 @@ def check_overlaps(strong_labels: Path, weak_labels: Path) -> None:
 
 
 def main() -> None:
+    data_dir = Path('./data')
     classification_dir = Path('./data/classification')
     regression_dir = Path('./data/regression')
 
     class_raw = classification_dir / 'raw'
     class_proc = classification_dir / 'processed'
 
-    regression_dir / 'raw'
-    regression_dir / 'processed'
+    reg_raw = regression_dir / 'raw'
+    reg_proc = regression_dir / 'processed'
 
     print('======= LegitPhish ========')
     process_csv(
@@ -284,6 +356,27 @@ def main() -> None:
         Path(f'{class_proc}/labels.csv'),
     )
 
+    print('======== Merging with reg scores =========')
+    merge_reg_class(
+        Path(f'{class_proc}/labels.csv'),     
+        Path(f'{reg_proc}/domain_pc1.csv'),    
+        Path(f'{data_dir}/labels.csv'),        
+    )
+
+    path = Path("data/labels.csv")
+
+    total = 0
+    non_null = 0
+
+    with path.open("r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            total += 1
+            if row.get("reg_score") not in (None, "", "NA"):
+                non_null += 1
+
+    print(f"Total rows: {total}")
+    print(f"Rows with reg_score: {non_null}")
 
 if __name__ == '__main__':
     main()
