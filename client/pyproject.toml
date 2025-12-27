@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "credigraph"
+version = "0.1.1"
+description = "Python client for the CrediGraph API"
+authors = [{name = "Complex Data Lab"}]
+dependencies = ["requests"]
+
+[tool.setuptools]
+packages = ["credigraph"]
+
+[project.urls]
+Homepage = "https://huggingface.co/spaces/ekmpa/credibench-api"
