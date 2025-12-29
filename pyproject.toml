@@ -29,6 +29,10 @@ dependencies = [
     "jsonpath-ng>=1.7.0",
     "ollama>=0.5.0",
     "nltk",
+    "lightgbm>=3.3.5",
+    "pandas",
+    "pyarrow",
+    "huggingface-hub",
 ]
 
 [tool.flit.module]

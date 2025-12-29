@@ -130,6 +130,11 @@ class CCSparkJob(object):
             '--trusted_domains',
             help='The trusted domains pc1 .csv file to filter the WET file domains',
         )
+        arg_parser.add_argument(
+            '--filter_by_supported_languages',
+            action='store_true',
+            help='Whether to filter_by_supported_languages or not',
+        )
 
         self.add_arguments(arg_parser)
         args = arg_parser.parse_args()

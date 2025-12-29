@@ -1,0 +1,12 @@
+- UV env activate
+    source .venv/bin/activate
+
+- upload content-embedding-to_HF
+huggingface-cli upload ComplexDataLab/CrediBench
+./content_emb/dec2024_wetcontent_embeddinggemma-300m/Credibench_dec2024_wetcontent_embeddinggemma-300m/
+content_embedding/dec2024/embeddinggema-300m/
+    --repo-type dataset --commit-message "Add dec2024 content embedding gemma-300m"
+
+   - squeue -u abdallah
+   - sbatch job_content_emb_nov2024.sh 8 8  30
+

@@ -6,6 +6,7 @@ from urllib.parse import urljoin, urlparse
 from jsonpath_ng import jsonpath, parse as jsonpath_parse
 import os
 import shutil
+import urllib
 import requests
 from pyspark.sql import Window
 from pyspark.sql.functions import row_number
@@ -76,14 +77,12 @@ class ExtractWetContentsJob(CCSparkJob):
             if WARC_Identified_Content_Language:
                 WARC_Identified_Content_Languages_lst = WARC_Identified_Content_Language.split(",")
                 Domain_Name, WARC_Target_URI, WARC_Date, Content_Type, Content_Length, wet_record_txt = None, None, None, None, None, None
-
-                if len(set(WARC_Identified_Content_Languages_lst) & set(self.supported_langs)) > 0:
+                # if len(set(WARC_Identified_Content_Languages_lst) & set(self.supported_langs)) > 0:
+                if 1 == 1:
                     WARC_Target_URI = record.rec_headers['WARC-Target-URI']
-                    Domain_Name = urlparse(WARC_Target_URI).netloc
-                    # FileName=input_file_name()
-                    # print(f"FileName={FileName}")
-                    if Domain_Name in self.domains_pc1_dict.value:
-                    # if self.is_domain_exist(Domain_Name):
+                    Domain_Name = urllib.parse.unquote(WARC_Target_URI.split("/")[2].split("www.")[-1].split("?")[0])
+                    if Domain_Name in self.domains_set.value:
+                        # if self.is_domain_exist(Domain_Name):
                         # print(f"{Domain_Name} exist")
                         WARC_Date = record.rec_headers['WARC-Date']
                         Content_Type = record.rec_headers['Content-Type']
@@ -92,7 +91,8 @@ class ExtractWetContentsJob(CCSparkJob):
                     else:
                         # print(f"{Domain_Name} Not exist")
                         Domain_Name = None
-                yield (Domain_Name, WARC_Target_URI, WARC_Identified_Content_Language, WARC_Date, Content_Type, Content_Length, wet_record_txt)
+                yield (Domain_Name, WARC_Target_URI, WARC_Identified_Content_Language, WARC_Date, Content_Type,
+                       Content_Length, wet_record_txt)
             return (None, None, None, None, None, None, None)
         else:
             return (None, None, None, None, None, None, None)

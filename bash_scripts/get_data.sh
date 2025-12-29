@@ -11,7 +11,9 @@ fetch_with_retries() {
          --retry-on-http-error=429,500,502,503,504 \
          --timeout=60 --read-timeout=60 \
          -O "$tmp" "$url" && status=0 || status=$?
-    if [[ $status -eq 0 ]] && gzip -t "$tmp" 2>/dev/null; then
+#    echo "status=$status tmp=$tmp"
+    if [[ $status -eq 0 ]] && ([[ $url = *.parquet ]] || ([[ $url = *.gz ]] && gzip -t "$tmp" 2>/dev/null)); then
+      echo "url=$url"
       mv -f "$tmp" "$out"
       return 0
     fi
@@ -103,10 +105,16 @@ for data_type in  "${cc_file_types[@]}" ; do
 
   input="$INPUT_DIR/all_${data_type}_${CRAWL}.txt"
   echo "All ${data_type} files of ${CRAWL}: $input"
-  listing_content=$(gzip -dc "$listing")
   all_listing_content_path="$INPUT_DIR/test_all_${data_type}.txt"
-  echo "file:$listing_content" >>"$all_listing_content_path"
 
+  if [[ "$data_type" = "cc-index-table" ]]; then
+    listing_content=$(gzip -dc "$listing" | grep -F "/subset=warc/")
+    echo "cc-index-table listing_content=$listing_content"
+  else
+    listing_content=$(gzip -dc "$listing")
+  fi
+
+  echo "file:$listing_content" >>"$all_listing_content_path"
   listing_FilesCount=$(wc -l <<< "$listing_content")
   echo "listing_FilesCount=$listing_FilesCount"
   if [ "$listing_FilesCount" -lt "$end_idx" ] ; then
@@ -137,15 +145,29 @@ for data_type in  "${cc_file_types[@]}" ; do
   : > "$fail_log"
 
   while IFS= read -r wat_file; do
-    first=$(echo "$wat_file" | awk -F '/'$data_type'/' '{print $1}')
+    echo "wat_file=$wat_file"
+    if [[ "$data_type" = "cc-index-table" ]]; then
+      first=$(echo "$wat_file" | awk -F '/subset=warc/' '{print $1}')
+    else
+      first=$(echo "$wat_file" | awk -F '/'$data_type'/' '{print $1}')
+    fi
+    echo "first=$first"
     file_path="$DATA_DIR/$wat_file"
-    target_dir="$DATA_DIR/$first/$data_type/"
+    echo "file_path=$file_path"
+    if [[ "$data_type" = "cc-index-table" ]]; then
+      target_dir="$DATA_DIR/$first/subset=warc/"
+    else
+      target_dir="$DATA_DIR/$first/$data_type/"
+    fi
+    echo "target_dir=$target_dir"
     target_file="${target_dir}$(basename "$wat_file")"
+    echo "target_file=$target_file"
 
     if [ -f "$file_path" ] || [ -f "$target_file" ]; then
       # verify gzip; re-download if corrupt
       test -f "$file_path" && cand="$file_path" || cand="$target_file"
-      if gzip -t "$cand" 2>/dev/null; then
+      echo "cand=$cand"
+      if [[ $cand = *.parquet ]] || ([[ $cand = *.gz ]] && gzip -t "$cand" 2>/dev/null); then
         echo "File '$cand' exists."
         downloaded=$((downloaded+1))
         continue
@@ -168,7 +190,5 @@ for data_type in  "${cc_file_types[@]}" ; do
     fi
 
   done <<< "$wat_files"
-
   echo "[SUMMARY] $CRAWL type=$data_type downloaded=$downloaded skipped=$skipped fail_log=$fail_log"
-
 done
