@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Dict, List
 
 from tgrag.utils.path import get_root_dir
@@ -13,4 +14,16 @@ def get_full_dict() -> Dict[str, List[float]]:
         for line in f:
             parts = line.strip().split(',')
             wanted_domains[parts[0]] = [float(x) for x in parts[1:]]
+    return wanted_domains
+
+
+def get_weak_set(path: Path) -> List[str]:
+    """Get the weak set of domains."""
+    wanted_domains: List[str] = []
+    with open(path, 'r', encoding='utf-8') as f:
+        next(f)
+        for line in f:
+            parts = line.strip().split(',')
+            wanted_domains.append(parts[1])
+
     return wanted_domains

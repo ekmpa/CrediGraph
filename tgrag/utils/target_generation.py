@@ -1,7 +1,7 @@
 import csv
 import gzip
 from collections import Counter, defaultdict
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import tldextract
 from tqdm import tqdm
@@ -15,7 +15,7 @@ SAMPLES_PER_DOMAIN = 5
 
 
 def strict_exact_etld1_match(
-    raw_domain: str, rated_domains: Dict[str, List[float]]
+    raw_domain: str, rated_domains: Union[Dict[str, List[float]], List[str]]
 ) -> Optional[str]:
     """Accept only if rotating labels yields EXACTLY eTLD+1 (no subdomain) that exists in rated_domains.
     Examples matching: 'news.cn' -> 'news.cn'; 'co.uk.theregister' -> 'theregister.co.uk'
@@ -32,11 +32,11 @@ def strict_exact_etld1_match(
             continue
         if ext.subdomain:  # exact only
             continue
-        etld1 = f'{ext.domain}.{ext.suffix}'
+        etld1_dqr = f'{ext.domain}.{ext.suffix}'
         if (
-            rotated_str == etld1 and etld1 in rated_domains
+            rotated_str == etld1_dqr and etld1_dqr in rated_domains
         ):  # rotated string itself should exactly equal eTLD+1
-            return etld1
+            return etld1_dqr
     return None
 
 
@@ -61,14 +61,14 @@ def generate_exact_targets(
                 continue
             raw_domain = parts[1].strip()
 
-            etld1 = strict_exact_etld1_match(raw_domain, dqr_domains)
-            if etld1 is None:
+            etld1_dqr = strict_exact_etld1_match(raw_domain, dqr_domains)
+            if etld1_dqr is None:
                 rejected += 1
                 continue
 
-            metrics = dqr_domains[etld1]
-            if etld1 not in chosen:
-                chosen[etld1] = (nid, metrics)
+            metrics = dqr_domains[etld1_dqr]
+            if etld1_dqr not in chosen:
+                chosen[etld1_dqr] = (nid, metrics)
 
     with open(targets_csv_out, 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
@@ -103,10 +103,15 @@ def generate_exact_targets(
 
 
 def generate_exact_targets_csv(
-    node_file: str, targets_csv_out: str, dqr_domains: Dict[str, List[float]]
+    node_file: str,
+    targets_csv_out: str,
+    dqr_domains: Dict[str, List[float]],
+    legitimate_domains: List[str],
+    phishing_domains: List[str],
+    malware_domains: List[str],
 ) -> None:
     """Generate targets.csv with exact domain matches."""
-    chosen: Dict[str, List[float]] = {}  # domain -> (domain, metrics)
+    chosen: Dict[str, List[Any]] = {}  # domain -> (domain, metrics)
     total_lines = 0
     rejected = 0
 
@@ -118,38 +123,39 @@ def generate_exact_targets_csv(
             if not raw_domain:
                 continue
 
-            etld1 = strict_exact_etld1_match(raw_domain, dqr_domains)
-            if etld1 is None:
-                rejected += 1
-                continue
+            etld1_dqr = strict_exact_etld1_match(raw_domain, dqr_domains)
+            if etld1_dqr is not None:
+                pc1 = dqr_domains[etld1_dqr][0]
+                if etld1_dqr not in chosen:
+                    chosen[reverse_domain(etld1_dqr)] = [
+                        pc1,
+                        -1,
+                    ]  # one being credibly. Assuming binary: non-credible/credible
+                    continue
 
-            metrics = dqr_domains[etld1]
-            if etld1 not in chosen:
-                chosen[reverse_domain(etld1)] = metrics
+            etld1_legit = strict_exact_etld1_match(raw_domain, legitimate_domains)
+            if etld1_legit is not None:
+                if etld1_legit not in chosen:
+                    chosen[reverse_domain(etld1_legit)] = [-1.0, 1]
+                    continue
+
+            etld1_phishing = strict_exact_etld1_match(raw_domain, phishing_domains)
+            if etld1_phishing is not None:
+                if etld1_phishing not in chosen:
+                    chosen[reverse_domain(etld1_phishing)] = [-1.0, 0]
+                    continue
+
+            etld1_malware = strict_exact_etld1_match(raw_domain, malware_domains)
+            if etld1_malware is not None:
+                if etld1_malware not in chosen:
+                    chosen[reverse_domain(etld1_malware)] = [-1.0, 0]
+                    continue
+
+            rejected += 1
 
     with open(targets_csv_out, 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(
-            [
-                'domain',
-                'pc1',
-                'afm',
-                'afm_bias',
-                'afm_min',
-                'afm_rely',
-                'fc',
-                'mbfc',
-                'mbfc_bias',
-                'mbfc_fact',
-                'mbfc_min',
-                'lewandowsky_acc',
-                'lewandowsky_trans',
-                'lewandowsky_rely',
-                'lewandowsky_mean',
-                'lewandowsky_min',
-                'misinfome_bin',
-            ]
-        )
+        writer.writerow(['domain', 'pc1', 'class'])
         for domain, values in tqdm(chosen.items(), desc='Writing target features'):
             writer.writerow([domain, *values])
 
