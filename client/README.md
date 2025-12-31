@@ -1,4 +1,4 @@
-# CrediBench Client
+# CrediBench Client [currently: not live]
 
 Python client for the CrediGraph API.
 
