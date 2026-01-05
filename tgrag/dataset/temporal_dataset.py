@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -10,7 +10,8 @@ from torch_geometric.data import Data, InMemoryDataset
 
 from tgrag.encoders.encoder import Encoder
 from tgrag.utils.dataset_loading import load_large_edge_csv, load_node_csv
-from tgrag.utils.load_labels import get_full_dict
+from tgrag.utils.load_labels import get_full_dict, get_weak_set
+from tgrag.utils.path import get_root_dir
 from tgrag.utils.target_generation import generate_exact_targets_csv
 
 
@@ -21,13 +22,13 @@ class TemporalDataset(InMemoryDataset):
         node_file: str = 'features.csv',
         edge_file: str = 'edges.csv',
         target_file: str = 'target.csv',
-        target_col: str = 'score',
         target_index_name: str = 'nid',
         target_index_col: int = 0,
         edge_src_col: str = 'src',
         edge_dst_col: str = 'dst',
         index_col: int = 1,
         index_name: str = 'node_id',
+        target_col: Union[List[str], str] = 'score',
         encoding: Optional[Dict[str, Encoder]] = None,
         transform: Optional[Callable] = None,
         pre_transform: Optional[Callable] = None,
@@ -75,12 +76,32 @@ class TemporalDataset(InMemoryDataset):
         node_path = os.path.join(self.raw_dir, self.node_file)
         edge_path = os.path.join(self.raw_dir, self.edge_file)
         target_path = os.path.join(self.raw_dir, self.target_file)
+        root = get_root_dir()
         if os.path.exists(target_path):
             logging.info('Target file already exists.')
         else:
             logging.info('Generating target file.')
             dqr = get_full_dict()
-            generate_exact_targets_csv(node_path, target_path, dqr)
+            legitimate = get_weak_set(
+                root
+                / 'data'
+                / 'phishing_data'
+                / 'cc_dec_2024_PhishDataset_legit_domains.csv'
+            )
+            malware = get_weak_set(
+                root / 'data' / 'phishing_data' / 'cc_dec_2024_URLhaus_domains.csv'
+            )
+            phishing = get_weak_set(
+                root / 'data' / 'phishing_data' / 'cc_dec_2024_phishtank_domains.csv'
+            )
+            generate_exact_targets_csv(
+                node_path,
+                target_path,
+                dqr,
+                legitimate_domains=legitimate,
+                malware_domains=malware,
+                phishing_domains=phishing,
+            )
 
         logging.info('***Constructing Feature Matrix***')
         x_full, mapping, full_index = load_node_csv(
@@ -107,16 +128,22 @@ class TemporalDataset(InMemoryDataset):
         df_target = pd.concat([df_target, filler])
         df_target.sort_index(inplace=True)
         logging.info(f'Size of filled target dataframe: {df_target.shape}')
+        logging.info(f'Using {self.target_col} for score.')
         score = torch.tensor(
             df_target[self.target_col].astype('float32').fillna(-1).values,
             dtype=torch.float,
         )
         logging.info(f'Size of score vector: {score.size()}')
 
-        labeled_mask = score != -1.0
+        mask_dqr = (score != -1.0)[:, 0]
+        mask_class = (score != -1.0)[:, 1]
 
-        labeled_idx = torch.nonzero(torch.tensor(labeled_mask), as_tuple=True)[0]
-        labeled_scores = score[labeled_idx].squeeze().numpy()
+        labeled_mask = torch.logical_or(mask_dqr, mask_class)
+
+        labeled_idx = torch.nonzero(
+            torch.tensor(labeled_mask.detach().clone()), as_tuple=True
+        )[0]
+        labeled_scores = score[:, 0][labeled_idx].squeeze().numpy()
 
         if labeled_scores.size == 0:
             raise ValueError(

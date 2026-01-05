@@ -28,7 +28,10 @@ def train(
     model: torch.nn.Module,
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
+    w_reg: float = 0.8,
+    w_cls: float = 0.2,
 ) -> Tuple[float, float, Tensor, Tensor]:
+    assert w_reg + w_cls == 1
     model.train()
     device = next(model.parameters()).device
     total_loss = 0
@@ -38,13 +41,19 @@ def train(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
-        targets = batch.y
+        preds, cls_preds = model(batch.x, batch.edge_index)
+        preds = preds.squeeze()
+        targets = batch.y[:, 0]
+        targets_cls = batch.y[:, 1]
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
             continue
 
-        loss = F.l1_loss(preds[train_mask], targets[train_mask])
+        loss_reg = F.l1_loss(preds[train_mask], targets[train_mask])
+        loss_ce = F.cross_entropy(input=cls_preds, target=targets_cls)
+
+        loss = w_reg * loss_reg + w_cls * loss_ce
+
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -63,26 +72,45 @@ def train_(
     model: torch.nn.Module,
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
+    w_reg: float = 0.8,
+    w_cls: float = 0.2,
 ) -> Tuple[float, float, List[float], List[float]]:
+    assert w_reg + w_cls == 1
     model.train()
     device = next(model.parameters()).device
     total_loss = 0
     total_batches = 0
     all_preds = []
     all_targets = []
-    # TODO: Score in one list
     pred_scores = []
     target_scores = []
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
-        targets = batch.y
+        preds, cls_preds = model(batch.x, batch.edge_index)
+        preds = preds.squeeze()
+        targets = batch.y[:, 0]
+        targets_cls = batch.y[:, 1]
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
             continue
 
-        loss = F.l1_loss(preds[train_mask], targets[train_mask])
+        regression_indices = torch.nonzero(targets != -1.0)
+        cls_indices = torch.nonzero(targets_cls != -1.0).view(-1)
+
+        targets_cls = targets_cls[cls_indices].long()
+        if regression_indices.numel() and cls_indices.numel():
+            loss_reg = F.l1_loss(preds[regression_indices], targets[regression_indices])
+            loss_ce = F.cross_entropy(input=cls_preds[cls_indices], target=targets_cls)
+            loss = w_reg * loss_reg + w_cls * loss_ce
+
+        elif regression_indices.numel():
+            loss = F.l1_loss(preds[regression_indices], targets[regression_indices])
+        elif cls_indices.numel():
+            loss = F.cross_entropy(input=cls_preds[cls_indices], target=targets_cls)
+        else:
+            raise Exception('Regression and CLS indices are empty.')
+
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -117,23 +145,28 @@ def evaluate(
     all_targets = []
     for batch in loader:
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
-        targets = batch.y
+        preds, _ = model(batch.x, batch.edge_index)
+        preds = preds.squeeze()
+        targets = batch.y[:, 0]
         mask = getattr(batch, mask_name)
         if mask.sum() == 0:
             continue
-        # MEAN: 0.546
-        mean_preds = torch.full(batch.y[mask].size(), 0.5).to(device)
-        random_preds = torch.rand(batch.y[mask].size(0)).to(device)
-        loss = F.l1_loss(preds[mask], targets[mask])
-        mean_loss = F.l1_loss(mean_preds, targets[mask])
-        random_loss = F.l1_loss(random_preds, targets[mask])
+        regression_indices = torch.nonzero(targets != -1.0)
+        if regression_indices.numel():
+            mean_preds = torch.full(targets[regression_indices].size(), 0.546).to(
+                device
+            )
+            random_preds = torch.rand(targets[regression_indices].size()).to(device)
+            loss = F.l1_loss(preds[regression_indices], targets[regression_indices])
+            mean_loss = F.l1_loss(mean_preds, targets[regression_indices])
+            random_loss = F.l1_loss(random_preds, targets[regression_indices])
 
-        # TODO: Change this to report the loss of mean to be accurate. Use full score for don't average per batch.
-        total_loss += loss.item()
-        total_mean_loss += mean_loss.item()
-        total_random_loss += random_loss.item()
-        total_batches += 1
+            total_loss += loss.item()
+            total_mean_loss += mean_loss.item()
+            total_random_loss += random_loss.item()
+            total_batches += 1
+        else:
+            continue
 
         all_preds.append(preds[mask])
         all_targets.append(targets[mask])
@@ -220,6 +253,7 @@ def run_gnn_baseline(
             out_channels=model_arguments.embedding_dimension,
             num_layers=model_arguments.num_layers,
             dropout=model_arguments.dropout,
+            num_classes=2,
         ).to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
