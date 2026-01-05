@@ -72,6 +72,7 @@ def get_embeddings(
     all_domain_to_embeddings = {}
 
     for idx_batch in tqdm(idx_loader, desc='Batching Domain Index'):
+        logging.info(f'idx_batch size: {idx_batch.size()}')
         loader = NeighborLoader(
             data,
             input_nodes=idx_batch,
