@@ -4,68 +4,28 @@
 # - And newly-isolated nodes
 # - Add timestamps to vertices and edges (outputs in csv.gz)
 
+
 import gzip
-import os
+import os 
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import Optional, Tuple
 
-from tgrag.utils.data_loading import (
+from tgrag.utils.data_io import (
     count_lines,
     gz_line_reader,
+    write_endpoints
+)
+
+from tgrag.utils.temporal_utils import (
     iso_week_to_timestamp,
 )
 
-
-def run_sort(
-    in_path: str | Path,
-    out_path: str | Path,
-    *,
-    sort_cmd: str = 'sort',
-    mem: str = '60%',
-    tmpdir: str | Path,
-    delimiter: Optional[str] = None,
-    key_start_col: Optional[int] = None,
-    key_numeric: bool = False,
-    unique: bool = False,
-) -> None:
-    env = os.environ.copy()
-    env['LC_ALL'] = 'C'
-    cmd = [sort_cmd, '-S', mem, '-T', str(tmpdir)]
-    if delimiter is not None:
-        cmd += ['-t', delimiter]
-    if key_start_col is not None:
-        k = f'{key_start_col},{key_start_col}' + ('n' if key_numeric else '')
-        cmd += ['-k', k]
-    if unique:
-        cmd += ['-u']
-    cmd += [str(in_path)]
-    out_path = Path(out_path)
-    with out_path.open('w', encoding='utf-8', newline='') as fout:
-        p = subprocess.Popen(
-            cmd, stdout=fout, stderr=subprocess.PIPE, text=True, env=env
-        )
-        _, err = p.communicate()
-        if p.returncode != 0:
-            raise RuntimeError(f"sort failed: {' '.join(cmd)}\n{err}")
-
-
-def write_endpoints(edges_gz: Path, endpoints_path: str | Path) -> Tuple[int, int]:
-    """Write one endpoint per line (both src and dst). Return (#edges, #lines_written)."""
-    E = 0
-    lines = 0
-    with open(endpoints_path, 'w', encoding='utf-8', newline='') as out:
-        for line in gz_line_reader(edges_gz):
-            src, dst = line.split('\t', 1)
-            src = src.strip()
-            dst = dst.strip()
-            out.write(f'{src}\n')
-            out.write(f'{dst}\n')
-            lines += 2
-            E += 1
-    return E, lines
-
+from tgrag.utils.graph_manip import (
+    compute_vertices_from_edges,
+    run_sort,
+)
 
 def count_sorted_keys(sorted_path: str | Path, out_tsv: str | Path) -> int:
     """Given a file sorted by key (one key per line), write 'key<TAB>count' and return #unique."""
@@ -311,99 +271,6 @@ def _stats_initial(
         density=density,
     )
 
-
-def recompute_vertices_from_edges(
-    edges_path: str | Path,
-    out_vertices_gz: str | Path,
-    ts_str: str,
-    *,
-    sort_cmd: str,
-    mem: str,
-) -> dict:
-    """Final stats + write vertices.csv.gz (domain,ts) for nodes with degree > 0 in filtered graph."""
-    with tempfile.TemporaryDirectory(prefix='deg_') as tdf:
-        td = Path(tdf)
-        endpoints = td / 'endpoints.txt'
-        with (
-            open(edges_path, 'r', encoding='utf-8', newline='') as fin,
-            open(endpoints, 'w', encoding='utf-8', newline='') as fout,
-        ):
-            for line in fin:
-                if not line:
-                    continue
-                s, t = line.rstrip('\n').split('\t')
-                s = s.strip()
-                t = t.strip()
-                if not s or not t:
-                    continue
-                fout.write(f'{s}\n')
-                fout.write(f'{t}\n')
-        sorted_endpoints = td / 'endpoints.sorted.txt'
-        run_sort(endpoints, sorted_endpoints, tmpdir=td, sort_cmd=sort_cmd, mem=mem)
-
-        # stream degrees + write vertices
-        V = 0
-        sum_deg = 0
-        min_deg = None
-        max_deg = 0
-        leaves = 0
-        prev = None
-        c = 0
-        with (
-            open(sorted_endpoints, 'r', encoding='utf-8', newline='') as fin,
-            gzip.open(out_vertices_gz, 'wt', encoding='utf-8', newline='') as gzv,
-        ):
-            gzv.write('domain,ts\n')
-            for dom in fin:
-                dom = dom.rstrip('\n').strip()
-                if not dom:
-                    continue
-                if prev is None:
-                    prev, c = dom, 1
-                elif dom == prev:
-                    c += 1
-                else:
-                    V += 1
-                    sum_deg += c
-                    if min_deg is None or c < min_deg:
-                        min_deg = c
-                    if c > max_deg:
-                        max_deg = c
-                    if c == 1:
-                        leaves += 1
-                    gzv.write(f'{prev},{ts_str}\n')
-                    prev, c = dom, 1
-            if prev is not None:
-                V += 1
-                sum_deg += c
-                if min_deg is None or c < min_deg:
-                    min_deg = c
-                if c > max_deg:
-                    max_deg = c
-                if c == 1:
-                    leaves += 1
-                gzv.write(f'{prev},{ts_str}\n')
-
-        E = count_lines(str(edges_path))
-        mean_deg = (sum_deg / V) if V else 0.0
-        isolated = 0  # final graph excludes deg==0 by construction
-        density = _compute_density(V, E)
-        print(
-            f'[STATS:final] V={V:,}  E={E:,}  deg(min/mean/max)={min_deg}/{mean_deg:.3f}/{max_deg}  '
-            f'isolated={isolated:,}  leaves={leaves:,}  density={density:.6g}'
-        )
-        return dict(
-            V=V,
-            E=E,
-            min=min_deg,
-            mean=mean_deg,
-            max=max_deg,
-            isolated=isolated,
-            leaves=leaves,
-            density=density,
-        )
-
-
 def process_graph(
     graph: str,
     slice_str: str,
@@ -433,6 +300,9 @@ def process_graph(
         run_sort(endpoints, endpoints_sorted, tmpdir=td, sort_cmd=sort_cmd, mem=mem)
         degrees_initial = td / 'degrees.initial.tsv'
         count_sorted_keys(endpoints_sorted, degrees_initial)
+
+        os.remove(endpoints)
+        os.remove(endpoints_sorted)
 
         # initial stats
         _stats_initial(
@@ -512,10 +382,11 @@ def process_graph(
                     continue
                 gzout.write(f'{src},{dst},{ts}\n')
 
-        # recompute degrees on filtered graph, write vertices.csv.gz, & log final stats
+        # (4) recompute degrees on filtered graph, write vertices.csv.gz
+        #     vertices.csv.gz: domain,ts,in_deg,out_deg
         print('[STEP] recomputing degrees on filtered graph + writing vertices')
         vertices_csv_gz = out_dir / 'vertices.csv.gz'
-        _ = recompute_vertices_from_edges(
+        _ = compute_vertices_from_edges(
             filtered_edges_tsv, vertices_csv_gz, ts, sort_cmd=sort_cmd, mem=mem
         )
 
