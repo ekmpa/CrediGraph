@@ -9,6 +9,8 @@ from torch_geometric.typing import EdgeTensorType
 
 
 class Rel:
+    """Container for metadata and cached data of a single edge relation."""
+
     def __init__(
         self,
         edge_type: Tuple[str, str, str],
@@ -18,6 +20,22 @@ class Rel:
         materialized: bool = False,
         edge_index: Optional[EdgeTensorType] = None,
     ) -> None:
+        """Initialize a relation descriptor.
+
+        Parameters:
+            edge_type : Tuple[str, str, str]
+                Edge type tuple (src_type, relation, dst_type).
+            layout : EdgeLayout
+                Edge layout format (e.g., COO).
+            is_sorted : bool
+                Whether the edge index is sorted.
+            size : Tuple[int, int]
+                Number of unique source and destination nodes.
+            materialized : bool, optional
+                Whether the edge index has been loaded into memory.
+            edge_index : Optional[EdgeTensorType], optional
+                Cached edge index tensor.
+        """
         self.edge_type = edge_type
         self.layout = layout
         self.is_sorted = is_sorted
@@ -27,7 +45,15 @@ class Rel:
 
 
 class SQLiteGraphStore(GraphStore):
+    """GraphStore backed by a SQLite database."""
+
     def __init__(self, db_path: Path) -> None:
+        """Open a SQLite database and initialize edge relation metadata.
+
+        Parameters:
+            db_path : Path
+                Path to the SQLite database file.
+        """
         super().__init__()
         self.db_path = db_path
         self.con = sqlite3.connect(db_path)
@@ -37,13 +63,31 @@ class SQLiteGraphStore(GraphStore):
         self.store: Dict[Tuple, Rel] = {}
         self._populate_edge_attrs()
 
-    # Helper: unique key for an edge attribute
     @staticmethod
     def key(attr: EdgeAttr) -> Tuple:
+        """Return a unique key for an edge attribute.
+
+        Parameters:
+            attr : EdgeAttr
+                Edge attribute descriptor.
+
+        Returns:
+            Tuple
+                Hashable key identifying the edge attribute.
+        """
         return (attr.edge_type, attr.layout.value, attr.is_sorted)
 
     def _get_size(self, relation: str) -> Tuple[int, int]:
-        """Return the number of unique source and destination nodes for a relation."""
+        """Return the number of unique source and destination nodes for a relation.
+
+        Parameters:
+            relation : str
+                Relation name.
+
+        Returns:
+            Tuple[int, int]
+                (num_unique_sources, num_unique_destinations)
+        """
         query = """
             SELECT
                 COUNT(DISTINCT src_id),
@@ -57,6 +101,7 @@ class SQLiteGraphStore(GraphStore):
         return (src_count, dst_count)
 
     def _populate_edge_attrs(self) -> None:
+        """Populate the internal relation store from the edges table."""
         self.cursor.execute('SELECT DISTINCT relation FROM edges')
         for row in self.cursor.fetchall():
             rel_name = row['relation']
@@ -67,9 +112,25 @@ class SQLiteGraphStore(GraphStore):
             self.store[key] = rel
 
     def _put_edge_index(self, edge_index: EdgeTensorType, edge_attr: EdgeAttr) -> bool:
+        """Writing edge indices is not supported.
+
+        Raises:
+            NotImplementedError
+                Always raised when called.
+        """
         raise NotImplementedError('Writing edges not supported yet.')
 
     def _get_edge_index(self, edge_attr: EdgeAttr) -> Optional[EdgeTensorType]:
+        """Retrieve or materialize the edge index for a given edge attribute.
+
+        Parameters:
+            edge_attr : EdgeAttr
+                Edge attribute descriptor.
+
+        Returns:
+            Optional[EdgeTensorType]
+                Edge index tensors, or None if no edges exist.
+        """
         if edge_attr.layout.value == EdgeLayout.COO.value:
             if edge_attr.is_sorted == False:
                 edge_attr.is_sorted = True
@@ -101,6 +162,16 @@ class SQLiteGraphStore(GraphStore):
         return rel.edge_index
 
     def _remove_edge_index(self, edge_attr: EdgeAttr) -> bool:
+        """Remove a cached edge index from the store.
+
+        Parameters:
+            edge_attr : EdgeAttr
+                Edge attribute descriptor.
+
+        Returns:
+            bool
+                True if the edge was removed, False otherwise.
+        """
         key = self.key(edge_attr)
         if key in self.store:
             del self.store[key]
@@ -108,6 +179,12 @@ class SQLiteGraphStore(GraphStore):
         return False
 
     def get_all_edge_attrs(self) -> List[EdgeAttr]:
+        """Return all available edge attributes.
+
+        Returns:
+            List[EdgeAttr]
+                List of edge attribute descriptors.
+        """
         return [
             EdgeAttr(rel.edge_type, EdgeLayout.COO, rel.is_sorted, rel.size)
             for rel in self.store.values()

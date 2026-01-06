@@ -18,6 +18,27 @@ def process_csv(
     inverse: bool = False,
     labels: Optional[List] = None,
 ) -> None:
+    """Process a labeled CSV into a domain-level binary label file.
+
+    Aggregates labels per domain, averages them, thresholds at 0.5 to form a
+    binary label, and optionally inverts the result.
+
+    Parameters:
+        input_csv : Path
+            Path to the input CSV file.
+        output_csv : Path
+            Path where the processed CSV will be written.
+        is_url : bool
+            Whether the domain column contains full URLs that must be normalized.
+        domain_col : str
+            Name of the column containing domains or URLs.
+        label_col : str
+            Name of the column containing labels.
+        inverse : bool, optional
+            Whether to invert the final binary label.
+        labels : Optional[List], optional
+            Optional mapping for categorical labels, e.g. [negative_label, positive_label].
+    """
     domain_labels = defaultdict(list)
 
     with input_csv.open('r', encoding='utf-8') as f:
@@ -65,6 +86,16 @@ def process_csv(
 
 
 def process_unlabelled_csv(input_path: Path, output_csv: Path, is_legit: bool) -> None:
+    """Process an unlabeled domain list into a labeled CSV, all with same label depending on ``is_legit``.
+
+    Parameters:
+        input_path : Path
+            Path to the input text or CSV file containing domains.
+        output_csv : Path
+            Path where the processed CSV will be written.
+        is_legit : bool
+            If True, assigns label 1; otherwise assigns label 0.
+    """
     label = 1 if is_legit else 0
 
     domains = set()
@@ -92,6 +123,14 @@ def process_unlabelled_csv(input_path: Path, output_csv: Path, is_legit: bool) -
 
 
 def process_goggle(goggle_path: Path, output_csv: Path) -> None:
+    """Process a .goggle rules file into a domain-level label CSV.
+
+    Parameters:
+        goggle_path : Path
+            Path to the .goggle configuration file.
+        output_csv : Path
+            Path where the processed CSV will be written.
+    """
     rows = []
 
     with goggle_path.open('r', encoding='utf-8') as f:

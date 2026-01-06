@@ -13,11 +13,21 @@ from tgrag.dataset.torch_geometric_graph_store import SQLiteGraphStore
 
 
 class SQLiteNeighborSampler(BaseSampler):
+    """Neighbor sampler that draws edges from a SQLite-backed graph store."""
+
     def __init__(
         self,
         graph_store: SQLiteGraphStore,
         num_neighbors: Dict[Tuple[str, str, str], List[int]],
     ):
+        """Initialize the sampler with a graph store and neighbor limits.
+
+        Parameters:
+            graph_store : SQLiteGraphStore
+                SQLite-backed graph storage providing an open cursor.
+            num_neighbors : Dict[Tuple[str, str, str], List[int]]
+                Mapping from edge type to a list of neighbor counts per hop.
+        """
         super().__init__()
         self.graph_store = graph_store
         self.num_neighbors = num_neighbors
@@ -25,6 +35,18 @@ class SQLiteNeighborSampler(BaseSampler):
     def sample_from_nodes(
         self, index: NodeSamplerInput, **kwargs: str
     ) -> SamplerOutput:
+        """Sample neighbors for a batch of seed nodes.
+
+        Parameters:
+            index : NodeSamplerInput
+                Sampler input containing seed node IDs.
+            **kwargs : str
+                Unused additional arguments.
+
+        Returns:
+            SamplerOutput
+                HeteroSamplerOutput containing sampled nodes, edges, and batch mapping.
+        """
         seed_nodes = index.node
         seed_type = ('domain', 'LINKS_TO', 'domain')
         k = self.num_neighbors[seed_type][0]
@@ -73,4 +95,10 @@ class SQLiteNeighborSampler(BaseSampler):
     def sample_from_edges(
         self, index: EdgeSamplerInput, **kwargs: str
     ) -> Union[HeteroSamplerOutput, SamplerOutput]:
+        """Edge-based sampling is not supported for this sampler.
+
+        Raises:
+            NotImplementedError
+                Always raised when this method is called.
+        """
         raise NotImplementedError('Sample from edges not implemented')

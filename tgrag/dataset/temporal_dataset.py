@@ -18,6 +18,13 @@ from tgrag.utils.target_generation import generate_exact_targets_csv
 
 
 class TemporalDataset(InMemoryDataset):
+    """Graph dataset with temporal / versioned preprocessing and target generation.
+
+    Loads raw node, edge, and target files, generates targets if missing,
+    constructs PyTorch Geometric Data objects, and creates stratified
+    train/validation/test splits over labeled nodes.
+    """
+
     def __init__(
         self,
         root: str,
@@ -37,6 +44,42 @@ class TemporalDataset(InMemoryDataset):
         seed: int = 42,
         processed_dir: Optional[str] = None,
     ):
+        """Initialize the dataset configuration and load processed data if present.
+
+        Parameters:
+            root : str
+                Root directory containing raw and processed dataset files.
+            node_file : str
+                Node feature CSV file name.
+            edge_file : str
+                Edge CSV file name.
+            target_file : str
+                Target label CSV file name.
+            target_col : str
+                Column name containing target values.
+            target_index_name : str
+                Name of the index column in the target file.
+            target_index_col : int
+                Column index of the target index if no header is present.
+            edge_src_col : str
+                Column name for source node IDs in the edge file.
+            edge_dst_col : str
+                Column name for destination node IDs in the edge file.
+            index_col : int
+                Column index of node IDs in the node file.
+            index_name : str
+                Name of the node ID column.
+            encoding : Optional[Dict[str, Encoder]]
+                Optional encoders applied to node feature columns.
+            transform : Optional[Callable]
+                Optional transform applied on each access.
+            pre_transform : Optional[Callable]
+                Optional transform applied before saving processed data.
+            seed : int
+                Random seed for dataset splitting.
+            processed_dir : Optional[str]
+                Optional override for processed data directory.
+        """
         self.node_file = node_file
         self.edge_file = edge_file
         self.target_file = target_file
@@ -55,26 +98,31 @@ class TemporalDataset(InMemoryDataset):
 
     @property
     def raw_dir(self) -> str:
+        """Return the directory containing raw dataset files."""
         return os.path.join(self.root)
 
     @property
     def raw_file_names(self) -> List[str]:
+        """Return the list of expected raw file names."""
         return [self.node_file, self.edge_file]
 
     @property
     def processed_dir(self) -> str:
+        """Return the directory used to store processed dataset files."""
         if self._custome_processed_dir is not None:
             return self._custome_processed_dir
         return super().processed_dir
 
     @property
     def processed_file_names(self) -> List[str]:
+        """Return the list of processed file names."""
         return ['data.pt']
 
     def download(self) -> None:
-        pass
+        """No-op download hook (raw data must already exist locally)."""
 
     def process(self) -> None:
+        """Generate targets, construct graph tensors, and create train/valid/test splits."""
         node_path = os.path.join(self.raw_dir, self.node_file)
         edge_path = os.path.join(self.raw_dir, self.edge_file)
         target_path = os.path.join(self.raw_dir, self.target_file)
@@ -185,12 +233,23 @@ class TemporalDataset(InMemoryDataset):
         torch.save(self.collate([data]), self.processed_paths[0])
 
     def get_idx_split(self) -> Dict:
+        """Return the stored train/valid/test index split.
+
+        Returns:
+            Dict
+                Mapping with keys {'train', 'valid', 'test'} and index tensors.
+
+        Raises:
+            TypeError
+                If the split is not available.
+        """
         data = self[0]
         if hasattr(data, 'idx_dict') and data.idx_dict is not None:
             return data.idx_dict
         raise TypeError('idx split is empty.')
 
     def get_mapping(self) -> Dict:
+        """Return the node ID mapping (lazy) from raw identifiers to internal indices."""
         if not hasattr(self, '_mapping'):
             self._mapping = torch.load(self.processed_dir + '/mapping.pt')
         return self._mapping
