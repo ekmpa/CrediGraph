@@ -4,13 +4,13 @@ from pathlib import Path
 import pytest
 
 from tgrag.dataset.process_labels import (
-    load_domains,
-    check_overlaps,
-    merge_processed_labels,
     process_csv,
     process_goggle,
     process_unlabelled_csv,
 )
+from tgrag.utils.readers import load_domains
+from tgrag.utils.checkers import check_overlaps
+from tgrag.utils.mergers import merge_processed_labels
 
 
 @pytest.fixture
