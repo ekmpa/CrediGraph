@@ -8,6 +8,18 @@ from tgrag.utils.path import get_root_dir
 
 
 def test_score_sum(new_nodes: pd.DataFrame, tol: float = 1e-3) -> bool:
+    """Check whether importance scores sum approximately to 1.
+
+    Parameters:
+        new_nodes : pd.DataFrame
+            DataFrame containing an 'importance' column.
+        tol : float, optional
+            Absolute tolerance for deviation from 1 (default: 1e-3).
+
+    Returns:
+        bool
+            True if the sum of importance is within tol of 1, False otherwise.
+    """
     total = new_nodes['importance'].sum()
     logging.info(f'Total importance score: {total}')
     logging.info(f'Expected: 1.0, Difference: {abs(total - 1.0)}')
@@ -15,6 +27,12 @@ def test_score_sum(new_nodes: pd.DataFrame, tol: float = 1e-3) -> bool:
 
 
 def show_score_distribution(new_nodes: pd.DataFrame) -> None:
+    """Generate plots and summary statistics for the importance score distribution.
+
+    Parameters:
+        new_nodes : pd.DataFrame
+            DataFrame containing an 'importance' column.
+    """
     root = get_root_dir()
     save_dir = root / 'results' / 'pagerank_plots'
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -65,6 +83,18 @@ def show_score_distribution(new_nodes: pd.DataFrame) -> None:
 def preprocess_data(
     nodes_path: str, edges_path: str
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Load and sanitize node and edge data for graph processing.
+
+    Parameters:
+        nodes_path : str
+            Path to the nodes CSV file.
+        edges_path : str
+            Path to the edges CSV file.
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]
+            Cleaned (nodes, edges) DataFrames.
+    """
     logging.info('Starting data preprocessing...')
 
     # Load raw data
@@ -126,6 +156,21 @@ def preprocess_data(
 def build_adjacency(
     nodes: pd.DataFrame, edges: pd.DataFrame
 ) -> Tuple[List[int], Dict[int, pd.DataFrame], Dict[int, int], Dict[int, List[int]]]:
+    """Build adjacency and degree structures from node and edge tables.
+
+    Parameters:
+        nodes : pd.DataFrame
+            DataFrame with a 'nid' column.
+        edges : pd.DataFrame
+            DataFrame with 'src' and 'dst' columns.
+
+    Returns:
+        Tuple containing:
+          - list of node IDs,
+          - adjacency mapping: node -> set of outgoing neighbors,
+          - out-degree mapping: node -> count,
+          - incoming mapping: node -> list of incoming neighbors.
+    """
     all_node_ids = set(nodes['nid'])
     node_ids = list(all_node_ids)
     len(node_ids)
@@ -144,6 +189,22 @@ def build_adjacency(
 def check_convergence(
     iteration: int, prev_importance: pd.Series, importance: pd.Series, tol: float
 ) -> bool:
+    """Check whether iterative importance computation has converged.
+
+    Parameters:
+        iteration : int
+            Current iteration index.
+        prev_importance : pd.Series
+            Importance values from the previous iteration.
+        importance : pd.Series
+            Importance values from the current iteration.
+        tol : float
+            Convergence tolerance.
+
+    Returns:
+        bool
+            True if converged, False otherwise.
+    """
     diff = abs(prev_importance - importance).sum()
     if iteration % 10 == 0 or iteration < 10:
         logging.info(
@@ -156,11 +217,34 @@ def check_convergence(
 
 
 def test_positive_values(nodes: pd.DataFrame) -> bool:
+    """Check that all importance values are strictly positive.
+
+    Parameters:
+        nodes : pd.DataFrame
+            DataFrame containing an 'importance' column.
+
+    Returns:
+        bool
+            True if the minimum importance value is positive, False otherwise.
+    """
     min_score = nodes['importance'].min()
     return min_score > 0
 
 
 def test_degree_correlation(nodes: pd.DataFrame, edges: pd.DataFrame) -> bool:
+    """Test and visualize correlation between in-degree and PageRank scores.
+
+    Parameters:
+        nodes : pd.DataFrame
+            DataFrame containing 'nid' and 'importance' columns.
+        edges : pd.DataFrame
+            DataFrame containing 'src' and 'dst' columns.
+
+    Returns:
+        bool
+            True if correlation is positive and high-degree nodes have higher
+            average importance, False otherwise.
+    """
     root = get_root_dir()
     save_dir = root / 'results' / 'pagerank_plots'
     save_dir.mkdir(parents=True, exist_ok=True)
