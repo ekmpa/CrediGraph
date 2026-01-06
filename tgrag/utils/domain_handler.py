@@ -20,6 +20,7 @@ def normalize_domain(d: str | None) -> str | None:
     """
     if not d:
         return None
+    d = d.lower().strip()
     return d[4:] if d.startswith('www.') else d
 
 
