@@ -20,6 +20,7 @@ def normalize_domain(d: str | None) -> str | None:
     """
     if not d:
         return None
+    d = d.lower().strip()
     return d[4:] if d.startswith('www.') else d
 
 
@@ -134,7 +135,14 @@ def extract_domain(raw: str) -> str | None:
         if not domain:
             return None
 
-        domain = domain.split(':')[0]
+        domain = domain.split(':', 1)[0]
+
+        if any(c.isspace() for c in domain):
+            return None
+
+        if '.' not in domain:
+            return None
+
         return domain
 
     except Exception:

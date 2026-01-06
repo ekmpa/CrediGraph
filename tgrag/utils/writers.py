@@ -190,6 +190,39 @@ def build_from_BCC(
         )
 
 
+def compute_degrees(
+    edges_gz: Path, tmpdir: Path, *, sort_cmd: str, mem: str
+) -> Tuple[Path, int]:
+    """Compute initial node degrees from an edge list.
+
+    Parameters:
+        edges_gz : Path
+            Path to a gzip-compressed edge file ("src<TAB>dst" per line).
+        tmpdir : Path
+            Temporary directory to store intermediate files.
+        sort_cmd : str
+            Sort executable to use.
+        mem : str
+            Memory limit passed to the sort command.
+
+    Returns:
+        (Path, int)
+            Path to the degree TSV file and the number of edges processed.
+    """
+    endpoints = tmpdir / 'endpoints.txt'
+    E, _ = write_endpoints(edges_gz, endpoints)
+
+    endpoints_sorted = tmpdir / 'endpoints.sorted.txt'
+    run_ext_sort(endpoints, endpoints_sorted, tmpdir=tmpdir, sort_cmd=sort_cmd, mem=mem)
+
+    degrees = tmpdir / 'degrees.initial.tsv'
+    count_sorted_keys(endpoints_sorted, degrees)
+
+    endpoints.unlink()
+    endpoints_sorted.unlink()
+    return degrees, E
+
+
 # For domain labels
 # ------------------
 
