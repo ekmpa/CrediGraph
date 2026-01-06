@@ -1,11 +1,10 @@
 import argparse
 import logging
+import pickle
 from pathlib import Path
 from typing import Dict, cast
 
-import numpy as np
 import torch
-from torch.utils.data import DataLoader, TensorDataset
 from torch_geometric.loader import NeighborLoader
 from tqdm import tqdm
 
@@ -60,12 +59,6 @@ def get_embeddings(
     logging.info('Model Loaded.')
     model.eval()
 
-    tensor_dataset = TensorDataset(tensor_idx)
-
-    idx_loader = DataLoader(
-        dataset=tensor_dataset, batch_size=124, shuffle=True, num_workers=4
-    )
-
     num_nodes = data.num_nodes
     all_preds_embeddings = torch.zeros(num_nodes, 256)
 
@@ -79,6 +72,13 @@ def get_embeddings(
         persistent_workers=True,
     )
 
+    shard_size = 1_000_000
+    current_shard_dict = {}
+    shard_count = 0
+
+    save_dir = weight_directory / 'shards'
+    save_dir.parent.mkdir(parents=True, exist_ok=True)
+
     model.eval()
     with torch.no_grad():
         for batch in tqdm(loader, desc=f'Inference'):
@@ -87,16 +87,29 @@ def get_embeddings(
             seed_nodes = batch.n_id[: batch.batch_size]
             all_preds_embeddings[seed_nodes] = preds[: batch.batch_size].cpu()
 
-    np.save(weight_directory / 'embeddings.npy', all_preds_embeddings.numpy())
+            for i, node_idx in enumerate(seed_nodes):
+                name = idx_to_domain_mapping[node_idx.item()]
+                embedding = preds[i].cpu().tolist()
+                current_shard_dict[name] = embedding
 
-    save_path = weight_directory / 'domain_names.txt'
-    save_path.parent.mkdir(parents=True, exist_ok=True)
+            if len(current_shard_dict) >= shard_size:
+                shard_path = save_dir / f'shard_{shard_count}.pkl'
+                with open(shard_path, 'wb') as f:
+                    pickle.dump(current_shard_dict, f)
 
-    with open(save_path, 'w') as f:
-        for i in range(num_nodes):
-            f.write(f'{idx_to_domain_mapping[i]}\n')
+                logging.info(
+                    f'Saved shard {shard_count} with {len(current_shard_dict)}'
+                )
 
-    logging.info(f'Saved domain embeddings to {save_path}')
+                current_shard_dict = {}
+                shard_count += 1
+
+        if current_shard_dict:
+            shard_path = save_dir / f'shard_{shard_count}.pkl'
+            with open(shard_path, 'wb') as f:
+                pickle.dump(current_shard_dict, f)
+
+    logging.info(f'Saved domain embeddings to {save_dir}')
 
 
 def main() -> None:
