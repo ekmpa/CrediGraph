@@ -63,27 +63,45 @@ def month_to_CC_slice(month_str: str, local_path: str = 'collinfo.json') -> str:
 def interval_to_CC_slices(start_month: str, end_month: str) -> List[str]:
     """Get list of CC slice names for months in [start_month, end_month].
 
-    Parameters:
-        start_month : str
-            Start month in "Month YYYY" format (e.g., "April 2024").
-        end_month : str
-            End month in "Month YYYY" format (e.g., "June 2024").
-
-    Returns:
-        list of str
-            List of Common Crawl slice identifiers, in chronological order.
+    Raises:
+        ValueError: for invalid formats, reversed ranges, or unavailable metadata.
     """
-    start_dt = datetime.strptime(start_month, '%B %Y')
-    end_dt = datetime.strptime(end_month, '%B %Y')
+    try:
+        start_dt = datetime.strptime(start_month, '%B %Y')
+        end_dt = datetime.strptime(end_month, '%B %Y')
+    except ValueError as e:
+        raise ValueError(f'Invalid month format: {e}') from e
 
-    slices = []
+    if start_dt > end_dt:
+        raise ValueError(
+            f'start_month {start_month!r} must be <= end_month {end_month!r}'
+        )
+
+    try:
+        _ = month_to_CC_slice(start_dt.strftime('%Y-%m'))
+        _ = month_to_CC_slice(end_dt.strftime('%Y-%m'))
+    except FileNotFoundError as e:
+        raise ValueError('Common Crawl metadata file not available') from e
+    except ValueError as e:
+        raise ValueError('No Common Crawl slice available for given month range') from e
+
+    slices: List[str] = []
     current_dt = start_dt
+
     while current_dt <= end_dt:
         month_str = current_dt.strftime('%Y-%m')
-        cc_slice = month_to_CC_slice(month_str)
+        try:
+            cc_slice = month_to_CC_slice(month_str)
+        except Exception as e:
+            raise ValueError(
+                f'No Common Crawl slice available for month {month_str}'
+            ) from e
+
         slices.append(cc_slice)
+
         if current_dt.month == 12:
             current_dt = current_dt.replace(year=current_dt.year + 1, month=1)
         else:
             current_dt = current_dt.replace(month=current_dt.month + 1)
+
     return slices
