@@ -9,9 +9,81 @@ from tgrag.utils.data_io import count_lines, write_endpoints
 
 
 def compute_density(V: int, E: int) -> float:
+    """Compute the directed graph density.
+
+    The density is defined as E / (V * (V - 1)), corresponding to the fraction of
+    all possible directed edges that are present. If V <= 1, the density is defined
+    as 0.0.
+
+    Parameters:
+        V : int
+            Number of vertices in the graph.
+        E : int
+            Number of edges in the graph.
+
+    Returns:
+        float
+            Graph density in the range [0.0, 1.0].
+    """
     if V <= 1:
         return 0.0
     return E / (V * (V - 1))
+
+
+def stats(
+    deg_tsv: Path, E: int, vert_path: Path, *, sort_cmd: str, mem: str, tmpdir: Path
+) -> None:
+    """Compute and print initial graph statistics.
+
+    Parameters:
+        deg_tsv : Path
+            Path to degree TSV file.
+        E : int
+            Number of edges in the graph.
+        vert_path : Path
+            Path to vertex list file.
+        sort_cmd : str
+            Sort executable to use.
+        mem : str
+            Memory limit passed to the sort command.
+        tmpdir : Path
+            Temporary directory for intermediate files.
+    """
+    V_deg = sum_deg = leaves = 0
+    min_deg: Optional[int] = None
+    max_deg = 0
+
+    with open(deg_tsv) as f:
+        for line in f:
+            dom, d_str = line.strip().split('\t')
+            d = int(d_str)
+            V_deg += 1
+            sum_deg += d
+            min_deg = d if min_deg is None else min(min_deg, d)
+            max_deg = max(max_deg, d)
+            if d == 1:
+                leaves += 1
+
+    # sorted unique vertices
+    raw = tmpdir / 'vertex.raw.txt'
+    with gzip.open(vert_path, 'rt') as fin, open(raw, 'w') as fout:
+        for line in fin:
+            dom = line.strip()
+            if dom:
+                fout.write(dom + '\n')
+
+    vert_sorted = tmpdir / 'vertex.sorted.txt'
+    run_sort(raw, vert_sorted, tmpdir=tmpdir, sort_cmd=sort_cmd, mem=mem, unique=True)
+
+    V = count_lines(str(vert_sorted))
+
+    deg_min = 0 if V_deg < V else min_deg or 0
+    mean_deg = sum_deg / V if V else 0
+    density = compute_density(V, E)
+
+    print(
+        f'[STATS] V={V:,}  E={E:,}  deg(min/mean/max)={deg_min}/{mean_deg:.3f}/{max_deg}  leaves={leaves:,}  density={density:.6g}'
+    )
 
 
 def run_sort(

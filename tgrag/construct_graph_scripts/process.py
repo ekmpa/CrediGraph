@@ -7,14 +7,13 @@
 import gzip
 import tempfile
 from pathlib import Path
-from typing import Optional
 
-from tgrag.utils.data_io import count_lines, gz_line_reader
+from tgrag.utils.data_io import gz_line_reader
 from tgrag.utils.graph_manip import (
     compute_degrees,
-    compute_density,
     compute_vertices_from_edges,
     run_sort,
+    stats,
 )
 from tgrag.utils.temporal_utils import iso_week_to_timestamp
 
@@ -136,62 +135,6 @@ def merge_join_filter_edges(
     edges_sorted.unlink(missing_ok=True)
 
 
-def _stats_initial(
-    deg_tsv: Path, E: int, vert_path: Path, *, sort_cmd: str, mem: str, tmpdir: Path
-) -> None:
-    """Compute and print initial graph statistics.
-
-    Parameters:
-        deg_tsv : Path
-            Path to degree TSV file.
-        E : int
-            Number of edges in the graph.
-        vert_path : Path
-            Path to vertex list file.
-        sort_cmd : str
-            Sort executable to use.
-        mem : str
-            Memory limit passed to the sort command.
-        tmpdir : Path
-            Temporary directory for intermediate files.
-    """
-    V_deg = sum_deg = leaves = 0
-    min_deg: Optional[int] = None
-    max_deg = 0
-
-    with open(deg_tsv) as f:
-        for line in f:
-            dom, d_str = line.strip().split('\t')
-            d = int(d_str)
-            V_deg += 1
-            sum_deg += d
-            min_deg = d if min_deg is None else min(min_deg, d)
-            max_deg = max(max_deg, d)
-            if d == 1:
-                leaves += 1
-
-    # sorted unique vertices
-    raw = tmpdir / 'vertex.raw.txt'
-    with gzip.open(vert_path, 'rt') as fin, open(raw, 'w') as fout:
-        for line in fin:
-            dom = line.strip()
-            if dom:
-                fout.write(dom + '\n')
-
-    vert_sorted = tmpdir / 'vertex.sorted.txt'
-    run_sort(raw, vert_sorted, tmpdir=tmpdir, sort_cmd=sort_cmd, mem=mem, unique=True)
-
-    V = count_lines(str(vert_sorted))
-
-    deg_min = 0 if V_deg < V else min_deg or 0
-    mean_deg = sum_deg / V if V else 0
-    density = compute_density(V, E)
-
-    print(
-        f'[STATS:initial] V={V:,}  E={E:,}  deg(min/mean/max)={deg_min}/{mean_deg:.3f}/{max_deg}  leaves={leaves:,}  density={density:.6g}'
-    )
-
-
 def process_graph(graph: str, slice_str: str, min_deg: int, mem: str = '60%') -> None:
     """Process a graph with external sorting and filtering.
 
@@ -217,7 +160,7 @@ def process_graph(graph: str, slice_str: str, min_deg: int, mem: str = '60%') ->
         print('[STEP] computing initial degrees')
         deg_tsv, E = compute_degrees(edges_gz, td, sort_cmd=sort_cmd, mem=mem)
 
-        _stats_initial(deg_tsv, E, vertices_gz, sort_cmd=sort_cmd, mem=mem, tmpdir=td)
+        stats(deg_tsv, E, vertices_gz, sort_cmd=sort_cmd, mem=mem, tmpdir=td)
 
         kept_sorted = td / 'kept_domains.sorted.txt'
         kept = filter_domains_by_degree(
