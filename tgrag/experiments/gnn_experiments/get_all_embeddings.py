@@ -72,7 +72,7 @@ def get_embeddings(
         persistent_workers=True,
     )
 
-    shard_size = 1_000_000
+    shard_size = 10_000_000
     current_shard_dict = {}
     shard_count = 0
 
