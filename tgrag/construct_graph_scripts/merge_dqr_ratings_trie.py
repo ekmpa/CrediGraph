@@ -6,7 +6,7 @@ from typing import Any, Dict, Generator, Iterable, List, Tuple, TypedDict, cast
 
 from tqdm import tqdm
 
-from tgrag.utils.matching import reverse_domain
+from tgrag.utils.domain_handler import reverse_domain
 
 
 class InputRow(TypedDict):

@@ -14,8 +14,8 @@ from tgrag.encoders.encoder import Encoder
 from tgrag.encoders.rni_encoding import RNIEncoder
 from tgrag.gnn.model import Model
 from tgrag.utils.args import ModelArguments, parse_args
+from tgrag.utils.domain_handler import reverse_domain
 from tgrag.utils.logger import setup_logging
-from tgrag.utils.matching import reverse_domain
 from tgrag.utils.path import get_root_dir, get_scratch
 from tgrag.utils.seed import seed_everything
 

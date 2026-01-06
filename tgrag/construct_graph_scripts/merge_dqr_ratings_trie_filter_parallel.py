@@ -12,12 +12,13 @@ from typing import (
     Set,
     Tuple,
     TypedDict,
+    TypeVar,
     cast,
 )
 
 from tqdm import tqdm
 
-from tgrag.utils.matching import reverse_domain
+from tgrag.utils.domain_handler import reverse_domain
 from tgrag.utils.prob import (
     get_importance_node,
     get_importance_probability_node,
@@ -100,11 +101,13 @@ def init_node_worker(keep_ids: Set[str]) -> None:
 
 # ------------------------- Utilities -------------------------
 
+T = TypeVar('T')
+
 
 def chunked_reader(
-    reader: Iterable[Dict[str, str]], chunk_size: int
-) -> Generator[List[Dict[str, str]], None, None]:
-    chunk = []
+    reader: Iterable[T], chunk_size: int
+) -> Generator[List[T], None, None]:
+    chunk: List[T] = []
     for row in reader:
         chunk.append(row)
         if len(chunk) >= chunk_size:

@@ -9,8 +9,11 @@ from sklearn.model_selection import train_test_split
 from torch_geometric.data import Data, InMemoryDataset
 
 from tgrag.encoders.encoder import Encoder
-from tgrag.utils.dataset_loading import load_large_edge_csv, load_node_csv
-from tgrag.utils.load_labels import get_full_dict
+from tgrag.utils.readers import (
+    get_full_dict,
+    load_large_edge_csv,
+    load_node_csv,
+)
 from tgrag.utils.target_generation import generate_exact_targets_csv
 
 

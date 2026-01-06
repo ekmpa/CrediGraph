@@ -8,14 +8,11 @@ import gzip
 import tempfile
 from pathlib import Path
 
-from tgrag.utils.data_io import gz_line_reader
-from tgrag.utils.graph_manip import (
-    compute_degrees,
-    compute_vertices_from_edges,
-    run_sort,
-    stats,
-)
+from tgrag.utils.analytics import compute_degrees, stats
+from tgrag.utils.io import run_ext_sort
+from tgrag.utils.readers import line_reader
 from tgrag.utils.temporal_utils import iso_week_to_timestamp
+from tgrag.utils.writers import build_from_BCC
 
 
 def filter_domains_by_degree(
@@ -49,7 +46,7 @@ def filter_domains_by_degree(
                 kept += 1
 
     with tempfile.TemporaryDirectory(prefix='extsort_k_') as td:
-        run_sort(
+        run_ext_sort(
             tmp_unsorted,
             kept_sorted,
             tmpdir=td,
@@ -91,7 +88,7 @@ def merge_join_filter_edges(
             Temporary directory for intermediate files.
     """
     edges_sorted = tmpdir / f'edges.sorted.by{by_col}.tsv'
-    run_sort(
+    run_ext_sort(
         edges_in,
         edges_sorted,
         tmpdir=tmpdir,
@@ -171,7 +168,7 @@ def process_graph(graph: str, slice_str: str, min_deg: int, mem: str = '60%') ->
         print('[STEP] filtering edges')
         edges_all = td / 'edges.tsv'
         with open(edges_all, 'w') as fout:
-            for line in gz_line_reader(edges_gz):
+            for line in line_reader(edges_gz):
                 if line:
                     try:
                         src, dst = map(str.strip, line.split('\t', 1))
@@ -203,7 +200,7 @@ def process_graph(graph: str, slice_str: str, min_deg: int, mem: str = '60%') ->
         )
 
         edges_dedup = td / 'edges.filtered.dedup.tsv'
-        run_sort(
+        run_ext_sort(
             edges_filtered,
             edges_dedup,
             tmpdir=td,
@@ -221,9 +218,7 @@ def process_graph(graph: str, slice_str: str, min_deg: int, mem: str = '60%') ->
 
         print('[STEP] recomputing degrees and writing vertices')
         vertices_csv = graph_path / 'vertices.csv.gz'
-        compute_vertices_from_edges(
-            edges_dedup, vertices_csv, ts, sort_cmd=sort_cmd, mem=mem
-        )
+        build_from_BCC(edges_dedup, vertices_csv, ts, sort_cmd=sort_cmd, mem=mem)
 
         print(f'[DONE] edges -> {edges_csv}')
         print(f'[DONE] vertices -> {vertices_csv}')

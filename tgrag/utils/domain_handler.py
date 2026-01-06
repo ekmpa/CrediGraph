@@ -1,7 +1,3 @@
-"""Domain matching logic,
-used for label matching, and WET-WAT matching.
-"""
-
 import re
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
@@ -11,12 +7,33 @@ import tldextract
 _extract = tldextract.TLDExtract(include_psl_private_domains=True)
 
 
+def normalize_domain(d: str | None) -> str | None:
+    """Normalize a domain string.
+
+    Parameters:
+        d : str or None
+            Domain string.
+
+    Returns:
+        str or None
+            Normalized domain string without "www." prefix.
+    """
+    if not d:
+        return None
+    return d[4:] if d.startswith('www.') else d
+
+
 def flip_if_needed(domain: str) -> str:
     """Normalize a possibly flipped domain (e.g., 'co.uk.theregister') into the
     canonical 'domain.suffix' (e.g., 'theregister.co.uk').
 
-    Strategy: try all cyclic rotations of labels; pick the parse with
-    the longest PSL suffix (# of labels), then longest domain label.
+    Parameters:
+        domain : str
+            Input domain string.
+
+    Returns:
+        str
+            Normalized domain in "domain.suffix" form.
     """
     if not domain:
         return domain
@@ -56,31 +73,50 @@ def flip_if_needed(domain: str) -> str:
 
 
 def lookup(domain: str, dqr_domains: Dict[str, List[float]]) -> Optional[List[float]]:
-    """Look up domain in dqr_domains, return associated data if found."""
-    domain_parts = domain.split('.')
-    for key, value in dqr_domains.items():
-        key_parts = key.split('.')
-        if (
-            len(key_parts) >= 2
-            and key_parts[0] in domain_parts
-            and key_parts[1] in domain_parts
-        ):
-            return value
-    return None
+    """Look up a domain by exact canonical match (with normalization).
 
+    Parameters:
+        domain : str
+            Domain to search for.
+        dqr_domains : dict[str, list[float]]
+            Mapping from known domain strings to associated metric lists.
 
-def lookup_exact(
-    domain: str, dqr_domains: Dict[str, List[float]]
-) -> Optional[List[float]]:
+    Returns:
+        list[float] or None
+            Associated metric list if found, otherwise None.
+    """
     domain_name = flip_if_needed(domain)
     return dqr_domains.get(domain_name)
 
 
 def reverse_domain(domain: str) -> str:
+    """Reverse the label order of a domain string.
+
+    Parameters:
+        domain : str
+            Domain string.
+
+    Returns:
+        str
+            Domain with label order reversed.
+    """
     return '.'.join(domain.split('.')[::-1])
 
 
 def extract_domain(raw: str) -> str | None:
+    """Extract and normalize a domain from a raw string or URL.
+
+    The input may be a bare domain, a URL, or a malformed string. The function
+    attempts to normalize the input and extract a valid domain if possible.
+
+    Parameters:
+        raw : str
+            Raw input string.
+
+    Returns:
+        str or None
+            Extracted domain string, or None if extraction fails.
+    """
     if not raw:
         return None
 

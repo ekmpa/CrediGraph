@@ -6,8 +6,8 @@ from typing import Dict, List, Optional, Tuple
 import tldextract
 from tqdm import tqdm
 
-from tgrag.utils.load_labels import get_full_dict
-from tgrag.utils.matching import flip_if_needed, lookup_exact, reverse_domain
+from tgrag.utils.domain_handler import flip_if_needed, lookup, reverse_domain
+from tgrag.utils.readers import get_full_dict
 
 _extract = tldextract.TLDExtract(include_psl_private_domains=True)
 MAX_DOMAINS_TO_SHOW = 50
@@ -212,7 +212,7 @@ def generate(vertices_gz: str, targets_csv: str) -> None:
         if not norm or '.' not in norm:
             parse_fail += 1
             continue
-        if lookup_exact(norm, dqr) is not None:
+        if lookup(norm, dqr) is not None:
             domain_to_nids[norm].append(nid)
             if len(domain_to_samples[norm]) < SAMPLES_PER_DOMAIN:
                 domain_to_samples[norm].append((nid, raw_dom, norm))

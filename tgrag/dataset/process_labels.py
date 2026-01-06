@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from tgrag.utils.checkers import check_overlaps, check_processed_labels
-from tgrag.utils.matching import extract_domain
+from tgrag.utils.domain_handler import extract_domain
 from tgrag.utils.mergers import merge_processed_labels, merge_reg_class
 
 

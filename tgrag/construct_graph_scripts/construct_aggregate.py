@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from tgrag.utils.data_io import append_target_edges, append_target_nodes
+from tgrag.utils.mergers import append_target_edges, append_target_nodes
 
 
 def gradual_all(source_base: str, target_base_root: str) -> None:
