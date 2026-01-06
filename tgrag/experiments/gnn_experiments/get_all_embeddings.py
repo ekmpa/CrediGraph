@@ -77,7 +77,7 @@ def get_embeddings(
     shard_count = 0
 
     save_dir = weight_directory / 'shards'
-    save_dir.parent.mkdir(parents=True, exist_ok=True)
+    save_dir.mkdir(parents=True, exist_ok=True)
 
     model.eval()
     with torch.no_grad():
