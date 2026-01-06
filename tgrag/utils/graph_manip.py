@@ -1,8 +1,17 @@
-from pathlib import Path
 import gzip
 import os
+import subprocess
 import tempfile
+from pathlib import Path
+from typing import Optional, Tuple
 
+from tgrag.utils.data_io import count_lines, write_endpoints
+
+
+def compute_density(V: int, E: int) -> float:
+    if V <= 1:
+        return 0.0
+    return E / (V * (V - 1))
 
 
 def run_sort(
@@ -17,8 +26,7 @@ def run_sort(
     key_numeric: bool = False,
     unique: bool = False,
 ) -> None:
-    """
-    Sort a text file using the external Unix `sort` command and write the result
+    """Sort a text file using the external Unix `sort` command and write the result
     to an output file.
 
     Parameters:
@@ -71,7 +79,75 @@ def run_sort(
             raise RuntimeError(f"sort failed: {' '.join(cmd)}\n{err}")
 
 
-def compute_vertices_from_edges( 
+def count_sorted_keys(sorted_path: Path, out_tsv: Path) -> int:
+    """Count occurrences of consecutive identical keys in a sorted file.
+
+    Parameters:
+        sorted_path : Path
+            Path to a file containing sorted keys, one per line.
+        out_tsv : Path
+            Path to the output TSV file to write "key<TAB>count" lines.
+
+    Returns:
+        int
+            Number of unique keys written to the output file.
+    """
+    uniq = 0
+    prev = None
+    c = 0
+    with open(sorted_path) as fin, open(out_tsv, 'w') as fout:
+        for key in fin:
+            key = key.rstrip('\n').strip()
+            if not key:
+                continue
+            if prev is None:
+                prev, c = key, 1
+            elif key == prev:
+                c += 1
+            else:
+                fout.write(f'{prev}\t{c}\n')
+                uniq += 1
+                prev, c = key, 1
+        if prev is not None:
+            fout.write(f'{prev}\t{c}\n')
+            uniq += 1
+    return uniq
+
+
+def compute_degrees(
+    edges_gz: Path, tmpdir: Path, *, sort_cmd: str, mem: str
+) -> Tuple[Path, int]:
+    """Compute initial node degrees from an edge list.
+
+    Parameters:
+        edges_gz : Path
+            Path to a gzip-compressed edge file ("src<TAB>dst" per line).
+        tmpdir : Path
+            Temporary directory to store intermediate files.
+        sort_cmd : str
+            Sort executable to use.
+        mem : str
+            Memory limit passed to the sort command.
+
+    Returns:
+        (Path, int)
+            Path to the degree TSV file and the number of edges processed.
+    """
+    endpoints = tmpdir / 'endpoints.txt'
+    E, _ = write_endpoints(edges_gz, endpoints)
+
+    endpoints_sorted = tmpdir / 'endpoints.sorted.txt'
+    run_sort(endpoints, endpoints_sorted, tmpdir=tmpdir, sort_cmd=sort_cmd, mem=mem)
+
+    degrees = tmpdir / 'degrees.initial.tsv'
+    count_sorted_keys(endpoints_sorted, degrees)
+
+    endpoints.unlink()
+    endpoints_sorted.unlink()
+    return degrees, E
+
+
+def compute_vertices_from_edges(
     edges_path: str | Path,
     out_vertices_gz: str | Path,
     ts_str: str,
@@ -79,8 +155,7 @@ def compute_vertices_from_edges(
     sort_cmd: str = 'sort',
     mem: str = '60%',
 ) -> dict:
-    """
-    Writes the graph's biggest connected component vertex files, with in- and out-degrees. 
+    """Writes the graph's biggest connected component vertex files, with in- and out-degrees.
 
     Output schema:
         domain,ts,in_deg,out_deg
@@ -198,7 +273,7 @@ def compute_vertices_from_edges(
         E = count_lines(str(edges_path))
         mean_deg = (sum_deg / V) if V else 0.0
         isolated = 0  # by construction
-        density = _compute_density(V, E)
+        density = compute_density(V, E)
 
         print(
             f'[STATS:final] V={V:,}  E={E:,}  deg(min/mean/max)={min_deg}/{mean_deg:.3f}/{max_deg}  '
