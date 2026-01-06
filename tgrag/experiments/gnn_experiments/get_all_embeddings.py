@@ -71,10 +71,8 @@ def get_embeddings(
 
     all_domain_to_embeddings = {}
 
-    for idx_batch in tqdm(idx_loader, desc='Batching Domain Index'):
-        logging.info(idx_batch)
-        idx_batch = torch.tensor(idx_batch)
-        logging.info(f'idx_batch size: {idx_batch.size()}')
+    for batch in tqdm(idx_loader, desc='Batching Domain Index'):
+        idx_batch = batch[0]
         loader = NeighborLoader(
             data,
             input_nodes=idx_batch,
