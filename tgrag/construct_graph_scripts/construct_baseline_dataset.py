@@ -29,6 +29,7 @@ parser.add_argument(
 
 
 def construct_baseline() -> None:
+    """Constructs the baseline set."""
     args = parser.parse_args()
     root = get_root_dir()
     dqr_path = f'{root}/data/dqr/domain_pc1.csv'

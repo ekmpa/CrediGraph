@@ -5,6 +5,14 @@ from tgrag.utils.mergers import append_target_edges, append_target_nodes
 
 
 def gradual_all(source_base: str, target_base_root: str) -> None:
+    """Append and aggregate a source graph into an (usually existing) target graph.
+
+    Parameters:
+        source_base : str
+            Base directory containing new output subdirectories (edges and vertices).
+        target_base_root : str
+            Base directory where aggregated outputs will be written.
+    """
     os.makedirs(target_base_root, exist_ok=True)
     id_to_domain = append_target_nodes(source_base, target_base_root)
     append_target_edges(source_base, target_base_root, id_to_domain)
