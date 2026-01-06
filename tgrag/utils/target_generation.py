@@ -192,6 +192,21 @@ def generate_exact_targets_csv(
 
 
 def generate(vertices_gz: str, targets_csv: str) -> None:
+    """Generate strict exact-match targets and analyze their distribution over rated domains.
+
+    This performs:
+      1. Loading of rated domains (DQR),
+      2. Generation of a targets CSV via strict exact eTLD+1 matching,
+      3. Mapping of generated target node IDs back to raw domains,
+      4. Normalization and lookup against the rated domain set,
+      5. Reporting coverage, collisions, and example mappings.
+
+    Parameters:
+        vertices_gz : str
+            Path to the gzip-compressed vertex file containing node IDs and raw domains.
+        targets_csv : str
+            Path where the generated targets CSV will be written and read back from.
+    """
     dqr = get_full_dict()
 
     # GENERATION
