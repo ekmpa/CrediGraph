@@ -337,6 +337,33 @@ def get_seed_embeddings(
 # ----------
 
 
+def load_target_nids(path: str) -> set[int]:
+    """Load the set of node IDs from a targets CSV that has a ``nid`` column.
+
+    Parameters:
+        path : str
+            Path to the targets CSV file.
+
+    Returns:
+        set[int]
+            Set of node IDs found in the 'nid' column.
+    """
+    nids = set()
+    with open(path, newline='', encoding='utf-8') as f:
+        r = csv.DictReader(f)
+        if r.fieldnames:
+            r.fieldnames = [
+                fn.strip().lstrip('\ufeff') if fn else fn for fn in r.fieldnames
+            ]
+        nid_key = 'nid'
+
+        for row in r:
+            nid_str = row.get(nid_key, '').strip()
+            nids.add(int(nid_str))
+
+    return nids
+
+
 def _csv_rows(path: Path) -> Iterable[dict[str, str]]:
     """Iterate over rows of a CSV file as dictionaries.
 

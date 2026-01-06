@@ -10,7 +10,17 @@ from torch_geometric.typing import FeatureTensorType
 
 
 class SQLiteFeatureStore(FeatureStore):
+    """FeatureStore backed by a SQLite database."""
+
     def __init__(self, db_path: Path, read_only: bool = True):
+        """Open a SQLite database and initialize the feature store.
+
+        Parameters:
+            db_path : Path
+                Path to the SQLite database file.
+            read_only : bool, optional
+                Whether to open the database in read-only mode (default: True).
+        """
         super().__init__()
         self.db_path = db_path
         uri = f'file:{db_path}?mode={"ro" if read_only else "rwc"}'
@@ -19,11 +29,31 @@ class SQLiteFeatureStore(FeatureStore):
         self.cursor = self.con.cursor()
 
     def _get_table_columns(self, table: str) -> list[str]:
+        """Return the list of column names for a given table.
+
+        Parameters:
+            table : str
+                Name of the SQLite table.
+
+        Returns:
+            list[str]
+                Column names in the table.
+        """
         q = f'PRAGMA table_info({table})'
         self.cursor.execute(q)
         return [r['name'] for r in self.cursor.fetchall()]
 
     def _deserialize(self, blob: Any) -> None | int | float | np.ndarray:
+        """Deserialize a value stored in SQLite into a Python or NumPy object.
+
+        Parameters:
+            blob : Any
+                Value retrieved from SQLite.
+
+        Returns:
+            None | int | float | np.ndarray
+                Deserialized value.
+        """
         if blob is None:
             return None
         if isinstance(blob, (int, float)):
@@ -34,9 +64,25 @@ class SQLiteFeatureStore(FeatureStore):
             return np.frombuffer(blob, dtype=np.float32)
 
     def _put_tensor(self, tensor: FeatureTensorType, attr: TensorAttr) -> bool:
+        """Writing tensors is not supported.
+
+        Raises:
+            NotImplementedError
+                Always raised when called.
+        """
         raise NotImplementedError('Writing not yet supported.')
 
     def _get_tensor(self, attr: TensorAttr) -> Optional[FeatureTensorType]:
+        """Retrieve a tensor attribute from the SQLite database.
+
+        Parameters:
+            attr : TensorAttr
+                Tensor attribute descriptor.
+
+        Returns:
+            Optional[FeatureTensorType]
+                Tensor containing the requested values, or None if no data exists.
+        """
         table_name = attr.group_name
         attr_name = attr.attr_name
         idx = attr.index
@@ -77,6 +123,16 @@ class SQLiteFeatureStore(FeatureStore):
         raise NotImplementedError('Removal not yet supported.')
 
     def _get_tensor_size(self, attr: TensorAttr) -> Optional[Tuple[int, ...]]:
+        """Return the shape of a tensor attribute without loading all values.
+
+        Parameters:
+            attr : TensorAttr
+                Tensor attribute descriptor.
+
+        Returns:
+            Optional[Tuple[int, ...]]
+                Shape of the tensor attribute.
+        """
         table_name = attr.group_name
         attr_name = attr.attr_name
 
@@ -106,6 +162,12 @@ class SQLiteFeatureStore(FeatureStore):
             return (n,)
 
     def get_all_tensor_attrs(self) -> List[TensorAttr]:
+        """Return all available tensor attributes in the database.
+
+        Returns:
+            List[TensorAttr]
+                List of tensor attribute descriptors.
+        """
         tables = self._get_all_tables()
         all_attrs = []
         for t in tables:
@@ -115,5 +177,11 @@ class SQLiteFeatureStore(FeatureStore):
         return all_attrs
 
     def _get_all_tables(self) -> List[str]:
+        """Return the names of all tables in the SQLite database.
+
+        Returns:
+            List[str]
+                Table names.
+        """
         self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         return [r[0] for r in self.cursor.fetchall()]

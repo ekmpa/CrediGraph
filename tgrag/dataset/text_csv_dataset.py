@@ -10,6 +10,8 @@ from tgrag.encoders.encoder import Encoder
 
 
 class TextCSVDataset(Dataset):
+    """Dataset that encodes text from a CSV file into fixed embeddings with labels."""
+
     def __init__(
         self,
         csv_path: str,
@@ -18,6 +20,24 @@ class TextCSVDataset(Dataset):
         encode_fn: Encoder,
         batch_size: int = 64,
     ):
+        """Load a CSV file, encode text, and construct embedding/label tensors.
+
+        Parameters:
+            csv_path : str
+                Path to the input CSV file.
+            text_col : str
+                Name of the column containing text to encode.
+            label_col : str
+                Name of the column containing target labels.
+            encode_fn : Encoder
+                Callable that maps a list of strings to a tensor of embeddings.
+            batch_size : int, optional
+                Number of texts to encode per batch (default: 64).
+
+        Raises:
+            ValueError
+                If encode_fn is not callable.
+        """
         df = pd.read_csv(csv_path)
         texts = df[text_col].astype(str).to_list()
         labels = df[label_col].to_numpy()
@@ -43,9 +63,20 @@ class TextCSVDataset(Dataset):
         self.num_features = self.x.shape[1]
 
     def __len__(self) -> int:
+        """Return the number of samples in the dataset."""
         return self.x.shape[0]
 
     def __getitem__(self, idx: int) -> Tuple[Tensor, Tensor]:
+        """Return the (embedding, label) pair for a given index.
+
+        Parameters:
+            idx : int
+                Sample index.
+
+        Returns:
+            Tuple[Tensor, Tensor]
+                (x, y) where x is the embedding tensor and y is the label.
+        """
         x = self.x[idx]
         y = self.y[idx]
         return x, y

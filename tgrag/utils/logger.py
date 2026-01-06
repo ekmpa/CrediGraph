@@ -10,6 +10,16 @@ def setup_logging(
     log_file_logging_level: int = logging.DEBUG,
     stream_logging_level: int = logging.INFO,
 ) -> None:
+    """Configure root logging for console and optional file output.
+
+    Parameters:
+        log_file_path : Optional[str]
+            Path to a log file. If None, no file logging is configured.
+        log_file_logging_level : int
+            Logging level for the file handler.
+        stream_logging_level : int
+            Logging level for the stream (console) handler.
+    """
     handlers: List[logging.Handler] = []
 
     stream_handler = logging.StreamHandler()
@@ -42,14 +52,34 @@ def setup_logging(
 
 
 class Logger(object):
+    """Accumulate and summarize per-run training, validation, and test metrics."""
+
     def __init__(self, runs: int):
         self.results: List[Any] = [[] for _ in range(runs)]
 
     def add_result(self, run: int, result: Tuple[float, float, float, float]) -> None:
+        """Append a result tuple to a given run.
+
+        Parameters:
+            run : int
+                Run index.
+            result : Tuple[float, float, float, float]
+                Tuple of metrics for one step/epoch.
+        """
         assert len(result) == 4
         self.results[run].append(result)
 
     def get_statistics(self, run: int | None = None) -> str:
+        """Return formatted statistics for one run or all runs.
+
+        Parameters:
+            run : int | None
+                Run index to summarize, or None to summarize all runs.
+
+        Returns:
+            str
+                Multi-line formatted summary string.
+        """
         lines = []
         if run is not None:
             result = torch.tensor(self.results[run])
@@ -131,6 +161,12 @@ class Logger(object):
         return '\n'.join(lines)
 
     def get_avg_statistics(self) -> str:
+        """Return formatted statistics averaged across runs per epoch.
+
+        Returns:
+            str
+                Multi-line formatted summary string.
+        """
         lines = []
         results_tensor = torch.tensor(self.results)  # shape: (runs, epochs, 3)
         avg = results_tensor.mean(dim=0)  # shape: (epochs, 3)
@@ -195,6 +231,27 @@ class Logger(object):
     def per_run_within_error(
         self, preds: List[List[float]], targets: List[List[float]], percent: float
     ) -> str:
+        """Compute per-run counts of predictions within a relative error threshold.
+
+        For each run, counts how many predictions differ from targets by at most
+        percent percent (relative error), and reports counts and ratios.
+
+        Parameters:
+            preds : List[List[float]]
+                Predicted values per run.
+            targets : List[List[float]]
+                Target values per run.
+            percent : float
+                Relative error tolerance in percent.
+
+        Returns:
+            str
+                Multi-line formatted summary string.
+
+        Raises:
+            ValueError
+                If preds and targets have mismatched structure.
+        """
         if len(preds) != len(targets):
             raise ValueError(
                 'Predictions and targets must have the same number of runs.'
@@ -234,6 +291,14 @@ class Logger(object):
 
 
 def log_quartiles(degrees: List[int], label: str) -> None:
+    """Log quartile statistics and counts for a list of degree values.
+
+    Parameters:
+        degrees : List[int]
+            Degree values to analyze.
+        label : str
+            Label used in log output.
+    """
     if len(degrees) < 4:
         logging.info(f'Not enough data points to compute quartiles for {label}.')
         return

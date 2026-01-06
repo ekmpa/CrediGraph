@@ -4,11 +4,15 @@ from typing import List, Optional
 
 
 class Task(Enum):
+    """Enumeration of learning task types."""
+
     REGRESSION = 'regression'
     CLASSIFICATION = 'classification'
 
 
 class SignalType(Enum):
+    """Enumeration of label signal semantics."""
+
     # for regression, can be:
     # - Binary, or
     # - Positive binary if it's only "legitimate" or "fact-checked" domains,
@@ -27,7 +31,14 @@ class SignalType(Enum):
 
 @dataclass(frozen=True, slots=True)
 class Dataset:
-    # ADD: domain, language
+    """Immutable specification of an external dataset and its labeling semantics.
+
+    Captures dataset provenance, task type, label interpretation, and usage status.
+    Instances are intended to be static metadata, not mutable runtime state.
+
+    ADD? domain, language.
+    """
+
     name: str
     url: str
     used: (
