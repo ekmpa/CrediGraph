@@ -26,7 +26,7 @@ fi
 
 get_cc_indices() {
     uv run python -c "
-from tgrag.utils.data_loading import interval_to_CC_slices
+from tgrag.utils.temporal_utils import interval_to_CC_slices
 indices = interval_to_CC_slices(\"$1\", \"$2\")
 print(' '.join(indices))
 "
@@ -118,7 +118,7 @@ construct() {
 
     if [[ "$SUCCESS" -ne 1 ]]; then
         echo "[ERROR] Failed to get valid WAT paths file for $CRAWL after $MAX_RETRIES attempts" >&2
-        return 1 
+        return 1
     fi
 
     TOTAL_FILES=$(gzip -dc "$WAT_PATHS_FILE" | wc -l)
@@ -176,7 +176,7 @@ construct() {
                 echo "[INFO][$CRAWL][Subfolder $SUBFOLDER_ID] Batch: $batch_start-$batch_end"
                 rm -rf "$SEGMENT_DIR"/*
                 bash "$TARGET_SCRIPTS/end-to-end.sh" "$CRAWL" "$batch_start" "$batch_end" "$SUBFOLDER_ID"
-                # TODO: make below atomic 
+                # TODO: make below atomic
                 uv run python ../tgrag/construct_graph_scripts/construct_aggregate.py --source "$DATA_DIR/crawl-data/$CRAWL/output_text_dir$SUBFOLDER_ID" --target "$DATA_DIR/crawl-data/$CRAWL/output$SUBFOLDER_ID"
                 for f in edges vertices; do
                     target_file="$DATA_DIR/crawl-data/$CRAWL/output$SUBFOLDER_ID/${f}.txt.gz"

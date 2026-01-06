@@ -4,19 +4,19 @@ from pathlib import Path
 import pytest
 
 from tgrag.dataset.process_labels import (
-    _load_domains,
-    check_overlaps,
-    merge_processed_labels,
     process_csv,
     process_goggle,
     process_unlabelled_csv,
 )
+from tgrag.utils.readers import load_domains
+from tgrag.utils.checkers import check_overlaps
+from tgrag.utils.mergers import merge_processed_labels
 
 
 @pytest.fixture
 def no_check_processed_file(monkeypatch):
     monkeypatch.setattr(
-        'tgrag.dataset.process_labels.check_processed_file',
+        'tgrag.utils.checkers.check_processed_labels',
         lambda path: None,
         raising=True,
     )

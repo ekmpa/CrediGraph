@@ -7,7 +7,7 @@ from torch import Tensor
 from tqdm import tqdm
 
 from tgrag.encoders.encoder import Encoder
-from tgrag.utils.matching import reverse_domain
+from tgrag.utils.domain_handler import reverse_domain
 
 
 class TextEmbeddingEncoder(Encoder):

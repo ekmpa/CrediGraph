@@ -3,15 +3,14 @@ import csv
 import logging
 import statistics
 from collections import Counter, defaultdict
-
-from typing import DefaultDict, Dict, List, Optional
+from typing import DefaultDict, Dict, List, Tuple
 
 from tqdm import tqdm
 
-from tgrag.utils.data_loading import load_edges, load_node_domain_map
 from tgrag.utils.logger import log_quartiles, setup_logging
 from tgrag.utils.path import get_root_dir
 from tgrag.utils.plot import plot_degree_distribution, plot_domain_scores
+from tgrag.utils.readers import load_edges, load_node_domain_map
 
 parser = argparse.ArgumentParser(
     description='Topological Experiments',
@@ -51,6 +50,7 @@ def compute_degree_stats(
         unique_nodes.update([src, dst])
     return counter, unique_nodes, len(edges)
 
+
 def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> None:
     id_to_domain, _ = load_node_domain_map(node_file)
     edges = load_edges(edge_file)
@@ -67,11 +67,14 @@ def topological_experiment(edge_file: str, node_file: str, outdegree: bool) -> N
         logging.info('No degrees calculated. Exiting.')
         return
 
-    get_quartiles(degrees, degree_counter, id_to_domain)
+    get_quartiles(degrees, degree_counter, id_to_domain, experiment_name)
 
 
 def get_quartiles(
-    degrees: List[int], degree_counter: Counter[str], id_to_domain: Dict[str, str]
+    degrees: List[int],
+    degree_counter: Counter[str],
+    id_to_domain: Dict[str, str],
+    experiment_name: str,
 ) -> None:
     max_deg = max(degrees)
     min_deg = min(degrees)
@@ -191,8 +194,9 @@ def analyze_subdomain_distribution(node_file: str, edge_file: str) -> None:
     for src, dst in tqdm(edges, desc='Analyzing subdomain edges'):
         src_dom = id_to_domain.get(src)
         dst_dom = id_to_domain.get(dst)
-        src_mother = domain_to_mother.get(src_dom)
-        dst_mother = domain_to_mother.get(dst_dom)
+
+        src_mother = domain_to_mother.get(src_dom) if src_dom is not None else None
+        dst_mother = domain_to_mother.get(dst_dom) if dst_dom is not None else None
 
         if src_dom in domain_to_mother or dst_dom in domain_to_mother:
             if src_mother and dst_mother and src_mother == dst_mother:

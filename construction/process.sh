@@ -18,7 +18,7 @@ CONSTRUCTION_DIR="$PROJECT_ROOT/construction"
 
 get_cc_indices() {
     uv run python -c "
-from tgrag.utils.data_loading import interval_to_CC_slices
+from tgrag.utils.temporal_utils import interval_to_CC_slices
 indices = interval_to_CC_slices(\"$1\", \"$2\")
 print(' '.join(indices))
 "
@@ -52,7 +52,7 @@ process() {
     echo "#####################  start process @ $(date '+%Y-%m-%d %H:%M:%S') #####################"
     bash $TARGET_SCRIPTS/process_graph.sh $GRAPH_DIR $CRAWL $MIN_DEG "20%"
     echo "#####################  end process @ $(date '+%Y-%m-%d %H:%M:%S') #####################"
-    
+
 }
 
 CRAWL_INDICES=$(get_cc_indices "$START_MONTH" "$END_MONTH")
