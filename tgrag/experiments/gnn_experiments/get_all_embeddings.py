@@ -1,9 +1,9 @@
 import argparse
 import logging
-import pickle
 from pathlib import Path
 from typing import Dict, cast
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torch_geometric.loader import NeighborLoader
@@ -69,37 +69,32 @@ def get_embeddings(
     num_nodes = data.num_nodes
     all_preds_embeddings = torch.zeros(num_nodes, 256)
 
-    all_domain_to_embeddings = {}
+    loader = NeighborLoader(
+        data,
+        input_nodes=tensor_idx,
+        num_neighbors=[30, 30, 30],
+        batch_size=4096,
+        shuffle=False,
+        num_workers=8,
+        persistent_workers=True,
+    )
 
-    for batch in tqdm(idx_loader, desc='Batching Domain Index'):
-        idx_batch = batch[0]
-        loader = NeighborLoader(
-            data,
-            input_nodes=idx_batch,
-            num_neighbors=[30, 30, 30],
-            batch_size=1024,
-            shuffle=False,
-        )
+    model.eval()
+    with torch.no_grad():
+        for batch in tqdm(loader, desc=f'Inference'):
+            batch = batch.to(device)
+            preds = model.get_embeddings(batch.x, batch.edge_index)
+            seed_nodes = batch.n_id[: batch.batch_size]
+            all_preds_embeddings[seed_nodes] = preds[: batch.batch_size].cpu()
 
-        with torch.no_grad():
-            for batch in tqdm(loader, desc=f'batch'):
-                batch = batch.to(device)
-                preds = model.get_embeddings(batch.x, batch.edge_index)
-                seed_nodes = batch.n_id[: batch.batch_size]
-                all_preds_embeddings[seed_nodes] = preds[: batch.batch_size].cpu()
+    np.save(weight_directory / 'embeddings.npy', all_preds_embeddings.numpy())
 
-        domain_names = [idx_to_domain_mapping[idx.item()] for idx in idx_batch]
-        embeddings = all_preds_embeddings[idx_batch].tolist()
-        assert len(domain_names) == len(embeddings)
-        batch_dict = dict(zip(domain_names, embeddings))
-
-        all_domain_to_embeddings.update(batch_dict)
-
-    save_path = weight_directory / 'rni_embeddings.pkl'
+    save_path = weight_directory / 'domain_names.txt'
     save_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(save_path, 'wb') as f:
-        pickle.dump(all_domain_to_embeddings, f)
+    with open(save_path, 'w') as f:
+        for i in range(num_nodes):
+            f.write(f'{idx_to_domain_mapping[i]}\n')
 
     logging.info(f'Saved domain embeddings to {save_path}')
 
