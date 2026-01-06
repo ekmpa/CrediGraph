@@ -8,11 +8,11 @@ import gzip
 import tempfile
 from pathlib import Path
 
-from tgrag.utils.analytics import compute_degrees, stats
+from tgrag.utils.analytics import stats
 from tgrag.utils.io import run_ext_sort
 from tgrag.utils.readers import line_reader
 from tgrag.utils.temporal_utils import iso_week_to_timestamp
-from tgrag.utils.writers import build_from_BCC
+from tgrag.utils.writers import build_from_BCC, compute_degrees
 
 
 def filter_domains_by_degree(
