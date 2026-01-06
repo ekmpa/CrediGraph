@@ -10,6 +10,20 @@ from tqdm import tqdm
 
 
 def check_processed_file(processed: Path) -> None:
+    """
+    Inspect a processed CSV file and print basic statistics.
+
+    Prints:
+      - Total number of non-empty data rows
+      - The header row (if present)
+      - Counts of label 0 and label 1
+
+    Parameters:
+        processed : pathlib.Path
+            Path to the processed CSV file.
+
+    Returns: None
+    """
     processed_count = 0
     label_counts = {0: 0, 1: 0}
     headers = None
@@ -34,6 +48,23 @@ def check_processed_file(processed: Path) -> None:
 
 
 def run(cmd: List[str], check: bool = True) -> subprocess.CompletedProcess[str]:
+    """
+    Run a subprocess command and capture its stdout and stderr as text.
+
+    Parameters:
+        cmd : list of str
+            Command and arguments to execute.
+        check : bool, optional
+            If True, raise RuntimeError when the command fails (default: True).
+
+    Returns:
+        subprocess.CompletedProcess[str]
+            The completed process object containing stdout, stderr, and return code.
+
+    Raises:
+        RuntimeError
+            If `check` is True and the command exits with a non-zero status.
+    """
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     if check and p.returncode != 0:
         raise RuntimeError(
@@ -43,6 +74,17 @@ def run(cmd: List[str], check: bool = True) -> subprocess.CompletedProcess[str]:
 
 
 def count_lines(path: str) -> int:
+    """
+    Count the number of lines in a text file, supporting gzip-compressed files.
+
+    Parameters:
+        path : str
+            Path to the file.
+
+    Returns:
+        int
+            Number of lines in the file.
+    """
     if path.endswith('.gz'):
         c = 0
         with gzip.open(path, 'rt', encoding='utf-8', newline='') as f:
@@ -55,12 +97,34 @@ def count_lines(path: str) -> int:
 
 
 def gz_line_reader(path: str | Path) -> Iterator[str]:
+    """
+    Yield lines from a gzip-compressed text file without trailing newlines.
+
+    Parameters:
+        path : str or pathlib.Path
+            Path to the gzip-compressed file.
+
+    Yields:
+        str
+            Each line from the file with the trailing newline removed.
+    """
     with gzip.open(path, 'rt', encoding='utf-8', newline='') as f:
         for line in f:
             yield line.rstrip('\n')
 
 
 def read_vertex_file(path: str) -> Set[str]:
+    """
+    Read a gzip-compressed vertex file into a set of strings.
+
+    Parameters:
+        path : str
+            Path to the gzip-compressed vertex file.
+
+    Returns:
+        set of str
+            All unique vertex identifiers found in the file.
+    """
     result: Set[str] = set()
     with gzip.open(path, 'rt', encoding='utf-8') as f:
         for line in f:
@@ -69,6 +133,20 @@ def read_vertex_file(path: str) -> Set[str]:
 
 
 def extract_all_domains(vertices_gz: str, edges_gz: str, out_txt: str) -> None:
+    """
+    Extract all domain names from vertex and edge files into a single text file.
+
+    Parameters:
+        vertices_gz : str
+            Path to the gzip-compressed vertex file.
+        edges_gz : str
+            Path to the gzip-compressed edge file (tab-separated src and dst).
+        out_txt : str
+            Path to the output text file.
+
+    Returns:
+        None
+    """
     with open(out_txt, 'w', encoding='utf-8', newline='') as out:
         for line in gz_line_reader(vertices_gz):
             dom = line.strip()
@@ -90,6 +168,19 @@ def extract_all_domains(vertices_gz: str, edges_gz: str, out_txt: str) -> None:
 
 
 def read_edge_file(path: str, id_to_domain: Dict[int, str]) -> Set[Tuple[str, str]]:
+    """
+    Read a gzip-compressed edge file and map numeric IDs to domain strings.
+
+    Parameters:
+        path : str
+            Path to the gzip-compressed edge file.
+        id_to_domain : dict[int, str]
+            Mapping from numeric node IDs to domain names.
+
+    Returns:
+        set of (str, str)
+            Set of (source_domain, destination_domain) tuples.
+    """
     result: Set[Tuple[str, str]] = set()
     get = id_to_domain.get
     with gzip.open(path, 'rt', encoding='utf-8') as f:
@@ -106,12 +197,34 @@ def read_edge_file(path: str, id_to_domain: Dict[int, str]) -> Set[Tuple[str, st
 
 
 def open_file(path: str) -> Callable[..., IO]:
+    """
+    Return the appropriate open function for a path.
+
+    Parameters:
+        path : str
+            Path to the file.
+
+    Returns:
+        callable
+            A file-opening function compatible with open()'s signature.
+    """
     return gzip.open if path.endswith('.gz') else open
 
 
-def load_edges(edge_file: str) -> List[Tuple[str, str]]:
+def load_edges(path: str) -> List[Tuple[str, str]]:
+    """
+    Load an edge list from a text or gzip-compressed file, expected to have (source, domain) per line.
+
+    Parameters:
+        path : str
+            Path to the edge file.
+
+    Returns:
+        list of (str, str)
+            List of edge tuples.
+    """
     edges = []
-    with open_file(edge_file)(edge_file, 'rt', encoding='utf-8') as f:
+    with open_file(path)(path, 'rt', encoding='utf-8') as f:
         for line in tqdm(f, desc='Loading edge file'):
             parts = line.strip().split()
             if len(parts) == 2:
@@ -119,10 +232,21 @@ def load_edges(edge_file: str) -> List[Tuple[str, str]]:
     return edges
 
 
-def load_node_domain_map(node_file: str) -> Tuple[dict, dict]:
+def load_node_domain_map(path: str) -> Tuple[dict, dict]:
+    """
+    Load a node-to-domain and domain-to-node mapping from a file.
+
+    Parameters:
+        path : str
+            Path to the node file, expected to have (node_id, domain) per line.
+
+    Returns:
+        (dict, dict)
+            A tuple (id_to_domain, domain_to_id).
+    """
     id_to_domain = {}
     domain_to_id = {}
-    with open_file(node_file)(node_file, 'rt', encoding='utf-8') as f:
+    with open_file(path)(path, 'rt', encoding='utf-8') as f:
         for line in tqdm(f, desc='Loading node file'):
             parts = line.strip().split()
             if len(parts) == 2:
@@ -134,8 +258,17 @@ def load_node_domain_map(node_file: str) -> Tuple[dict, dict]:
 
 def write_endpoints(edges_gz: Path, endpoints_path: str | Path) -> Tuple[int, int]:
     """
-    Write one endpoint per line (both src and dst). 
-    Return (#edges, #lines_written).
+    Write all edge endpoints to a text file, one per line.
+
+    Parameters:
+        edges_gz : pathlib.Path
+            Path to the gzip-compressed edge file.
+        endpoints_path : str or pathlib.Path
+            Path to the output file.
+
+    Returns:
+        (int, int)
+            A tuple (#edges_read, #lines_written).
     """
     E = 0
     lines = 0
