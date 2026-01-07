@@ -73,11 +73,12 @@ def get_embeddings(
         persistent_workers=True,
     )
 
-    shard_size = 10_000_000
+    shard_size = 3_000_000
     current_shard_dict = {}
+    current_shard_name = []
     shard_count = 0
 
-    save_dir = scratch / weight_directory / 'shards'
+    save_dir = scratch / 'shards'
     logging.info(f'save directory: {save_dir}')
     save_dir.mkdir(parents=True, exist_ok=True)
 
@@ -93,17 +94,23 @@ def get_embeddings(
                 name = idx_to_domain_mapping[node_idx.item()]
                 embedding = preds[i].cpu().tolist()
                 current_shard_dict[name] = embedding
+                current_shard_name.append(name)
 
             if len(current_shard_dict) >= shard_size:
                 shard_path = save_dir / f'shard_{shard_count}.pkl'
                 with open(shard_path, 'wb') as f:
                     pickle.dump(current_shard_dict, f)
+                names_path = save_dir / f'domains_{shard_count}.txt'
+
+                with open(names_path, 'w') as f:
+                    f.write('\n'.join(current_shard_name))
 
                 logging.info(
                     f'Saved shard {shard_count} with {len(current_shard_dict)}'
                 )
 
                 current_shard_dict = {}
+                current_shard_name = []
                 shard_count += 1
 
         if current_shard_dict:
