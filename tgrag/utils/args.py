@@ -175,6 +175,22 @@ class ModelArguments:
     log_steps: int = field(
         default=50, metadata={'help': 'Step mod epoch to print logger.'}
     )
+    prediction_dim: int = field(
+        default=1,
+        metadata={
+            'help': 'Final predictor dimension (3 enables lower/mid/upper outputs).'
+        },
+    )
+    use_quantile_heads: bool = field(
+        default=False,
+        metadata={'help': 'Enable quantile regression heads (requires dim >= 3).'},
+    )
+    quantile_alpha: float = field(
+        default=0.1,
+        metadata={
+            'help': 'Alpha used for quantile losses (e.g., 0.1 for 90% coverage).'
+        },
+    )
 
 
 @dataclass

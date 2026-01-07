@@ -54,6 +54,7 @@ def run_get_test_predictions(
         out_channels=model_arguments.embedding_dimension,
         num_layers=model_arguments.num_layers,
         dropout=model_arguments.dropout,
+        prediction_dim=model_arguments.prediction_dim,
     ).to(device)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     logging.info('Model Loaded.')
@@ -79,10 +80,16 @@ def run_get_test_predictions(
         for batch in tqdm(loader, desc=f'batch'):
             batch = batch.to(device)
             preds = model(batch.x, batch.edge_index)
+            if preds.dim() == 1:
+                batch_preds = preds.unsqueeze(-1)
+            elif preds.size(-1) == 1:
+                batch_preds = preds
+            else:
+                batch_preds = preds[:, :1]
             seed_nodes = batch.n_id[: batch.batch_size]
-            all_preds[seed_nodes] = preds[: batch.batch_size].cpu()
+            all_preds[seed_nodes] = batch_preds[: batch.batch_size].cpu()
 
-    test_predictions = all_preds[indices]
+    test_predictions = all_preds[indices].squeeze(-1)
 
     abs_errors = (test_predictions - test_targets).abs()
 
