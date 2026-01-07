@@ -33,6 +33,7 @@ def get_embeddings(
     model_arguments: ModelArguments,
     dataset: TemporalDataset,
     weight_directory: Path,
+    scratch: Path,
 ) -> None:
     get_root_dir()
     data = dataset[0]
@@ -76,7 +77,7 @@ def get_embeddings(
     current_shard_dict = {}
     shard_count = 0
 
-    save_dir = weight_directory / 'shards'
+    save_dir = scratch / weight_directory / 'shards'
     save_dir.mkdir(parents=True, exist_ok=True)
 
     model.eval()
@@ -154,6 +155,7 @@ def main() -> None:
             experiment_arg.model_args,
             dataset,
             weight_directory,
+            scratch,
         )
 
 
