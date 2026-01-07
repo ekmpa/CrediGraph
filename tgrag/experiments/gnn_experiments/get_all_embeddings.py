@@ -115,8 +115,12 @@ def get_embeddings(
 
         if current_shard_dict:
             shard_path = save_dir / f'shard_{shard_count}.pkl'
+            names_path = save_dir / f'domains_{shard_count}.txt'
             with open(shard_path, 'wb') as f:
                 pickle.dump(current_shard_dict, f)
+
+            with open(names_path, 'w') as f:
+                f.write('\n'.join(current_shard_name))
 
     logging.info(f'Saved domain embeddings to {save_dir}')
 
