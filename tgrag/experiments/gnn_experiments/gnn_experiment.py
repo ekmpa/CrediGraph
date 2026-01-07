@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -24,10 +24,54 @@ from tgrag.utils.prob import ragged_mean_by_index
 from tgrag.utils.save import save_loss_results
 
 
+def _extract_mid_predictions(preds: Tensor, prediction_dim: int) -> Tensor:
+    if prediction_dim == 1:
+        return preds.squeeze(-1)
+    return preds[:, 0]
+
+
+def _quantile_loss(
+    preds: Tensor,
+    targets: Tensor,
+    mask: Tensor,
+    alpha: float,
+) -> Tensor:
+    mid = preds[:, 0]
+    lower = preds[:, 1]
+    upper = preds[:, 2]
+    labels = targets
+    mid_vals = mid[mask]
+    lower_vals = lower[mask]
+    upper_vals = upper[mask]
+    label_vals = labels[mask]
+    if label_vals.numel() == 0:
+        return torch.tensor(0.0, device=preds.device)
+    mse_loss = F.mse_loss(mid_vals, label_vals)
+    low_bound = alpha / 2
+    upp_bound = 1 - alpha / 2
+    low_loss = torch.mean(
+        torch.max(
+            (low_bound - 1) * (label_vals - lower_vals),
+            low_bound * (label_vals - lower_vals),
+        )
+    )
+    upp_loss = torch.mean(
+        torch.max(
+            (upp_bound - 1) * (label_vals - upper_vals),
+            upp_bound * (label_vals - upper_vals),
+        )
+    )
+    ordering_loss = torch.mean(torch.relu(lower_vals - upper_vals))
+    return mse_loss + low_loss + upp_loss + ordering_loss
+
+
 def train(
     model: torch.nn.Module,
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
+    prediction_dim: int,
+    use_quantile_heads: bool,
+    quantile_alpha: float,
 ) -> Tuple[float, float, Tensor, Tensor]:
     model.train()
     device = next(model.parameters()).device
@@ -38,18 +82,22 @@ def train(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
+        preds = model(batch.x, batch.edge_index)
+        mid_preds = _extract_mid_predictions(preds, prediction_dim)
         targets = batch.y
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
             continue
 
-        loss = F.l1_loss(preds[train_mask], targets[train_mask])
+        if use_quantile_heads:
+            loss = _quantile_loss(preds, targets, train_mask, quantile_alpha)
+        else:
+            loss = F.l1_loss(mid_preds[train_mask], targets[train_mask])
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
         total_batches += 1
-        all_preds.append(preds[train_mask])
+        all_preds.append(mid_preds[train_mask])
         all_targets.append(targets[train_mask])
 
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
@@ -63,6 +111,9 @@ def train_(
     model: torch.nn.Module,
     train_loader: NeighborLoader,
     optimizer: torch.optim.AdamW,
+    prediction_dim: int,
+    use_quantile_heads: bool,
+    quantile_alpha: float,
 ) -> Tuple[float, float, List[float], List[float]]:
     model.train()
     device = next(model.parameters()).device
@@ -76,20 +127,24 @@ def train_(
     for batch in tqdm(train_loader, desc='Batchs', leave=False):
         optimizer.zero_grad()
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
+        preds = model(batch.x, batch.edge_index)
+        mid_preds = _extract_mid_predictions(preds, prediction_dim)
         targets = batch.y
         train_mask = batch.train_mask
         if train_mask.sum() == 0:
             continue
 
-        loss = F.l1_loss(preds[train_mask], targets[train_mask])
+        if use_quantile_heads:
+            loss = _quantile_loss(preds, targets, train_mask, quantile_alpha)
+        else:
+            loss = F.l1_loss(mid_preds[train_mask], targets[train_mask])
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
         total_batches += 1
-        all_preds.append(preds[train_mask])
+        all_preds.append(mid_preds[train_mask])
         all_targets.append(targets[train_mask])
-        for pred in preds[train_mask]:
+        for pred in mid_preds[train_mask]:
             pred_scores.append(pred.item())
         for targ in targets[train_mask]:
             target_scores.append(targ.item())
@@ -106,6 +161,7 @@ def evaluate(
     model: torch.nn.Module,
     loader: NeighborLoader,
     mask_name: str,
+    prediction_dim: int,
 ) -> Tuple[float, float, float, float]:
     model.eval()
     device = next(model.parameters()).device
@@ -117,7 +173,8 @@ def evaluate(
     all_targets = []
     for batch in loader:
         batch = batch.to(device)
-        preds = model(batch.x, batch.edge_index).squeeze()
+        preds = model(batch.x, batch.edge_index)
+        mid_preds = _extract_mid_predictions(preds, prediction_dim)
         targets = batch.y
         mask = getattr(batch, mask_name)
         if mask.sum() == 0:
@@ -125,7 +182,7 @@ def evaluate(
         # MEAN: 0.546
         mean_preds = torch.full(batch.y[mask].size(), 0.5).to(device)
         random_preds = torch.rand(batch.y[mask].size(0)).to(device)
-        loss = F.l1_loss(preds[mask], targets[mask])
+        loss = F.l1_loss(mid_preds[mask], targets[mask])
         mean_loss = F.l1_loss(mean_preds, targets[mask])
         random_loss = F.l1_loss(random_preds, targets[mask])
 
@@ -135,7 +192,7 @@ def evaluate(
         total_random_loss += random_loss.item()
         total_batches += 1
 
-        all_preds.append(preds[mask])
+        all_preds.append(mid_preds[mask])
         all_targets.append(targets[mask])
 
     r2 = r2_score(torch.cat(all_preds), torch.cat(all_targets)).item()
@@ -150,6 +207,8 @@ def run_gnn_baseline(
     model_arguments: ModelArguments,
     weight_directory: Path,
     dataset: TemporalDataset,
+    experiment_name: Optional[str] = None,
+    target_col: Optional[str] = None,
 ) -> None:
     data = dataset[0]
     split_idx = dataset.get_idx_split()
@@ -220,6 +279,7 @@ def run_gnn_baseline(
             out_channels=model_arguments.embedding_dimension,
             num_layers=model_arguments.num_layers,
             dropout=model_arguments.dropout,
+            prediction_dim=model_arguments.prediction_dim,
         ).to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=model_arguments.lr)
         loss_tuple_epoch_mse: List[Tuple[float, float, float, float, float]] = []
@@ -227,15 +287,35 @@ def run_gnn_baseline(
         epoch_avg_preds: List[List[float]] = []
         epoch_avg_targets: List[List[float]] = []
         for _ in tqdm(range(1, 1 + model_arguments.epochs), desc='Epochs'):
-            _, _, batch_preds, batch_targets = train_(model, train_loader, optimizer)
+            _, _, batch_preds, batch_targets = train_(
+                model,
+                train_loader,
+                optimizer,
+                model_arguments.prediction_dim,
+                model_arguments.use_quantile_heads,
+                model_arguments.quantile_alpha,
+            )
             epoch_avg_preds.append(batch_preds)
             epoch_avg_targets.append(batch_targets)
-            train_loss, _, _, train_r2 = evaluate(model, train_loader, 'train_mask')
+            train_loss, _, _, train_r2 = evaluate(
+                model,
+                train_loader,
+                'train_mask',
+                model_arguments.prediction_dim,
+            )
             valid_loss, valid_mean_baseline_loss, _, valid_r2 = evaluate(
-                model, val_loader, 'valid_mask'
+                model,
+                val_loader,
+                'valid_mask',
+                model_arguments.prediction_dim,
             )
             test_loss, test_mean_baseline_loss, test_random_baseline_loss, test_r2 = (
-                evaluate(model, test_loader, 'test_mask')
+                evaluate(
+                    model,
+                    test_loader,
+                    'test_mask',
+                    model_arguments.prediction_dim,
+                )
             )
             result = (
                 train_loss,
@@ -296,4 +376,12 @@ def run_gnn_baseline(
         loss_tuple_run_r2, model_arguments.model, Scoring.r2, 'r2_plot.png'
     )
     logging.info('Saving pkl of results')
-    save_loss_results(loss_tuple_run_mse, model_arguments.model, 'TODO')
+    # Use experiment_name if provided, otherwise fall back to model name
+    # This distinguishes between Q_GAT (quantile) and GAT (baseline)
+    save_model_name = (
+        experiment_name if experiment_name is not None else model_arguments.model
+    )
+    # Include target_col to distinguish PC1 and MBFC results
+    # target_col is passed from main.py (from meta_args) or can be obtained from dataset
+    save_target_col = target_col if target_col is not None else dataset.target_col
+    save_loss_results(loss_tuple_run_mse, save_model_name, 'TODO', save_target_col)

@@ -56,6 +56,7 @@ def run_weak_supervision_forward(
         out_channels=model_arguments.embedding_dimension,
         num_layers=model_arguments.num_layers,
         dropout=model_arguments.dropout,
+        prediction_dim=model_arguments.prediction_dim,
     ).to(device)
     model.load_state_dict(torch.load(weight_path, map_location=device))
     logging.info('Model Loaded.')
@@ -87,10 +88,16 @@ def run_weak_supervision_forward(
             for batch in tqdm(phishing_loader, desc=f'{dataset_name} batch'):
                 batch = batch.to(device)
                 preds = model(batch.x, batch.edge_index)
+                if preds.dim() == 1:
+                    batch_preds = preds.unsqueeze(-1)
+                elif preds.size(-1) == 1:
+                    batch_preds = preds
+                else:
+                    batch_preds = preds[:, :1]
                 seed_nodes = batch.n_id[: batch.batch_size]
-                all_preds[seed_nodes] = preds[: batch.batch_size].cpu()
+                all_preds[seed_nodes] = batch_preds[: batch.batch_size].cpu()
 
-        preds = all_preds[phishing_indices]
+        preds = all_preds[phishing_indices].squeeze(-1)
         logging.info(f'Number of predictions: {preds.size()}')
         logging.info(f'Predictions: {preds}')
         for threshold in [0.1, 0.3, 0.5]:

@@ -1,9 +1,14 @@
 MetaArguments:
   log_file_path: "gnn_baseline_dec_mbfc_30_3hop_1024.log"
-  node_file: "data/dec_2024/vertices.csv"
-  edge_file: "data/dec_2024/edges.csv"
-  target_file: "data/dec_2024/targets_corrected.csv"
-  target_col: "mbfc"
+  # node_file: "data/dec_2024/vertices.csv"
+  # edge_file: "data/dec_2024/edges.csv"
+  # target_file: "data/dec_2024/targets_corrected.csv"
+  node_file: "../data/dec_2024/vertices.csv"
+  edge_file: "../data/dec_2024/edges.csv"
+  target_file: "../data//dec_2024/targets.csv"
+  processed_location: "../data/dec_2024/processed"
+  weights_directory: "../data/dec_2024/weights"
+  target_col: "pc1"
   target_index_name: 'nid'
   target_index_col: 0
   edge_src_col: "src"
@@ -22,7 +27,7 @@ ExperimentArguments:
         num_layers: 3
         hidden_channels: 256
         num_neighbors: [30, 30, 30]
-        batch_size: 1024
+        batch_size: 64
         dropout: 0.1
         lr: 0.001
         epochs: 100
@@ -39,7 +44,7 @@ ExperimentArguments:
         num_layers: 3
         hidden_channels: 256
         num_neighbors: [30, 30, 30]
-        batch_size: 1024
+        batch_size: 64
         dropout: 0.1
         lr: 0.001
         epochs: 100
@@ -56,7 +61,7 @@ ExperimentArguments:
         num_layers: 3
         hidden_channels: 256
         num_neighbors: [30, 30, 30]
-        batch_size: 1024
+        batch_size: 64
         dropout: 0.1
         lr: 0.001
         epochs: 100
@@ -73,7 +78,7 @@ ExperimentArguments:
         num_layers: 3
         hidden_channels: 256
         num_neighbors: [30, 30, 30]
-        batch_size: 1024
+        batch_size: 64
         dropout: 0.1
         lr: 0.001
         epochs: 100
