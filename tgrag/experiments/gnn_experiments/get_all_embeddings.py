@@ -78,6 +78,7 @@ def get_embeddings(
     shard_count = 0
 
     save_dir = scratch / weight_directory / 'shards'
+    logging.info(f'save directory: {save_dir}')
     save_dir.mkdir(parents=True, exist_ok=True)
 
     model.eval()
