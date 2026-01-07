@@ -163,7 +163,7 @@ def main() -> None:
             experiment_arg.model_args,
             dataset,
             weight_directory,
-            scratch / cast(str, meta_args.node_file),
+            scratch / cast(str, meta_args.database_folder),
         )
 
 
