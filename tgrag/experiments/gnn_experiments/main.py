@@ -79,6 +79,8 @@ def main() -> None:
             experiment_arg.model_args,
             root / cast(str, meta_args.weights_directory) / f'{meta_args.target_col}',
             dataset,
+            experiment_name=experiment,  # Pass experiment name to distinguish quantile vs baseline
+            target_col=meta_args.target_col,  # Pass target_col to distinguish PC1 and MBFC results
         )
     results = load_all_loss_tuples()
     logging.info('Constructing Plots, across models')
