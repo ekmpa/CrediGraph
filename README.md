@@ -1,5 +1,12 @@
 # CrediGraph
 
+> [!WARNING]
+>  
+> This repository is no longer maintained and is kept for archival / reference only.
+>
+> Please now refer to the [CrediNet](https://github.com/credi-net) organization, under which our work is instead organized. 
+> 
+
 <img src="img/logo_silver.png" alt="CrediGraph Logo" style="width: 300px; height: auto;" />
 
 
