@@ -22,7 +22,7 @@ if __name__ == '__main__':
     parser.add_argument("--emb_model", type=str, default="google/embeddinggemma-300m", help="LLM model Name",
                         choices=["Qwen/Qwen3-Embedding-0.6B", "Qwen/Qwen3-Embedding-8B", "Qwen/Qwen3-Embedding-4B",
                                  "google/embeddinggemma-300m"])
-        parser.add_argument("--local_dir", type=str, default="/home/mila/a/abdallah/hsh_projects/content_emb/content_emb", help="document key column")
+    parser.add_argument("--local_dir", type=str, default="/home/mila/a/abdallah/hsh_projects/content_emb/content_emb", help="document key column")
     parser.add_argument("--hf_files_start_idx", type=int, default=0, help="start file idx")
     parser.add_argument("--hf_files_end_idx", type=int, default=100, help="end file idx")
     parser.add_argument("--parquet_batch_size", type=int, default=100000, help="parquet file read rows batch_size")

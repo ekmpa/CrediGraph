@@ -23,7 +23,18 @@ else
       seed_list=$3
 fi
 
-echo "outputTableName=outputTableName"
+if [ -z "$4" ]; then
+      start_idx=1
+else
+      start_idx=$4
+fi
+
+if [ -z "$5" ]; then
+      end_idx=10
+else
+      end_idx=$5
+fi
+echo "outputTableName=$outputTableName"
 echo "seed_list=$seed_list"
 
 # Get the root of the project (one level above this script's directory)
@@ -61,9 +72,16 @@ export PYSPARK_DRIVER_PYTHON="$VENV_PATH/bin/python"
     --executor-memory 5g \
     --py-files "$PROJECT_ROOT/tgrag/cc-scripts/sparkcc.py" \
     "$PROJECT_ROOT/tgrag/cc-scripts/wet_extract_domain_content.py" \
-    "$INPUT_DIR/test_wet.txt" \
+    "$INPUT_DIR/${CRAWL}_test_wet_${start_idx}_${end_idx}.txt" \
     "$outputTableName" \
     --trusted_domains "$seed_list" \
     --output_format "parquet" \
     --output_compression "snappy" \
     --log_level "WARN"
+
+    ################### delete processed batch files ###############
+    while IFS= read -r line; do
+        file_Path="${line##*:}"
+        echo "delete file path=$file_Path"
+        rm -f "$file_Path"
+    done <  "$INPUT_DIR/${CRAWL}_test_wet_${start_idx}_${end_idx}.txt"

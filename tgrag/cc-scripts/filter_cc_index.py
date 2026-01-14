@@ -38,7 +38,7 @@ class Filter_CC_Index_Job(CCSparkJob):
     parquet_records = None
     parquet_credibench_records = None
     records_failed = None
-    domains_pc1_dict=None
+    domains_set=None
     supported_langs = ["eng", "fra"] # "language codes: ISO-639-3 "
     filter_by_languages=False
 
@@ -212,7 +212,7 @@ class Filter_CC_Index_Job(CCSparkJob):
             # print(f"self.args.filter_by_supported_languages={self.args.filter_by_supported_languages}")
             if not self.args.filter_by_supported_languages or (len(set(content_languages_lst) & set(self.supported_langs)) > 0):
                 url_host_name = record.url_host_name
-                if url_host_name in self.domains_pc1_dict.value:
+                if url_host_name in self.domains_set.value:
                     url = record.url
                     warc_filename = record.warc_filename
                     warc_record_offset = record.warc_record_offset
@@ -247,8 +247,13 @@ class Filter_CC_Index_Job(CCSparkJob):
         return dict(zip(domains_df["domain"].tolist(), domains_df["pc1"].tolist()))
     def run_job(self, session):
         self.get_logger().info(f"seed domain path={self.args.trusted_domains}")
-        out_path=str(session.conf.get("spark.sql.warehouse.dir")).split(":")[-1]+"/"+self.args.output
-        self.domains_pc1_dict = session.sparkContext.broadcast(self.load_domain_pc1(self.args.trusted_domains))
+        out_path=str(session.conf.get("spark.sql.warehouse.dir")).split(":")[-1]+"/"+self.args.output        
+        cc_label_deg_3_df=pd.read_csv(self.args.trusted_domains)
+        # cc_label_deg_3_df.columns=["domain"]
+        cc_label_deg_3_set=set(cc_label_deg_3_df["domain"].tolist())  
+        del cc_label_deg_3_df
+        self.domains_set = session.sparkContext.broadcast(cc_label_deg_3_set)        
+        del cc_label_deg_3_set
         # print(f"out_path={out_path}")
         if os.path.exists(out_path):
             # print(f"Exists={out_path}")
@@ -300,7 +305,6 @@ class Filter_CC_Index_Job(CCSparkJob):
         self.log_accumulators(session.sparkContext)
 if __name__ == '__main__':
     job = Filter_CC_Index_Job()
-    # ExtractWetContentsJob.domains_pc1_dict=load_domain_pc1()
     job.run()
 
 

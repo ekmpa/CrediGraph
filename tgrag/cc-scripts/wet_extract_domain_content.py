@@ -133,7 +133,14 @@ class ExtractWetContentsJob(CCSparkJob):
     def run_job(self, session):
         self.get_logger().info(f"seed domain path={self.args.trusted_domains}")
         out_path=str(session.conf.get("spark.sql.warehouse.dir")).split(":")[-1]+"/"+self.args.output
-        self.domains_pc1_dict = session.sparkContext.broadcast(self.load_domain_pc1(self.args.trusted_domains))
+
+        cc_label_deg_3_df=pd.read_csv(self.args.trusted_domains)
+        cc_label_deg_3_set=set(cc_label_deg_3_df["domain"].tolist())  
+        del cc_label_deg_3_df
+        self.domains_set = session.sparkContext.broadcast(cc_label_deg_3_set)        
+        del cc_label_deg_3_set
+
+        # self.domains_pc1_dict = session.sparkContext.broadcast(self.load_domain_pc1(self.args.trusted_domains))
         if os.path.exists(out_path):
             shutil.rmtree(out_path)
         if self.args.input != '':

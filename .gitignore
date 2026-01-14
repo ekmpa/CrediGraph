@@ -1,5 +1,6 @@
 #Ours
 data/
+plots/
 results/
 saved_graphs/
 spark-warehouse/
@@ -93,6 +94,10 @@ docs/_build/
 # PyBuilder
 .pybuilder/
 target/
+# parquet files
+*.parquet
+# log files
+*.log*
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -191,3 +196,6 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+bash_scripts/jdk-25_linux-x64_bin.tar
+bash_scripts/jdk-17.0.12_linux-x64_bin.tar.gz
+bash_scripts/jdk-25_linux-x64_bin.tar.gz

@@ -40,10 +40,18 @@ else
       spark_table_name=$6
 fi
 
+
+if [ -z "$7" ]; then
+      listing=0
+else
+      listing=$7
+fi
+
 echo "cc_file_types= ${cc_file_types[@]}"
 echo "start_idx=$start_idx end_idx=$end_idx"
 echo "seed_list=$seed_list"
 echo "spark_table_name=$spark_table_name"
+echo "listing path=$listing"
 
 CRAWL_ARG="$1"
 
@@ -72,8 +80,8 @@ for data_type in  "${cc_file_types[@]}" ; do
       echo $CRAWL
       CRAWL_LowerCase=${CRAWL,,}
       echo "################################### run get data @ $(date '+%Y-%m-%d %H:%M:%S') ###################################"
-      echo "$SCRIPT_DIR/get_data.sh" "$CRAWL" $start_idx $end_idx "[$data_type]"
-      "$SCRIPT_DIR/get_data.sh" "$CRAWL" $start_idx $end_idx "[$data_type]"
+      echo "$SCRIPT_DIR/get_data.sh" "$CRAWL" $start_idx $end_idx "[$data_type]" $listing
+      "$SCRIPT_DIR/get_data.sh" "$CRAWL" $start_idx $end_idx "[$data_type]" $listing
       echo "Data Downloaded for $CRAWL."
       if [ "$data_type" = "wat" ]; then
         echo "################ Start Processing Processing $data_type Files ######################"
@@ -90,20 +98,20 @@ for data_type in  "${cc_file_types[@]}" ; do
          else
             rm -rf "$SCRATCH/spark-warehouse/wet_${spark_table_name}_${CRAWL_LowerCase//-/}_${start_idx}_${end_idx}/" # Remove re-created directories before running
          fi
-         echo "$SCRIPT_DIR/run_extract_wet_content.sh" "$CRAWL" "wet_${spark_table_name}_${CRAWL_LowerCase//-/}_${start_idx}_${end_idx}" "$seed_list"
-         "$SCRIPT_DIR/run_extract_wet_content.sh" "$CRAWL" "wet_${spark_table_name}_${CRAWL_LowerCase//-/}_${start_idx}_${end_idx}" "$seed_list"
+         echo "$SCRIPT_DIR/run_extract_wet_content.sh" "$CRAWL" "wet_${spark_table_name}_${CRAWL_LowerCase//-/}_${start_idx}_${end_idx}" "$seed_list" "$start_idx" "$end_idx"
+         "$SCRIPT_DIR/run_extract_wet_content.sh" "$CRAWL" "wet_${spark_table_name}_${CRAWL_LowerCase//-/}_${start_idx}_${end_idx}" "$seed_list" "$start_idx" "$end_idx"
          echo "wet_extract_content_table constructed for $CRAWL batch_${start_idx}_${end_idx}"
-      elif [ "$data_type" = "cc-index-table" ]; then
+      elif [ "$data_type" = "cc-index-table" ]; then # collect content page wet-files from the CC Index (process only ~300 files )
          echo "#####################  run_filter_index @ $(date '+%Y-%m-%d %H:%M:%S') #####################"
          if [ -z "$SCRATCH" ]; then
             rm -rf "$PROJECT_ROOT/bash_scripts/spark-warehouse/cc-index-table_${spark_table_name}_${CRAWL_LowerCase//-/}_${start_idx}_${end_idx}/" # Remove re-created directories before running
          else
             rm -rf "$SCRATCH/spark-warehouse/cc-index-table_${spark_table_name}_${CRAWL_LowerCase//-/}_${start_idx}_${end_idx}/" # Remove re-created directories before running
          fi
-         echo "$SCRIPT_DIR/run_filter_warc-index.sh" "$CRAWL" "warc_index_table_${spark_table_name}_${CRAWL_LowerCase//-/}_${start_idx}_${end_idx}" "$seed_list"
-         "$SCRIPT_DIR/run_filter_warc-index.sh" "$CRAWL" "warc_index_table_${spark_table_name}_${CRAWL_LowerCase//-/}_${start_idx}_${end_idx}" "$seed_list"
+         echo "$SCRIPT_DIR/run_filter_warc-index.sh" "$CRAWL" "warc_index_table_${spark_table_name}_${CRAWL_LowerCase//-/}_${start_idx}_${end_idx}" "$seed_list" "$start_idx" "$end_idx"
+         "$SCRIPT_DIR/run_filter_warc-index.sh" "$CRAWL" "warc_index_table_${spark_table_name}_${CRAWL_LowerCase//-/}_${start_idx}_${end_idx}" "$seed_list" "$start_idx" "$end_idx"
          echo "filter_warc-index table constructed for $CRAWL batch_${start_idx}_${end_idx}"
       fi
   echo "********************** End Of $data_type Task @ $(date '+%Y-%m-%d %H:%M:%S') **********************"
   done
-done #< "$CRAWLS"
+done
