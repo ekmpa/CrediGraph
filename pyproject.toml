@@ -35,6 +35,7 @@ dependencies = [
     "huggingface-hub",
     "jsonpath_ng",
     "vllm",
+    "duckdb",
 ]
 
 [tool.flit.module]

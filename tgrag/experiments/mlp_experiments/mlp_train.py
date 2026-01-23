@@ -1,4 +1,5 @@
 import argparse
+import sklearn
 import logging
 from typing import Dict, cast
 import pickle
@@ -9,16 +10,16 @@ from tgrag.utils.path import get_root_dir
 from tqdm import tqdm
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.neural_network import MLPRegressor
+from sklearn.neural_network import MLPRegressor as  Sklearn_MLPRegressor
+from mlp_modules import MLPRegressor
+from mlp_modules import MLP3LayersPredictor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from statistics import mean
-from mlp_multihead import MultiTaskMLP, train_multihead
+from mlp_modules import MultiTaskMLP, train_multihead,train_mlp,train_scikitlearn_regressor
 from sklearn.preprocessing import normalize 
-def normalize_embeddings(emb_dict):
-    norm_arr=normalize(list(emb_dict.values()))
-    return {k: norm_arr[idx] for idx,k in enumerate(emb_dict.keys())}
+from utils import normalize_embeddings,train_valid_test_split,resize_emb,plot_histogram,plot_loss,plot_regression_scatter,eval
 
 def load_agg_Nmonth_emb_dict(embed_type, path="../../../data", model_name="embeddinggemma-300m",
                              month_lst=["dec", "nov", "oct"], target="pc1", agg="avg",normalize=False):
@@ -228,153 +229,9 @@ def load_weaksupervision_emb_dict(embed_type, path="../../../data", model_name="
 
     return embd_dict_phishtank, embd_dict_URLhaus, embd_dict_PhishDataset_legit
 
-
-def train_valid_test_split(target, labeled_11k_df, test_valid_size=0.4):
-    if target == "mbfc_bias":
-        quantiles = labeled_11k_df[target].quantile([0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
-    else:
-        quantiles = labeled_11k_df[target].quantile([0.2, 0.4, 0.6, 0.8, 1.0])
-    bins = [labeled_11k_df[target].min()] + quantiles.tolist()
-    labeled_11k_df[target + '_cat'] = pd.cut(labeled_11k_df[target], bins=bins, labels=quantiles, include_lowest=True)
-    X = labeled_11k_df[['domain', target]]
-    y = labeled_11k_df[target + '_cat']
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_valid_size, stratify=y, random_state=42
-    )
-    X_valid, X_test, y_valid, y_test = train_test_split(
-        X_test, y_test, test_size=0.5, stratify=y_test, random_state=42)
-    return X_train, labeled_11k_df.iloc[X_train.index][target].tolist(), X_valid, labeled_11k_df.iloc[X_valid.index][
-        target].tolist(), X_test, labeled_11k_df.iloc[X_test.index][target].tolist()
-
-
-def resize_emb(text_emb, target, X_train, X_valid, X_test, gnn_emb=None, topic_emb=None, trim_to=1024):
-    X_train_feat = [text_emb[d][0:trim_to] for d in X_train["domain"].tolist()]
-    X_valid_feat = [text_emb[d][0:trim_to] for d in X_valid["domain"].tolist()]
-    X_test_feat = [text_emb[d][0:trim_to] for d in X_test["domain"].tolist()]
-    print("emb-size=", len(X_test_feat[0]))
-    if gnn_emb is not None:
-        X_train_feat_gnn = [gnn_emb[d][0:trim_to] for d in X_train["domain"].tolist()]
-        X_train_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in zip(X_train_feat_gnn, X_train_feat)]
-
-        X_valid_feat_gnn = [gnn_emb[d][0:trim_to] for d in X_valid["domain"].tolist()]
-        X_valid_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in zip(X_valid_feat_gnn, X_valid_feat)]
-
-        X_test_feat_gnn = [gnn_emb[d][0:trim_to] for d in X_test["domain"].tolist()]
-        X_test_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in zip(X_test_feat_gnn, X_test_feat)]
-        print("emb-size=", len(X_test_feat[0]))
-    if topic_emb is not None:
-        X_train_feat_topic = [topic_emb[d] for d in X_train["domain"].tolist()]
-        X_train_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in
-                        zip(X_train_feat_topic, X_train_feat)]
-
-        X_valid_feat_topic = [topic_emb[d] for d in X_valid["domain"].tolist()]
-        X_valid_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in
-                        zip(X_valid_feat_topic, X_valid_feat)]
-
-        X_test_feat_topic = [topic_emb[d] for d in X_test["domain"].tolist()]
-        X_test_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in zip(X_test_feat_topic, X_test_feat)]
-        print("emb-size=", len(X_test_feat[0]))
-
-    return X_train_feat, X_valid_feat, X_test_feat
-
-
-def train_mlp(mlp_reg, X_train_feat, Y_train, X_valid_feat, Y_valid, X_test_feat, Y_test, epochs=15):
-    batch_size, train_loss, valid_loss, test_loss, mean_loss = 5000, [], [], [], []
-    for _ in tqdm(range(epochs)):
-        for b in range(0, len(Y_train), batch_size):
-            X_batch, y_batch = X_train_feat[b:b + batch_size], Y_train[b:b + batch_size]
-            batch_mean = sum(y_batch) / len(y_batch)
-            mlp_reg.partial_fit(X_batch, y_batch)
-            train_loss.append(mlp_reg.loss_)
-            valid_loss.append(mean_squared_error(Y_valid, mlp_reg.predict(X_valid_feat)))
-            test_loss.append(mean_squared_error(Y_test, mlp_reg.predict(X_test_feat)))
-            mean_loss.append(mean_squared_error(y_batch, [batch_mean for elem in y_batch]))
-    return mlp_reg, train_loss, valid_loss, test_loss, mean_loss
-
-
-def plot_loss(train_loss, valid_loss, test_loss, mean_loss, out_path="../../visualizations", target="pc1",
-              embed_type="text", emb_model="", use_gnn_emb=False, use_topic_emb=False, run=1, month="dec"):
-    plt.figure(figsize=(5, 4))
-    plt.rc('font', size=16)
-    plt.plot(range(len(train_loss)), train_loss, label="train loss")
-    plt.plot(range(len(train_loss)), valid_loss, label="validation loss")
-    plt.plot(range(len(train_loss)), test_loss, label="test loss")
-    plt.plot(range(len(train_loss)), mean_loss, label="mean loss")
-    plt.xticks(range(0, len(train_loss) + 1, 1 if len(train_loss) <= 10 else len(train_loss) // 10))
-    plt.xlabel("Epoch")
-    plt.ylabel("MSE")
-    plt.grid(True)
-    plt.legend(fontsize=14)
-    plt.savefig(
-        f"{out_path}/dqr_{month}_{target}_{embed_type}_{emb_model}_{'+GNN-RNI' if use_gnn_emb else ''}_run{str(run)}_loss_128-200-15-60-20-00.pdf",
-        bbox_inches='tight', pad_inches=0.1)
-    plt.show()
-
-
-def plot_histogram(true, pred, out_path="../../visualizations", target="pc1", embed_type="text", emb_model="",
-                   use_gnn_emb=False, use_topic_emb=False, run=1, month="dec"):
-    plt.figure(figsize=(5, 4))
-    plt.hist(pred, bins=50, range=(0, 1), edgecolor='black', color='lightblue', label="Pred")
-    plt.hist(true, bins=50, range=(0, 1), edgecolor='black', color='orange', alpha=0.6, label="True")
-    y_max = max(np.histogram(true, bins=50, range=(0, 1))[0].max(),
-                np.histogram(pred, bins=50, range=(0, 1))[0].max())
-    plt.rc('font', size=15)
-    plt.xticks(np.arange(0, 1.1, 0.2), rotation=0, ha='right')
-    plt.yticks(np.arange(0, y_max + 50, 100), rotation=0, ha='right')
-    plt.xlabel(target.upper().replace("_", "-"))
-    plt.ylabel('Frequancy')
-    plt.legend()
-    plt.savefig(
-        f"{out_path}/dqr_{month}_{target}_{embed_type}_{emb_model}_{'GNN-RNI' if use_gnn_emb else ''}_{'topic-emb' if use_topic_emb else ''}_{'topic-emb' if use_topic_emb else ''}_run{str(run)}_testset_true_vs_pred_frequancy.pdf",
-        bbox_inches='tight', pad_inches=0.1)
-    plt.show()
-
-
-def plot_regression_scatter(true, pred, out_path="../../visualizations", target="pc1", embed_type="text", emb_model="",
-                            use_gnn_emb=False, use_topic_emb=False, run=1, month="dec"):
-    plt.figure(figsize=(5, 4))
-    plt.rc('font', size=16)
-    plt.scatter(true, pred, alpha=0.7)
-    plt.plot([0, 1], [0, 1], color='red', linestyle='-', label='regression line')
-    plt.xticks(np.arange(0, 1.1, 0.2), rotation=0, ha='right')
-    plt.yticks(np.arange(0, 1.1, 0.2), rotation=0, ha='right')
-    plt.xlabel(target.upper().replace("_", "-"))
-    plt.ylabel(f"Predicted {target.upper().replace('_', '-')}")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(
-        f"{out_path}/dqr_{month}_{target}_{embed_type}_{emb_model}_{'GNN-RNI' if use_gnn_emb else ''}_{'topic-emb' if use_topic_emb else ''}_run{str(run)}_testset_true_vs_pred_scatter.pdf",
-        bbox_inches='tight', pad_inches=0.1)
-    plt.show()
-
-
-def eval(pred, true):
-    max(abs(x - y) for x, y in zip(true, pred))
-    res_df = pd.DataFrame(zip(true, pred), columns=['true', 'pred'])
-    res_df["diff"] = res_df.apply(lambda row: abs(row['true'] - row['pred']), axis=1)
-    max_idx = res_df.idxmax()["diff"]
-    min_idx = res_df.idxmin()["diff"]
-    max_diff_row = res_df.iloc[max_idx]
-    min_diff_row = res_df.iloc[min_idx]
-    max_diff_dict = max_diff_row.to_dict()
-    max_diff_dict["test_idx"] = max_idx
-    min_diff_dict = min_diff_row.to_dict()
-    min_diff_dict["test_idx"] = min_idx
-
-    mse = mean_squared_error(true, pred)
-    # print(f"mse={mse}")
-    r2 = r2_score(true, pred)
-    # print(f"r2={r2}")
-    mae = mean_absolute_error(true, pred)
-    true_mean = mean(true)
-    mean_mae = mean_absolute_error(true, [true_mean for elem in true])
-    # print(f"MAE={mae}")
-    return mse, mae, r2, mean_mae, min_diff_dict, max_diff_dict
-
-
 def mlp_train(args) -> None:
     ############## Load training data and split ###############
-    text_emb_dict = load_emb_dict(args.embed_type, args.text_emb_path, args.emb_model, args.month,normalize=True)
+    text_emb_dict = load_emb_dict(args.embed_type, args.text_emb_path, args.emb_model, args.month,normalize=False)
     labeled_11k_df = pd.read_csv(f"{args.dqr_path}/domain_ratings.csv")
     targets_nodes_df = pd.read_csv(f"{args.dqr_path}/targets_nodes_df.csv")
     targets_nodes_df["domain_rev"] = targets_nodes_df["domain"].apply(lambda x: '.'.join(str(x).split('.')[::-1]))
@@ -432,16 +289,26 @@ def mlp_train(args) -> None:
 
         print(f"X_train_feat.shape={len(X_train_feat[0]) if type(X_train_feat[0]) == list else X_train_feat[0].shape}")
         if args.MultiHead == False:
-            # mlp_reg = MLPRegressor(hidden_layer_sizes=(128, 64), activation='relu', solver='adam', max_iter=args.max_iter,random_state=42, verbose=False, learning_rate_init=args.lr,alpha=0.001)
-            mlp_reg = MLPRegressor(hidden_layer_sizes=(int(len(X_train_feat[0]) * 0.75), 128, 64, 16),
-                                   activation='relu', solver='adam', max_iter=args.max_iter, random_state=42,
-                                   verbose=False, learning_rate_init=args.lr)
-            mlp_reg, train_loss, valid_loss, test_loss, mean_loss = train_mlp(mlp_reg, X_train_feat, y_train,
-                                                                              X_valid_feat, y_valid, X_test_feat,
-                                                                              y_test, epochs=args.epochs)
+            ###################### PYTorch Regressor  ######################
+            if args.library=="pytorch":
+                mlp_reg = MLP3LayersPredictor(len(X_train_feat[0]))
+                # mlp_reg = MLPRegressor(len(X_train_feat[0]),hidden_layer_sizes=(int(len(X_train_feat[0]) * 0.75), 128, 64, 16))
+                mlp_reg, train_loss, valid_loss, test_loss, mean_loss = train_mlp(mlp_reg, X_train_feat, y_train,
+                                                                                X_valid_feat, y_valid, X_test_feat,
+                                                                                y_test, epochs=args.epochs)
+            ######################## Scikit-Learn ###################
+            elif args.library=="sklearn":
+                mlp_reg = Sklearn_MLPRegressor(hidden_layer_sizes=(128, 32),
+                                    activation='relu', solver='adam',max_iter=args.max_iter, random_state=42,
+                                    verbose=False, learning_rate_init=args.lr)
+                mlp_reg.out_activation_ = 'sigmoid'
+                mlp_reg, train_loss, valid_loss, test_loss, mean_loss = train_scikitlearn_regressor(mlp_reg, X_train_feat, y_train,
+                                                                                X_valid_feat, y_valid, X_test_feat,
+                                                                                y_test, epochs=args.epochs)
+                                                                              
         else:
             mlp_reg = MultiTaskMLP(input_dim=len(X_train_feat[0]), num_classes=args.num_classes,
-                                   hidden_dims=[int(len(X_train_feat[0]) * 0.9), 64, 16])
+                                   hidden_dims=[int(len(X_train_feat[0]) * 0.9), 64, 16])            
             mlp_reg, train_loss, valid_loss, test_loss, mean_loss = train_multihead(mlp_reg, X_train_feat, y_train,
                                                                                     X_valid_feat, y_valid, X_test_feat,
                                                                                     y_test, lr=args.lr,
@@ -449,8 +316,8 @@ def mlp_train(args) -> None:
                                                                                     w_cls=0.5,
                                                                                     num_classes=args.num_classes)
         ###################### Save Model ####################
-        filename = f"{args.plots_out_path}/mlp_model_{args.month}_{args.target}_{args.embed_type}_{args.emb_model}{'_GNN-RNI' if args.use_gnn_emb else ''}{'_IPTC-emb' if args.use_topic_emb else ''}{'_agg' if args.agg_month_emb else ''}.pkl"
-        with open(filename, 'wb') as file:
+        run_file_name=f"{args.plots_out_path}/dqr_{args.month}_{args.target}_{args.library}_{args.embed_type}_{args.emb_model}_{'GNN-RNI' if args.use_gnn_emb else ''}_{'topic-emb' if args.use_topic_emb else ''}_run{str(i)}"
+        with open(f"{run_file_name}{'_agg' if args.agg_month_emb else ''}_credibench_MLP_Model.pkl", 'wb') as file:
             pickle.dump(mlp_reg, file)
         ################## Weak Supervision ###########
         if args.generate_weaksupervision_scores == True:
@@ -467,34 +334,26 @@ def mlp_train(args) -> None:
             phishtank_pred = mlp_reg.predict(phishtank_features)
             pd.DataFrame(zip(embd_dict_phishtank.keys(), phishtank_pred),
                          columns=["domain", f"pred_{args.target}"]).to_csv(
-                f"{args.plots_out_path}/Phishtank_pred_{args.month}_{args.target}_{args.embed_type}_{args.emb_model}_{'_+GNN-RNI' if args.use_gnn_emb else ''}{'_agg' if args.agg_month_emb else ''}.csv",
-                index=None)
+                        f"{run_file_name}{'_agg' if args.agg_month_emb else ''}_Phishtank_pred.csv",index=None)
             # print("phishtank_pred=",phishtank_pred)
 
             URLhaus_features = [v for k, v in embd_dict_URLhaus.items()]
             URLhaus_pred = mlp_reg.predict(URLhaus_features)
             pd.DataFrame(zip(embd_dict_URLhaus.keys(), URLhaus_pred), columns=["domain", f"pred_{args.target}"]).to_csv(
-                f"{args.plots_out_path}/URLhaus_pred_{args.month}_{args.target}_{args.embed_type}_{args.emb_model}_{'_+GNN-RNI' if args.use_gnn_emb else ''}{'_agg' if args.agg_month_emb else ''}.csv",
-                index=None)
+                f"{run_file_name}{'_agg' if args.agg_month_emb else ''}_URLhaus_pred.csv",index=None)
 
             PhishDataset_legit_features = [v for k, v in embd_dict_PhishDataset_legit.items()]
             PhishDataset_legit_pred = mlp_reg.predict(PhishDataset_legit_features)
             pd.DataFrame(zip(embd_dict_PhishDataset_legit.keys(), PhishDataset_legit_pred),
                          columns=["domain", f"pred_{args.target}"]).to_csv(
-                f"{args.plots_out_path}/PhishDataset_legit_pred_{args.month}_{args.target}_{args.embed_type}_{args.emb_model}_{'_+GNN-RNI' if args.use_gnn_emb else ''}{'_agg' if args.agg_month_emb else ''}.csv",
-                index=None)
+                        f"{run_file_name}{'_agg' if args.agg_month_emb else ''}_legit_pred.csv",index=None)
         ################## Plot and Eval ###############
         true = y_test
-        pred = mlp_reg.predict(X_test_feat)
-        plot_loss(train_loss, valid_loss, test_loss, mean_loss, args.plots_out_path, target=args.target,
-                  emb_model=args.emb_model, use_gnn_emb=args.use_gnn_emb, use_topic_emb=args.use_topic_emb,
-                  embed_type=args.embed_type, run=i, month=args.month)
-        plot_histogram(true, pred, args.plots_out_path, target=args.target, emb_model=args.emb_model,
-                       use_gnn_emb=args.use_gnn_emb, use_topic_emb=args.use_topic_emb, embed_type=args.embed_type,
-                       run=i, month=args.month)
-        plot_regression_scatter(true, pred, args.plots_out_path, target=args.target, emb_model=args.emb_model,
-                                use_gnn_emb=args.use_gnn_emb, use_topic_emb=args.use_topic_emb,
-                                embed_type=args.embed_type, run=i, month=args.month)
+        pred = mlp_reg.predict(X_test_feat) 
+        
+        plot_loss(train_loss, valid_loss, test_loss, mean_loss, run_file_name+"_loss.pdf")
+        plot_histogram(true, pred,  run_file_name+"_testset_true_vs_pred_frequancy.pdf")
+        plot_regression_scatter(true, pred, run_file_name+"_testset_true_vs_pred_scatter.pdf")
         MSE, MAE, R2, Mean_MAE, min_error_dict, max_error_dict = eval(pred, true)
         min_error_dict["domain"] = X_test.iloc[min_error_dict["test_idx"]]["domain"]
         max_error_dict["domain"] = X_test.iloc[max_error_dict["test_idx"]]["domain"]
@@ -503,14 +362,13 @@ def mlp_train(args) -> None:
             f"Run{i}:MSE={MSE}\tR2={R2}\tMAE={MAE}\tMean_MAE={Mean_MAE}\tmin_error_dict={min_error_dict}\tmax_error_dict={max_error_dict}")
         ############ save test results ############
         X_test.to_csv(
-            f"{args.plots_out_path}/dqr_testset_{args.month}_{args.target}_{args.embed_type}_{args.emb_model}{'_GNN-RNI' if args.use_gnn_emb else ''}{'_IPTC-emb' if args.use_topic_emb else ''}{'_agg' if args.agg_month_emb else ''}.csv")
+            f"{run_file_name}{'_agg' if args.agg_month_emb else ''}_dqr_testset.csv",index=None)
         pd.DataFrame(zip(true, pred), columns=["true", "pred"]).to_csv(
-            f"{args.plots_out_path}/dqr_pred_{args.month}_{args.target}_{args.embed_type}_{args.emb_model}{'_GNN-RNI' if args.use_gnn_emb else ''}{'_IPTC-emb' if args.use_topic_emb else ''}{'_agg' if args.agg_month_emb else ''}.csv",
-            index=None)
+            f"{run_file_name}{'_agg' if args.agg_month_emb else ''}_dqr_pred.csv",index=None)
 
     results_df = pd.DataFrame(results, columns=['MSE', 'MAE', 'R2', 'Mean_MAE', 'Min_AE', 'Max_AE', 'args'])
-    results_df.to_csv(
-        f"{args.plots_out_path}/dqr_{args.month}_{args.target}_{args.embed_type}_{args.emb_model}{'_GNN-RNI' if args.use_gnn_emb else ''}{'_+IPTC-emb' if args.use_topic_emb else ''}{'_agg' if args.agg_month_emb else ''}_result.csv", )
+    results_df.to_csv(f"{run_file_name}{'_agg' if args.agg_month_emb else ''}_dqr_results.csv",index=None)
+    
     for col in ['MSE', 'MAE', 'R2', 'Mean_MAE']:
         print(f"{col}: Mean={results_df[col].mean()}\tstd={results_df[col].std()}")
 
@@ -531,10 +389,8 @@ if __name__ == '__main__':
     parser.add_argument("--test_valid_size", type=float, default=0.4,help="ratio of test and vaild sets")
     parser.add_argument("--emb_dim", type=int, default=4096,help="embedding size")
     parser.add_argument("--max_iter", type=int, default=200,help="MLP regressor max iteration count")
-    # parser.add_argument("--lr", type=float, default=3e-5)
     parser.add_argument("--lr", type=float, default=5e-3,help="learning rate")
-    # parser.add_argument("--lr", type=float, default=5e-4)
-    parser.add_argument("--epochs", type=int,default=8,help="# training epochs")  # default 20, 10 for Qwen38B, 10 for TFIDF-PC1, 4 for TFIDF-mbfc , 8 for TE3L, 7 for GNN+TE3L
+    parser.add_argument("--epochs", type=int,default=100, help="# training epochs")  # default 20, 10 for Qwen38B, 10 for TFIDF-PC1, 4 for TFIDF-mbfc , 8 for TE3L, 7 for GNN+TE3L
     parser.add_argument("--plots_out_path", type=str, default=str(root + "/plots"),help="plots and results store path")
     parser.add_argument("--runs", type=int, default=1,help="# training runs")
     parser.add_argument("--use_gnn_emb", type=bool, default=True,help="append GNN embedding")
@@ -545,7 +401,8 @@ if __name__ == '__main__':
     parser.add_argument("--MultiHead", type=bool, default=False, help="Use MultiHead Model")
     parser.add_argument("--num_classes", type=int, default=3,help="# classifcation classes for Multihead model")
     parser.add_argument("--generate_weaksupervision_scores", type=bool, default=False, help="gnerate weak supervision datasets scores")
-    parser.add_argument("--month", type=str, default="nov", choices=["oct", "nov", "dec"],help="CrediBench month snapshot")
+    parser.add_argument("--month", type=str, default="dec", choices=["oct", "nov", "dec"],help="CrediBench month snapshot")
+    parser.add_argument("--library", type=str, default="sklearn", choices=["pytorch", "sklearn"],help="ML library to use")
     args = parser.parse_args()
     print("args=", args)
     mlp_train(args)

@@ -137,9 +137,9 @@ def main() -> None:
     print(f'batch_size={batch_size}')
     print(f'cpu_count={cpu_count()}')
     for gnn_k,gnn_v in tqdm(index_domain_gnn_dict.items()):
-        # if int(gnn_k) in [0,2,3,4,5,7,8,9,10,11,12,13,15,16]:
-        #     print(f"Skipping shard:{gnn_k}")
-        #     continue            
+        if int(gnn_k) not in [3,6,9]:
+            print(f"Skipping shard:{gnn_k}")
+            continue            
         ############### serial Execution ###############
         print(f"shared {gnn_k} len of domains={len(gnn_v)}")
         if args.exec_mode=="serial":
@@ -151,7 +151,7 @@ def main() -> None:
             data=[(i,mlp_reg,gnn_v[i:i + batch_size],args.gnn_emb_path,args.text_emb_path,gnn_k) for i in range(0, len(gnn_v), batch_size)]       
             print(f"Total number of batches={len(data)}")
             ########## Multiprocessing Pool ###############        
-            with multiprocessing.Pool(processes=8) as pool:
+            with multiprocessing.Pool(processes=4) as pool:
                 results = pool.starmap(process_inference_batch, data)
             # print(results)
             pool.close()

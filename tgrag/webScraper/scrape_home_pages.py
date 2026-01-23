@@ -67,7 +67,7 @@ def scrape(url):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="WebSite Home Page Scraper")
-    parser.add_argument("--domains_path", type=str, default="../../data/dqr/domain_pc1.csv", help="dqr dataset path")
+    parser.add_argument("--domains_path", type=str, default="../../data/weaksupervision/labels.csv", help="dqr dataset path")
     parser.add_argument("--output_path", type=str, default="../../data/scrape/",help="output path")
     parser.add_argument("--batch_size", type=int, default=1000, help="scarp batch_size")
     args = parser.parse_args()
@@ -86,10 +86,10 @@ if __name__ == "__main__":
         for url in domains_lst[b_idx:b_idx + batch_size]:
             thread = threading.Thread(target=scrape_multithread, args=(url,))
             threads.append(thread)
-        for i in tqdm(range(0, len(threads), 1000)):
-            for thread in threads[i:i + 1000]:
+        for i in tqdm(range(0, len(threads), 100)):
+            for thread in threads[i:i + 100]:
                 thread.start()
-            for thread in threads[i:i + 1000]:
+            for thread in threads[i:i + 100]:
                 thread.join()
         results_df = pd.DataFrame(results, columns=["title", "desc", "OG-Title", "text", "url"])
         results_df.to_csv(f"../../data/scrapedContent/{args.domains_path.split('/')[-1].split('.')[0]}_scraped_homepage_{b_idx}.csv", index=None, encoding='utf-8',errors='ignore')
