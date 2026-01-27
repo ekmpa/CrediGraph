@@ -250,7 +250,7 @@ def mlp_train(args) -> None:
     ################# Train #####################
     results = []
     for i in range(args.runs):
-        X_train, y_train, X_valid, y_valid, X_test, y_test = train_valid_test_split(args.target, labeled_11k_df,args.test_valid_size)
+        X_train, y_train, X_valid, y_valid, X_test, y_test = train_valid_test_split(args.target, labeled_11k_df,key='domain',test_valid_size=args.test_valid_size)
         if args.embed_type == "TFIDF":
             print(f"TFIDF dim={text_emb_dict[list(text_emb_dict.keys())[0]].shape[0]}")
             X_train_feat, X_valid_feat, X_test_feat = resize_emb(text_emb_dict, args.target, X_train, X_valid, X_test,
@@ -265,7 +265,7 @@ def mlp_train(args) -> None:
                         gnn_emb_dict = load_emb_dict("GNN_GAT", args.gnn_emb_path,month=args.month)
                     labeled_11k_df = labeled_11k_df[labeled_11k_df["domain"].isin(gnn_emb_dict.keys())]
                     labeled_11k_df = labeled_11k_df.reset_index(drop=True)
-                    X_train, y_train, X_valid, y_valid, X_test, y_test = train_valid_test_split(args.target,labeled_11k_df,args.test_valid_size)
+                    X_train, y_train, X_valid, y_valid, X_test, y_test = train_valid_test_split(args.target,labeled_11k_df,key='domain',test_valid_size=args.test_valid_size)
                 else:
                     gnn_emb_dict = None
                 if args.use_topic_emb:

@@ -20,6 +20,7 @@ import multiprocessing
 from multiprocessing import Pool, cpu_count
 import threading
 
+from utils import search_parquet_emb as search_parquet_gnn, search_parquet_content, load_emb_index
 # shard_domains_dict={}
 # def process_chunk(chunk):
 #     global shard_domains_dict
@@ -28,21 +29,6 @@ import threading
 text_emb_shards_dict={}
 domain_index_text_dict, domain_index_set={},()
 domain_index_gnn_dict, index_domain_gnn_dict={},{}
-def load_emb_index(path="../../../data/Dec2024/gnn_random_v0", index_pickle="domain_shard_index.pkl",invert=True ):
-    with open(f'{path}/{index_pickle}', 'rb') as f:
-            index_dict = pickle.load(f)
-    # global shard_domains_dict
-    shard_domains_dict=None
-    if invert:
-        shard_domains_dict={}
-        val_set=set(index_dict.values())
-        for v in val_set:
-            shard_domains_dict[v]=[]
-
-        for k,v in index_dict.items():
-            shard_domains_dict[v].append(k)
-    return index_dict,shard_domains_dict
-
 def load_emb_dict(path="../../../data/Dec2024/gnn_random_v0", emb_pickle="domain_shard_index.pkl"):
     shared_key=emb_pickle.split('.')[0]
     if shared_key not in text_emb_shards_dict:        
@@ -52,25 +38,6 @@ def load_emb_dict(path="../../../data/Dec2024/gnn_random_v0", emb_pickle="domain
             embd_dict={ k:v[0][1] for k,v in embd_dict.items()}
         text_emb_shards_dict[shared_key]=embd_dict
     return text_emb_shards_dict[shared_key]
-
-def search_parquet_gnn(path="../../../data/Dec2024/gnn_random_v0", parquet_name="shard_0.parquet", column_name="",search_values=[]):
-    column_name = 'domain'
-    filters = [(column_name, 'in', search_values)]
-    table = pq.read_table(f'{path}/{parquet_name}', filters=filters)
-    emb_dict={}
-    for batch in table.to_batches():
-        for i in range(len(batch)):
-            emb_dict[str(batch['domain'][i])]=batch['emb'][i].as_py()
-    return emb_dict
-def search_parquet_content(path="../../../data/Dec2024/gnn_random_v0", parquet_name="shard_0.parquet", column_name="",search_values=[]):
-    column_name = 'domain'
-    filters = [(column_name, 'in', search_values)]
-    table = pq.read_table(f'{path}/{parquet_name}', filters=filters)
-    emb_dict={}
-    for batch in table.to_batches():
-        for i in range(len(batch)):
-            emb_dict[str(batch['domain'][i])]=batch['embeddings'][i][0]['emb'].as_py() ## first doc emb
-    return emb_dict
 
 def process_inference_batch(idx,mlp_reg,batch_domains,gnn_emb_path,text_emb_path,gnn_emb_idx):
     # batch_domains = gnn_v[i:i + batch_size]

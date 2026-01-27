@@ -79,7 +79,8 @@ if __name__ == "__main__":
     del domains_df
     print(f"len of domains={len(domains_lst)}")
     batch_size = args.batch_size
-    for b_idx in tqdm(range(0, len(domains_lst) + batch_size, batch_size)):
+    for b_idx in tqdm(range(392000, 400000, batch_size)):
+        print(f"Scraping batch starting at index: {b_idx}")
         threads = []
         results = []
         ############### MultiThreading ###########
