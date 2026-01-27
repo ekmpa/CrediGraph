@@ -220,7 +220,7 @@ def train_classifier(model, X_train_feat, Y_train, X_valid_feat, Y_valid, X_test
 
 
     
-def train_classifier_unbalanced(model, X_train_feat, Y_train, X_valid_feat, Y_valid, X_test_feat, Y_test, lr=1e-4, epochs=15,batch_size=8192):
+def train_classifier_unbalanced(model, X_train_feat, Y_train, X_valid_feat, Y_valid, X_test_feat, Y_test, lr=1e-4, epochs=15,batch_size=int(1e4)):
     sampler = BalancedBatchSampler(Y_train, batch_size=batch_size)
     dataset = BinaryClassificationDataset(X_train_feat, Y_train)
   

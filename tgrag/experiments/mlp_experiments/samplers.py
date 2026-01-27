@@ -31,23 +31,19 @@ class BalancedBatchSampler(Sampler):
     def __iter__(self):
         np.random.shuffle(self.idx_0)
         np.random.shuffle(self.idx_1)
-
-        ptr0, ptr1 = 0, 0
-        while ptr0 + self.half <= len(self.idx_0):
-            if ptr1 + self.half > len(self.idx_1):
-                np.random.shuffle(self.idx_1)
-                ptr1 = 0
-
-            batch = np.concatenate([
-                self.idx_0[ptr0:ptr0 + self.half],
-                self.idx_1[ptr1:ptr1 + self.half]
-            ])
-
-            np.random.shuffle(batch)
-            yield batch.tolist()
-
+        for ptr0 in range(0, len(self.idx_0),self.half):
+            bs=self.half
+            if self.half + ptr0 > len(self.idx_0):
+                bs = len(self.idx_0) - ptr0
+            for ptr1 in range(0, len(self.idx_1),bs):
+                batch = np.concatenate([
+                    self.idx_0[ptr0:ptr0 + bs ],
+                    self.idx_1[ptr1:ptr1 + bs]
+                ])
+                np.random.shuffle(batch)
+                yield batch.tolist()                
+                ptr1 += self.half
             ptr0 += self.half
-            ptr1 += self.half
 
     def __len__(self):
         return len(self.idx_0) // self.half
