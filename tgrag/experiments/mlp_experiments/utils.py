@@ -13,7 +13,15 @@ import pickle
 import pyarrow.parquet as pq
 import duckdb
 import pyarrow as pa
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import seaborn as sns
+import os
+import glob
+import re
+import logging
 
+def list_all_files(root_path,rgex="*.pkl",recursive=False):
+    return glob.glob(f'{root_path}/{rgex}',recursive=recursive)
 
 def normalize_embeddings(emb_dict):
     norm_arr=normalize(list(emb_dict.values()))
@@ -65,17 +73,17 @@ def resize_emb(text_emb, target, X_train, X_valid, X_test, gnn_emb=None, topic_e
         X_train_feat = [text_emb[d][0:trim_to] for d in X_train["domain"].tolist()]
         X_valid_feat = [text_emb[d][0:trim_to] for d in X_valid["domain"].tolist()]
         X_test_feat = [text_emb[d][0:trim_to] for d in X_test["domain"].tolist()]
-        print("emb-size=", len(X_test_feat[0]))
+        logging.info(f"emb-size={len(X_test_feat[0])}")
         if gnn_emb is not None:
-            X_train_feat_gnn = [gnn_emb[d][0:trim_to] for d in X_train["domain"].tolist()]
+            X_train_feat_gnn = [gnn_emb[d][0:256] for d in X_train["domain"].tolist()]
             X_train_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in zip(X_train_feat_gnn, X_train_feat)]
 
-            X_valid_feat_gnn = [gnn_emb[d][0:trim_to] for d in X_valid["domain"].tolist()]
+            X_valid_feat_gnn = [gnn_emb[d][0:256] for d in X_valid["domain"].tolist()]
             X_valid_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in zip(X_valid_feat_gnn, X_valid_feat)]
 
-            X_test_feat_gnn = [gnn_emb[d][0:trim_to] for d in X_test["domain"].tolist()]
+            X_test_feat_gnn = [gnn_emb[d][0:256] for d in X_test["domain"].tolist()]
             X_test_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in zip(X_test_feat_gnn, X_test_feat)]
-            print("emb-size=", len(X_test_feat[0]))
+            logging.info(f"emb-size={len(X_test_feat[0])}")
         if topic_emb is not None:
             X_train_feat_topic = [topic_emb[d] for d in X_train["domain"].tolist()]
             X_train_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in
@@ -87,7 +95,7 @@ def resize_emb(text_emb, target, X_train, X_valid, X_test, gnn_emb=None, topic_e
 
             X_test_feat_topic = [topic_emb[d] for d in X_test["domain"].tolist()]
             X_test_feat = [list(sublist1) + (list(sublist2)) for sublist1, sublist2 in zip(X_test_feat_topic, X_test_feat)]
-            print("emb-size=", len(X_test_feat[0]))
+            logging.info(f"emb-size={len(X_test_feat[0])}")
 
         return X_train_feat, X_valid_feat, X_test_feat
 
@@ -109,7 +117,7 @@ def plot_loss(train_loss, valid_loss, test_loss, mean_loss, out_file_path="loss_
     plt.show()
 
 
-def plot_histogram(true, pred, out_file_path="_testset_true_vs_pred_frequancy.pdf",target="pc1"):
+def plot_histogram(true, pred, out_file_path="_testset_true_vs_pred_frequency.pdf",target="pc1"):
     plt.figure(figsize=(5, 4))
     plt.hist(pred, bins=50, range=(0, 1), edgecolor='black', color='lightblue', label="Pred")
     plt.hist(true, bins=50, range=(0, 1), edgecolor='black', color='orange', alpha=0.6, label="True")
@@ -119,12 +127,12 @@ def plot_histogram(true, pred, out_file_path="_testset_true_vs_pred_frequancy.pd
     plt.xticks(np.arange(0, 1.1, 0.2), rotation=0, ha='right')
     plt.yticks(np.arange(0, y_max + 50, 100), rotation=0, ha='right')
     plt.xlabel(target.upper().replace("_", "-"))
-    plt.ylabel('Frequancy')
+    plt.ylabel('frequency')
     plt.legend()
     plt.savefig(out_file_path,bbox_inches='tight', pad_inches=0.1)
     plt.show()
 
-def plot_classesCount(cm, out_file_path="_testset_true_vs_pred_frequancy.pdf",target="pc1"):
+def plot_classesCount(cm, out_file_path="_testset_true_vs_pred_frequency.pdf",target="pc1"):
     plt.figure(figsize=(5, 4))
     per_class_acc = np.diag(cm) / cm.sum(axis=1)
     per_class_acc = np.nan_to_num(per_class_acc)
@@ -132,11 +140,23 @@ def plot_classesCount(cm, out_file_path="_testset_true_vs_pred_frequancy.pdf",ta
     plt.bar(classes, per_class_acc)
     plt.xlabel("Class Label")
     plt.ylabel("Accuracy")
-    plt.title("Per-Class Accuracy Derived from Confusion Matrix")
+    plt.title("Accuracy per Label")
     plt.ylim(0, 1)
     plt.xticks(classes, classes)
     for i, v in enumerate(per_class_acc):
         plt.text(i, v + 0.02, f"{v:.2f}", ha="center", fontsize=9)
+    plt.tight_layout()
+    plt.savefig(out_file_path,bbox_inches='tight', pad_inches=0.1)
+    plt.show()
+def plot_confusion_matrix(cm, out_file_path="_testset_confusion_matrix.pdf"):
+    fig_size=max(3, len(cm))
+    plt.figure(figsize=(fig_size, fig_size))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+                xticklabels=[f'T:{idx}' for idx in range(len(cm))],
+                yticklabels=[f'P:{idx}' for idx in range(len(cm))])
+    plt.ylabel('True')
+    plt.xlabel('Predicted')
+    plt.title('Confusion Matrix')
     plt.tight_layout()
     plt.savefig(out_file_path,bbox_inches='tight', pad_inches=0.1)
     plt.show()
@@ -172,13 +192,13 @@ def eval(pred, true):
     min_diff_dict["test_idx"] = min_idx
 
     mse = mean_squared_error(true, pred)
-    # print(f"mse={mse}")
+    # logging.info(f"mse={mse}")
     r2 = r2_score(true, pred)
-    # print(f"r2={r2}")
+    # logging.info(f"r2={r2}")
     mae = mean_absolute_error(true, pred)
     true_mean = mean(true)
     mean_mae = mean_absolute_error(true, [true_mean for elem in true])
-    # print(f"MAE={mae}")
+    # logging.info(f"MAE={mae}")
     return mse, mae, r2, mean_mae, min_diff_dict, max_diff_dict
 
 

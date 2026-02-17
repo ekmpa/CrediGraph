@@ -11,7 +11,6 @@ def setup_logging(
     stream_logging_level: int = logging.INFO,
 ) -> None:
     handlers: List[logging.Handler] = []
-
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(stream_logging_level)
     stream_handler.setFormatter(
@@ -30,7 +29,7 @@ def setup_logging(
         handlers.append(file_handler)
 
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=log_file_logging_level,
         format='[%(asctime)s] %(levelname)s [%(processName)s %(threadName)s %(name)s.%(funcName)s:%(lineno)d] %(message)s',
         handlers=handlers,
     )
